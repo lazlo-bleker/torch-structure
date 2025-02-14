@@ -1,0 +1,30 @@
+[project]
+name = "torch_structure"
+version = "0.0.1"
+authors = [
+    {name = "Lazlo Bleker", email = "lazlo.bleker@tum.de"}
+]
+
+dependencies = [
+    "scipy",
+    "matplotlib",
+    "pydantic"
+]
+
+[project.optional-dependencies]
+dev = [
+    "mkdocs-material==9.5.44",
+    "mkdocstrings-python==1.12.2",
+    "mkdocs-gen-files==0.5.0",
+    "pytest==8.3.3",
+    "pytest-cov==6.0.0"
+]
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
