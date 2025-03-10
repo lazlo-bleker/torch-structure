@@ -17,7 +17,7 @@ for path in sorted(src.rglob("*.py")):
     if parts[-1] == "__init__" or parts[-1] == "__main__":
         continue
 
-    with mkdocs_gen_files.open(full_doc_path, "w") as fd:  
+    with mkdocs_gen_files.open(full_doc_path, "w") as fd:
         identifier = ".".join(parts)
         print("::: " + identifier, file=fd)
 

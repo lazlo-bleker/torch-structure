@@ -1,6 +1,7 @@
 import torch
 import scipy.linalg
 
+
 def create_branch_node_matrix(edge_index):
     """
     Creates the branch-node matrix for a given set of edges.
@@ -9,7 +10,7 @@ def create_branch_node_matrix(edge_index):
         edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge.
 
     Returns:
-        torch.Tensor: A dense tensor of shape (num_edges, num_nodes) representing the branch-node incidence matrix. 
+        torch.Tensor: A dense tensor of shape (num_edges, num_nodes) representing the branch-node incidence matrix.
             The matrix has an entry of +1 and -1 for each row indicating the start and end nodes of each edge, respectively.
     """
     device = edge_index.device
@@ -18,21 +19,27 @@ def create_branch_node_matrix(edge_index):
     row_indices = torch.arange(num_edges, device=device).repeat(2)
     col_indices = edge_index.view(-1)
     indices = torch.stack([row_indices, col_indices])
-    values = torch.cat([torch.ones(num_edges, device=device), -torch.ones(num_edges, device=device)])
-    branch_node_matrix = torch.sparse_coo_tensor(indices, values, size=(num_edges, num_nodes)).to_dense()
+    values = torch.cat(
+        [torch.ones(num_edges, device=device), -torch.ones(num_edges, device=device)]
+    )
+    branch_node_matrix = torch.sparse_coo_tensor(
+        indices, values, size=(num_edges, num_nodes)
+    ).to_dense()
     return branch_node_matrix
+
 
 def create_xy_equilibrium_space(coords, is_support, edge_index):
     coords = torch.clone(coords)  # check if this is necessary
 
     A = create_xy_equilibrium_matrix(coords, is_support, edge_index)
 
-    basis_vectors = scipy.linalg.null_space(A.cpu().numpy())  # consider using torch instead
+    basis_vectors = scipy.linalg.null_space(A.cpu().numpy())  # consider using torch
     basis_vectors = torch.tensor(basis_vectors, dtype=torch.float32)
 
     return basis_vectors
 
-def create_xy_equilibrium_matrix(coords, is_support, edge_index):  # only works for directed graphs
+
+def create_xy_equilibrium_matrix(coords, is_support, edge_index):
     """
     Creates the equilibrium matrix for the x and y components of the equilibrium equations.
 
@@ -40,7 +47,7 @@ def create_xy_equilibrium_matrix(coords, is_support, edge_index):  # only works 
         coords (torch.Tensor): A tensor of shape (num_nodes, 3) containing the 3D coordinates of each node. Only
             the x and y coordinates have an effect on the output.
         is_support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating which nodes are fixed (True) or free (False).
-        edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge.
+        edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge. Needs to be directed.
     """
     is_support = is_support.view(-1)
 

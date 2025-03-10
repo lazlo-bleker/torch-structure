@@ -1,6 +1,7 @@
 """
 TorchStructure is a python package for graph-based autodifferentiable structural design and engineering.
 """
+
 from . import data
 from . import formfinding
 from . import generators

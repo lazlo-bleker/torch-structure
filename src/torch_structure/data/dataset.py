@@ -1,5 +1,6 @@
 import torch_geometric
 
+
 class Dataset(torch_geometric.data.InMemoryDataset):
     def __init__(self, data_list):
         super().__init__(None)
@@ -10,4 +11,4 @@ class Dataset(torch_geometric.data.InMemoryDataset):
         return len(self.data_list)
 
     def get(self, idx):
-        return self.data_list[idx]#.data
+        return self.data_list[idx]  # .data

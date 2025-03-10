@@ -2,9 +2,20 @@ import torch
 
 from torch_structure.formfinding.utils import create_branch_node_matrix
 
-def fdm(coords, load, support, edge_index, force_density, batch=None, use_batching=True, directed=False, solve_only_z=False):
+
+def fdm(
+    coords,
+    load,
+    support,
+    edge_index,
+    force_density,
+    batch=None,
+    use_batching=True,
+    directed=False,
+    solve_only_z=False,
+):
     """
-    Performs the Force Density Method (FDM) to find the equilibrium state of a structure given its coordinates, loads, 
+    Performs the Force Density Method (FDM) to find the equilibrium state of a structure given its coordinates, loads,
     supports, edge connections, and force densities.
 
     Args:
@@ -28,8 +39,10 @@ def fdm(coords, load, support, edge_index, force_density, batch=None, use_batchi
 
     device = coords.device
     coords = torch.clone(coords)  # check if this is necessary
+
+    # halve force densities to account for undirected graph
     if not directed:
-        force_density = 0.5*force_density  # halve force densities to account for undirected graph
+        force_density = 0.5 * force_density
 
     C = create_branch_node_matrix(edge_index)
     C_free = C[:, ~support]
@@ -39,38 +52,40 @@ def fdm(coords, load, support, edge_index, force_density, batch=None, use_batchi
     Q = torch.diag(force_density)
     A = torch.mm(torch.mm(C_free_transposed, Q), C_free)  # >1/3 of computation time
 
+    D_f = torch.mm(torch.mm(C_free_transposed, Q), C_fixed)
     if solve_only_z:
         b_1 = load[~support, 2]
-        b_2 = torch.mv(torch.mm(torch.mm(C_free_transposed, Q), C_fixed), coords[support, 2])
+        b_2 = torch.mv(D_f, coords[support, 2])
     else:
         b_1 = load[~support]
-        b_2 = torch.mm(torch.mm(torch.mm(C_free_transposed, Q), C_fixed), coords[support])
+        b_2 = torch.mm(D_f, coords[support])
     b = b_1 - b_2
 
     if batch is None:
         form_found_coords = torch.linalg.solve(A, b)
     else:
         batch_free = batch[~support]
-        num_graphs = batch.max().item() + 1
+        n_graphs = batch.max().item() + 1
         node_counts = torch.bincount(batch)
         max_size = node_counts.max().item()
 
-        A_batched = torch.eye(max_size, device=device).unsqueeze(0).repeat(num_graphs, 1, 1)
-        b_batched = torch.zeros(num_graphs, max_size, 3, device=device)
-        pad_mask = torch.zeros(num_graphs * max_size, dtype=torch.bool, device=device)
+        I = torch.eye(max_size, device=device)
+        A_batched = I.unsqueeze(0).repeat(n_graphs, 1, 1)
+        b_batched = torch.zeros(n_graphs, max_size, 3, device=device)
+        pad_mask = torch.zeros(n_graphs * max_size, dtype=torch.bool, device=device)
         ff_coords = []
-        for i in range(num_graphs):
+        for i in range(n_graphs):
             mask = batch_free == i
 
             indices = torch.nonzero(mask).squeeze()
             submatrix = A[indices][:, indices]
-            A_batched[i, :submatrix.size(0), :submatrix.size(1)] = submatrix
+            A_batched[i, : submatrix.size(0), : submatrix.size(1)] = submatrix
 
             subvector = b[mask]
             graph_size = subvector.size(0)
             b_batched[i, :graph_size] = subvector
 
-            pad_mask[i*max_size:i*max_size + graph_size] = 1
+            pad_mask[i * max_size : i * max_size + graph_size] = 1
 
             if not use_batching:
                 ff_coords.append(torch.linalg.solve(submatrix, subvector))
@@ -78,10 +93,11 @@ def fdm(coords, load, support, edge_index, force_density, batch=None, use_batchi
 
         if use_batching:
             form_found_coords = torch.linalg.solve(A_batched, b_batched)
-            form_found_coords = form_found_coords.reshape(num_graphs*max_size, 3)[pad_mask]
+            form_found_coords = form_found_coords.reshape(n_graphs * max_size, 3)
+            form_found_coords = form_found_coords[pad_mask]
         else:
             form_found_coords = torch.cat(ff_coords, dim=0)
-            # form_found_coords = form_found_coords.reshape(num_graphs*max_size, 3)[pad_mask]
+            # form_found_coords = form_found_coords.reshape(n_graphs*max_size, 3)[pad_mask]
 
     if solve_only_z:
         coords[~support, 2] = form_found_coords
@@ -90,7 +106,9 @@ def fdm(coords, load, support, edge_index, force_density, batch=None, use_batchi
 
     lengths = torch.norm(torch.mm(C, coords), dim=1)
     force = force_density * lengths
+
+    # double force to account for undirected graph
     if not directed:
-        force = 2*force  # double force to account for undirected graph
+        force = 2 * force
 
     return coords, force.unsqueeze(1)

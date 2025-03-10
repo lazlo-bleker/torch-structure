@@ -1,6 +1,7 @@
 import torch
 from torch_structure.message_passing import StiffnessAggregator
 
+
 def edge_direction(edge_index, x, return_length=False):
     row, col = edge_index
     direction = x[col] - x[row]
@@ -11,16 +12,17 @@ def edge_direction(edge_index, x, return_length=False):
         return normalized_direction, length
     else:
         return normalized_direction
-    
+
+
 def transformation_matrix(edge_index, x, length):
     """
     Create a 3D tensor containing the transformation matrices for all edges in a 3D truss.
-    
+
     Parameters:
     - edge_index: Tensor of shape [2, num_edges], containing indices of connected nodes for each edge.
     - x: Tensor of shape [num_nodes, 3], containing the coordinates (x, y, z) of each node.
     - length: Tensor of shape [num_edges], containing the length of each edge.
-    
+
     Returns:
     - matrix: Tensor of shape [num_edges, 2, 6], containing the transformation matrices for all edges.
     """
@@ -33,13 +35,16 @@ def transformation_matrix(edge_index, x, length):
     direction_cosines = direction_vector / length.view(-1, 1)  # Shape: [num_edges, 3]
 
     # Initialize the transformation matrix tensor
-    T = torch.zeros((edge_index.size(1), 2, 6), device=x.device)  # Shape: [num_edges, 2, 6]
+    T = torch.zeros(
+        (edge_index.size(1), 2, 6), device=x.device
+    )  # Shape: [num_edges, 2, 6]
 
     # Directly assign the direction cosines to the appropriate places
     T[:, 0, :3] = direction_cosines  # First row maps Node 1's global displacements
     T[:, 1, 3:] = direction_cosines  # Second row maps Node 2's global displacements
 
     return T
+
 
 def effective_stiffness(edge_index, E, A, length):
     """Compute effective stiffness."""
