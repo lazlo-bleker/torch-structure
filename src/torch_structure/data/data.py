@@ -59,8 +59,8 @@ class Data:
             if attr_type is None:
                 if value.shape[0] == self.num_nodes == self.num_edges:
                     warnings.warn(
-                        f"Cannot infer attribute type for attribute '{name}' (graph has equal number of nodes and edges).
-                        Defaulting to node attribute.", UserWarning
+                        f"""Cannot infer attribute type for attribute '{name}' (graph has equal number of nodes and edges).
+                        Defaulting to node attribute.""", UserWarning
                         )
                 if value.shape[0] == self.num_nodes:
                     attr_type = 'node'
