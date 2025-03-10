@@ -1,11 +1,11 @@
-import matplotlib.pyplot as plt
-import torch_geometric as pyg
-import networkx as nx
-import numpy as np
+import torch
+import math
+
+from torch_structure.data import Data
 
 class GridShell:
-    def __init__(self, n, boundary_density, pattern='standard', diagonals=False, centroid_support=False,
-                 unsupported_boundaries=False, rectangle=False, square=False, curve_boundaries=False):
+    def __init__(self, n: int, boundary_density: int, pattern='standard', diagonals=torch.tensor(False), centroid_support=torch.tensor(False),
+                 unsupported_boundaries=torch.tensor(False), rectangle=torch.tensor(False), square=torch.tensor(False), curve_boundaries=torch.tensor(False)):
         if pattern not in ['standard', 'singularity', 'opening']:
             raise ValueError(f"Invalid pattern: {pattern}")
         if rectangle and n != 4:
@@ -13,47 +13,33 @@ class GridShell:
         if square and not rectangle:
             raise ValueError("Square pattern requires rectangle=True.")
         self.n = n
-        self.border_density = boundary_density
+        self.boundary_density = boundary_density
         self.pattern = pattern
-        self.diagonals = diagonals  # only compatible with standard pattern
-        self.centroid_support = centroid_support
-        self.unsupported_boundaries = unsupported_boundaries
-        self.rectangle = rectangle
-        self.square = square
-        self.curve_boundaries = curve_boundaries
+        self.diagonals = torch.tensor(diagonals)  # only compatible with standard pattern
+        self.centroid_support = torch.tensor(centroid_support)
+        self.unsupported_boundaries = torch.tensor(unsupported_boundaries)
+        self.rectangle = torch.tensor(rectangle)
+        self.square = torch.tensor(square)
+        self.curve_boundaries = torch.tensor(curve_boundaries)
 
-        self.graph = self.generate_graph(n=n, boundary_density=boundary_density, pattern=pattern,
-                                         diagonals=diagonals, centroid_support=centroid_support,
-                                         unsupported_boundaries=unsupported_boundaries,
-                                         rectangle=rectangle, square=square, curve_boundaries=curve_boundaries)
-        
-    def generate_grid_graph(self):
-        undirected_graph = nx.grid_2d_graph(self.n_cell_x + 1, self.n_cell_y + 1)
-        graph = nx.DiGraph()
-        for u, v in undirected_graph.edges:
-            if self.is_internal_edge(u, v):
-                graph.add_edge(u, v)
-
-        for node in graph.nodes:
-            x, y = node
-
-            graph.nodes[node]['pattern_coords'] = np.array([x * self.span_x, y * self.span_y])
-
-            # Determine if the node is on the edge (support node)
-            is_support = (x == 0 or x == self.n_cell_x or y == 0 or y == self.n_cell_y)
-            graph.nodes[node]['is_support'] = is_support
-            if is_support:
-                graph.nodes[node]['load'] = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-            else:
-                graph.nodes[node]['load'] = np.array([0.0, 0.0, -1.0], dtype=np.float32)
-
-        return graph
+        self.graph = self.generate_graph(n=n, boundary_density=self.boundary_density, pattern=self.pattern,
+                                         diagonals=self.diagonals, centroid_support=self.centroid_support,
+                                         unsupported_boundaries=self.unsupported_boundaries,
+                                         rectangle=self.rectangle, square=self.square, curve_boundaries=self.curve_boundaries)
     
     def generate_graph(self, n, boundary_density, pattern, diagonals, centroid_support, unsupported_boundaries,
                        rectangle, square, curve_boundaries):
         if pattern == 'opening' and not centroid_support:
             raise ValueError("Opening pattern requires centroid support.")
-        graph = nx.DiGraph()
+        node_attrs = {
+            'pattern_coords': torch.empty((0, 2), dtype=torch.float),
+            'is_support': torch.empty((0, 1), dtype=torch.bool),
+            'is_boundary': torch.empty((0, 1), dtype=torch.bool),
+        }
+        edge_attrs = {
+            'is_boundary_edge': torch.empty((0, 1), dtype=torch.bool),
+        }
+        graph = Data(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
         if rectangle:
             corner_points = self.sample_rectangle(square=square)
@@ -62,34 +48,34 @@ class GridShell:
         looped_corner_points = corner_points + [corner_points[0]]
         centroid = self.polygon_centroid(corner_points)
         if pattern in ['standard', 'singularity']:
-            graph.add_node(f'centroid', pattern_coords=centroid, is_support=centroid_support, is_boundary=False)
+            graph.add_node(f'centroid', pattern_coords=centroid, is_support=centroid_support, is_boundary=torch.tensor(False))
         elif pattern == 'opening':
-            angles = np.zeros(n)
+            angles = torch.zeros(n)
             for i in range(n):
-                angles[i] = np.arctan2(corner_points[i][1] - centroid[1], corner_points[i][0] - centroid[0])
+                angles[i] = torch.arctan2(corner_points[i][1] - centroid[1], corner_points[i][0] - centroid[0])
             circle_angles = self.compute_optimal_rotation(angles)
-            opening_radius = np.random.uniform(0.05, 0.2)
+            opening_radius = torch.rand(1) * 1.95 + 0.05
             for i in range(n):
-                pattern_coord = np.array([np.cos(circle_angles[i]), np.sin(circle_angles[i])]) * opening_radius + centroid
-                graph.add_node(f'opening_{i}', pattern_coords=pattern_coord, is_support=centroid_support, is_boundary=True)
+                pattern_coord = torch.tensor([torch.cos(circle_angles[i]), torch.sin(circle_angles[i])]) * opening_radius + centroid
+                graph.add_node(f'opening_{i}', pattern_coords=pattern_coord, is_support=centroid_support, is_boundary=torch.tensor(True))
             
         # add corner points
         for i, point in enumerate(corner_points):
-            graph.add_node(f'corner_{i}', pattern_coords=point, is_support=True, is_boundary=True)
+            graph.add_node(f'corner_{i}', pattern_coords=point, is_support=torch.tensor(True), is_boundary=torch.tensor(True))
 
         # add mesh skeleton points
         for i in range(n):
             if unsupported_boundaries:
-                is_support = np.random.choice([True, False], p=[0.5, 0.5])
+                is_support = torch.randint(0, 2, (1,)).bool()
             else:
-                is_support = True
+                is_support = torch.tensor(True)
             start_boundary, end_boundary = looped_corner_points[i], looped_corner_points[i + 1]
             center_boundary = 0.5*(start_boundary + end_boundary)
             if curve_boundaries:
                 if is_support:
-                    curvature_param = np.random.uniform(-0.5, 0.5)
+                    curvature_param = torch.rand(1) - 0.5
                 else:
-                    curvature_param = np.random.uniform(0.3, 0.5)
+                    curvature_param = torch.rand(1) * 0.2 + 0.3
             else:
                 curvature_param = 0.0
             control_point = center_boundary + curvature_param * (centroid - center_boundary)
@@ -100,50 +86,50 @@ class GridShell:
         
             for j, point in enumerate(boundary_curve):
                 next_node = f'boundary_{i}_{j}'
-                graph.add_node(next_node, pattern_coords=point, is_support=is_support, is_boundary=True)
+                graph.add_node(next_node, pattern_coords=point, is_support=is_support, is_boundary=torch.tensor(True))
                 if not is_support:
-                    graph.add_edge(prev_node, next_node, is_boundary_edge=True)
+                    graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(True))
                 prev_node = next_node
             if not is_support:
-                graph.add_edge(next_node, f'corner_{(i + 1) % n}', is_boundary_edge=True)
+                graph.add_edge(next_node, f'corner_{(i + 1) % n}', is_boundary_edge=torch.tensor(True))
 
             # add internal boundary points
             if pattern == 'standard':
-                internal_boundary = np.linspace(boundary_curve[len(boundary_curve) // 2], centroid, boundary_density + 2)[1:-1]
+                internal_boundary = self.nd_linspace(boundary_curve[len(boundary_curve) // 2], centroid, boundary_density + 2)[1:-1]
                 prev_node = f'boundary_{i}_{len(boundary_curve) // 2}'
                 for j, point in enumerate(internal_boundary):
                     next_node = f'skeleton_{i}_{j}'
-                    graph.add_node(next_node, pattern_coords=point, is_support=False, is_boundary=False)
-                    graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                    graph.add_node(next_node, pattern_coords=point, is_support=torch.tensor(False), is_boundary=torch.tensor(False))
+                    graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                     prev_node = next_node
-                graph.add_edge(next_node, 'centroid', is_boundary_edge=False)
+                graph.add_edge(next_node, 'centroid', is_boundary_edge=torch.tensor(False))
             elif pattern == 'singularity':
-                internal_boundary = np.linspace(corner_points[i], centroid, boundary_density + 2)[1:-1]
+                internal_boundary = self.nd_linspace(corner_points[i], centroid, boundary_density + 2)[1:-1]
                 prev_node = f'corner_{i}'
                 for j, point in enumerate(internal_boundary):
                     next_node = f'skeleton_{i}_{j}'
-                    graph.add_node(next_node, pattern_coords=point, is_support=False, is_boundary=False)
-                    graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                    graph.add_node(next_node, pattern_coords=point, is_support=torch.tensor(False), is_boundary=torch.tensor(False))
+                    graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                     prev_node = next_node
-                graph.add_edge(next_node, 'centroid', is_boundary_edge=False)
+                graph.add_edge(next_node, 'centroid', is_boundary_edge=torch.tensor(False))
             elif pattern == 'opening':
-                internal_boundary = np.linspace(corner_points[i], graph.nodes[f'opening_{i}']['pattern_coords'], boundary_density + 2)[1:-1]
+                internal_boundary = self.nd_linspace(corner_points[i], graph.nodes[f'opening_{i}']['pattern_coords'], boundary_density + 2)[1:-1]
                 prev_node = f'corner_{i}'
                 for j, point in enumerate(internal_boundary):
                     next_node = f'skeleton_{i}_{j}'
-                    graph.add_node(next_node, pattern_coords=point, is_support=False, is_boundary=False)
-                    graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                    graph.add_node(next_node, pattern_coords=point, is_support=torch.tensor(False), is_boundary=torch.tensor(False))
+                    graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                     prev_node = next_node
-                graph.add_edge(next_node, f'opening_{i}', is_boundary_edge=False)
+                graph.add_edge(next_node, f'opening_{i}', is_boundary_edge=torch.tensor(False))
                 opening_boundary = self.circular_arc(graph.nodes[f'opening_{i}']['pattern_coords'], graph.nodes[f'opening_{(i + 1) % n}']['pattern_coords'],
                                                       centroid, 2*boundary_density + 3)[1:-1]
                 prev_node = f'opening_{i}'
                 for j, point in enumerate(opening_boundary):
                     next_node = f'opening_skeleton_{i}_{j}'
-                    graph.add_node(next_node, pattern_coords=point, is_support=centroid_support, is_boundary=True)
-                    graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                    graph.add_node(next_node, pattern_coords=point, is_support=centroid_support, is_boundary=torch.tensor(True))
+                    graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                     prev_node = next_node
-                graph.add_edge(next_node, f'opening_{(i + 1) % n}', is_boundary_edge=False)
+                graph.add_edge(next_node, f'opening_{(i + 1) % n}', is_boundary_edge=torch.tensor(False))
             else:
                 raise ValueError(f"Invalid pattern: {pattern}")
 
@@ -162,14 +148,14 @@ class GridShell:
                         line_1 = self.calculate_line(graph.nodes[boundary_1[j]]['pattern_coords'], graph.nodes[boundary_2[j]]['pattern_coords'])
                         line_2 = self.calculate_line(graph.nodes[boundary_3[k]]['pattern_coords'], graph.nodes[boundary_4[k]]['pattern_coords'])
                         intersection = self.line_intersection(line_1, line_2)
-                        graph.add_node(f'quad_{i}_{j}_{k}', pattern_coords=intersection, is_support=False, is_boundary=False)
+                        graph.add_node(f'quad_{i}_{j}_{k}', pattern_coords=intersection, is_support=torch.tensor(False), is_boundary=torch.tensor(False))
             elif pattern == 'singularity':
                 for j in range(boundary_density):
                     for k in range(2*boundary_density + 1):
                         line_1 = self.calculate_line(graph.nodes[boundary_1[j]]['pattern_coords'], graph.nodes[boundary_3[j]]['pattern_coords'])
                         line_2 = self.calculate_line(graph.nodes[boundary_5[k]]['pattern_coords'], centroid)
                         intersection = self.line_intersection(line_1, line_2)
-                        graph.add_node(f'quad_{i}_{j}_{k}', pattern_coords=intersection, is_support=False, is_boundary=False)
+                        graph.add_node(f'quad_{i}_{j}_{k}', pattern_coords=intersection, is_support=torch.tensor(False), is_boundary=torch.tensor(False))
             elif pattern == 'opening':
                 boundary_opening = [f'opening_skeleton_{i}_{j}' for j in range(2*boundary_density + 1)]
                 for j in range(boundary_density):
@@ -177,7 +163,7 @@ class GridShell:
                         line_1 = self.calculate_line(graph.nodes[boundary_1[j]]['pattern_coords'], graph.nodes[boundary_3[j]]['pattern_coords'])
                         line_2 = self.calculate_line(graph.nodes[boundary_5[k]]['pattern_coords'], graph.nodes[boundary_opening[k]]['pattern_coords'])
                         intersection = self.line_intersection(line_1, line_2)
-                        graph.add_node(f'quad_{i}_{j}_{k}', pattern_coords=intersection, is_support=False, is_boundary=False)
+                        graph.add_node(f'quad_{i}_{j}_{k}', pattern_coords=intersection, is_support=torch.tensor(False), is_boundary=torch.tensor(False))
             else:
                 raise ValueError(f"Invalid pattern: {pattern}")
 
@@ -187,25 +173,25 @@ class GridShell:
                     prev_node = boundary_2[j]
                     for k in range(boundary_density):
                         next_node = f'quad_{i}_{j}_{k}'
-                        graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                        graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                         prev_node = next_node
-                    graph.add_edge(prev_node, boundary_1[j], is_boundary_edge=False)
+                    graph.add_edge(prev_node, boundary_1[j], is_boundary_edge=torch.tensor(False))
             elif pattern == 'singularity':
                 for j in range(2*boundary_density + 1):
                     prev_node = boundary_5[j]
                     for k in range(boundary_density):
                         next_node = f'quad_{i}_{k}_{j}'
-                        graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                        graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                         prev_node = next_node
-                    graph.add_edge(prev_node, 'centroid', is_boundary_edge=False)
+                    graph.add_edge(prev_node, 'centroid', is_boundary_edge=torch.tensor(False))
             elif pattern == 'opening':
                 for j in range(2*boundary_density + 1):
                     prev_node = boundary_5[j]
                     for k in range(boundary_density):
                         next_node = f'quad_{i}_{k}_{j}'
-                        graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                        graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                         prev_node = next_node
-                    graph.add_edge(prev_node, boundary_opening[j], is_boundary_edge=False)
+                    graph.add_edge(prev_node, boundary_opening[j], is_boundary_edge=torch.tensor(False))
             else:
                 raise ValueError(f"Invalid pattern: {pattern}")
 
@@ -215,17 +201,17 @@ class GridShell:
                     prev_node = boundary_4[j]
                     for k in range(boundary_density):
                         next_node = f'quad_{i}_{k}_{j}'
-                        graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                        graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                         prev_node = next_node
-                    graph.add_edge(prev_node, boundary_3[j], is_boundary_edge=False)
+                    graph.add_edge(prev_node, boundary_3[j], is_boundary_edge=torch.tensor(False))
             elif pattern in ['singularity', 'opening']:
                 for j in range(boundary_density):
                     prev_node = boundary_1[j]
                     for k in range(2*boundary_density + 1):
                         next_node = f'quad_{i}_{j}_{k}'
-                        graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                        graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                         prev_node = next_node
-                    graph.add_edge(prev_node, boundary_3[j], is_boundary_edge=False)
+                    graph.add_edge(prev_node, boundary_3[j], is_boundary_edge=torch.tensor(False))
             else:
                 raise ValueError(f"Invalid pattern: {pattern}")
 
@@ -236,16 +222,15 @@ class GridShell:
                 prev_node = f'corner_{(i + 1) % n}'
                 for j in range(boundary_density):
                     next_node = f'quad_{i}_{j}_{j}'
-                    graph.add_edge(prev_node, next_node, is_boundary_edge=False)
+                    graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                     prev_node = next_node
-                graph.add_edge(prev_node, f'centroid', is_boundary_edge=False)
+                graph.add_edge(prev_node, f'centroid', is_boundary_edge=torch.tensor(False))
 
-        for node in graph.nodes:
-            if graph.nodes[node]['is_support']:
-                graph.nodes[node]['load'] = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-            else:
-                graph.nodes[node]['load'] = np.array([0.0, 0.0, -1.0], dtype=np.float32)
+        load = torch.zeros((graph.num_nodes, 3), dtype=torch.float)
+        load[~graph.is_support.view(-1)] = torch.tensor([0.0, 0.0, -1.0], dtype=torch.float)
+        graph.load = load
 
+        graph.coords = torch.cat([graph.pattern_coords, torch.zeros((graph.pattern_coords.shape[0], 1))], dim=1)
         return graph
                 
 
@@ -310,7 +295,7 @@ class GridShell:
         x = (B1 * C2 - B2 * C1) / det
         y = (A2 * C1 - A1 * C2) / det
         
-        return np.array([x, y])
+        return torch.tensor([x, y])
 
     @staticmethod
     def quadratic_bezier(p0, p1, p2, num_points=100):
@@ -326,13 +311,13 @@ class GridShell:
         Returns:
             list of tuple: Points on the Bezier curve.
         """
-        t_values = np.linspace(0, 1, num_points)
+        t_values = torch.linspace(0, 1, num_points)
         curve = []
         
         for t in t_values:
             x = (1 - t)**2 * p0[0] + 2 * (1 - t) * t * p1[0] + t**2 * p2[0]
             y = (1 - t)**2 * p0[1] + 2 * (1 - t) * t * p1[1] + t**2 * p2[1]
-            curve.append(np.array([x, y]))
+            curve.append(torch.tensor([x, y]))
         
         return curve
     
@@ -351,32 +336,32 @@ class GridShell:
             list of tuple: Points on the circular arc.
         """
         # Compute radius from center to p0
-        radius = np.linalg.norm(np.array(p0) - np.array(p2))
+        radius = torch.linalg.norm(torch.tensor(p0) - torch.tensor(p2))
 
         # Compute angles of p0 and p1 relative to the center
-        angle0 = np.arctan2(p0[1] - p2[1], p0[0] - p2[0])
-        angle1 = np.arctan2(p1[1] - p2[1], p1[0] - p2[0])
+        angle0 = torch.arctan2(p0[1] - p2[1], p0[0] - p2[0])
+        angle1 = torch.arctan2(p1[1] - p2[1], p1[0] - p2[0])
 
         # Ensure angles are in the correct order for a continuous arc
         if angle1 < angle0:
-            angle1 += 2 * np.pi  # Ensure counterclockwise motion
+            angle1 += 2 * torch.pi  # Ensure counterclockwise motion
 
         # Generate arc points
-        t_values = np.linspace(angle0, angle1, num_points)
+        t_values = torch.linspace(angle0, angle1, num_points)
         arc = []
 
         for t in t_values:
-            x = p2[0] + radius * np.cos(t)
-            y = p2[1] + radius * np.sin(t)
-            arc.append(np.array([x, y]))
+            x = p2[0] + radius * torch.cos(t)
+            y = p2[1] + radius * torch.sin(t)
+            arc.append(torch.tensor([x, y]))
 
         return arc
     
     @staticmethod
     def compute_optimal_rotation(polygon_angles):
-        circle_angles = np.linspace(0, 2 * np.pi, len(polygon_angles), endpoint=False)
+        circle_angles = torch.linspace(0, 2 * torch.tensor(math.pi), len(polygon_angles), endpoint=False)
         angular_differences = polygon_angles - circle_angles
-        theta_shift = np.arctan2(np.sum(np.sin(angular_differences)), np.sum(np.cos(angular_differences)))
+        theta_shift = torch.arctan2(torch.sum(torch.sin(angular_differences)), torch.sum(torch.cos(angular_differences)))
         return circle_angles + theta_shift
     
     @staticmethod
@@ -410,7 +395,7 @@ class GridShell:
         Cx /= (6 * A)
         Cy /= (6 * A)
 
-        return np.array([Cx, Cy])
+        return torch.tensor([Cx, Cy])
     
     @staticmethod
     def sample_rectangle(square=False):
@@ -420,18 +405,18 @@ class GridShell:
         Returns:
             list of tuple: List of (x, y) coordinates of the rectangle vertices.
         """
-        width = np.random.uniform(0.1, 1.0)
+        width = torch.rand(1) * 0.9 + 0.1
         if square:
             height = width
         else:
-            height = np.random.uniform(0.1, 1.0)
+            height = torch.rand(1) * 0.9 + 0.1
         x0, y0 = -0.5*width, -0.5*height
         x1, y1 = 0.5*width, 0.5*height
 
-        return [np.array([x0, y0]), np.array([x1, y0]), np.array([x1, y1]), np.array([x0, y1])]
+        return [torch.tensor([x0, y0]), torch.tensor([x1, y0]), torch.tensor([x1, y1]), torch.tensor([x0, y1])]
     
     @staticmethod
-    def sample_unit_circle(n, min_angle=np.pi / 8):
+    def sample_unit_circle(n, min_angle=torch.tensor(math.pi) / 8):
         """
         Randomly samples n points on a unit circle, ensuring a minimum angle between points.
 
@@ -447,28 +432,16 @@ class GridShell:
 
         angles = []
         while len(angles) < n:
-            angle = np.random.uniform(0, 2 * np.pi)
+            angle = torch.rand(1) * 2*math.pi
             # Check if the new angle is far enough from all others
-            if all(abs((angle - a + np.pi) % (2 * np.pi) - np.pi) >= min_angle for a in angles):
+            if all(abs((angle - a + math.pi) % (2 * math.pi) - math.pi) >= min_angle for a in angles):
                 angles.append(angle)
 
         angles.sort()
-        points = [np.array([np.cos(angle), np.sin(angle)]) for angle in angles]
+        points = [torch.tensor([torch.cos(angle), torch.sin(angle)]) for angle in angles]
         return points
 
-    def pyg_data(self):
-        for node in self.graph.nodes:
-            self.graph.nodes[node]['coords'] = np.concatenate([self.graph.nodes[node]['pattern_coords'], [0.0]], dtype=np.float32)
-        data = pyg.utils.from_networkx(self.graph)
-        return data
-
-    def plot(self):
-        pos = nx.get_node_attributes(self.graph, 'pattern_coords')
-        is_support_nodes = [node for node, data in self.graph.nodes(data=True) if data.get('is_support')]
-
-        # Plot with support nodes highlighted in red and others in blue
-        nx.draw(self.graph, pos, node_color='blue')
-        nx.draw_networkx_nodes(self.graph, pos, nodelist=is_support_nodes, node_color='red')
-
-        plt.axis('equal')
-        plt.savefig('gridshell.png')
+    @staticmethod
+    def nd_linspace(start: torch.tensor, end: torch.tensor, num_points: int):
+        t = torch.linspace(0, 1, num_points).view(-1, 1)
+        return start + t * (end - start)

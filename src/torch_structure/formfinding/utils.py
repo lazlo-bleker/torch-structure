@@ -22,34 +22,36 @@ def create_branch_node_matrix(edge_index):
     branch_node_matrix = torch.sparse_coo_tensor(indices, values, size=(num_edges, num_nodes)).to_dense()
     return branch_node_matrix
 
-def create_xy_equilibrium_space(coordinates, support, edge_index):
-    coordinates = torch.clone(coordinates)  # check if this is necessary
+def create_xy_equilibrium_space(coords, is_support, edge_index):
+    coords = torch.clone(coords)  # check if this is necessary
 
-    A = create_xy_equilibrium_matrix(coordinates, support, edge_index)
+    A = create_xy_equilibrium_matrix(coords, is_support, edge_index)
 
     basis_vectors = scipy.linalg.null_space(A.cpu().numpy())  # consider using torch instead
     basis_vectors = torch.tensor(basis_vectors, dtype=torch.float32)
 
     return basis_vectors
 
-def create_xy_equilibrium_matrix(coordinates, support, edge_index):  # only works for directed graphs
+def create_xy_equilibrium_matrix(coords, is_support, edge_index):  # only works for directed graphs
     """
     Creates the equilibrium matrix for the x and y components of the equilibrium equations.
 
     Args:
-        coordinates (torch.Tensor): A tensor of shape (num_nodes, 3) containing the 3D coordinates of each node. Only
+        coords (torch.Tensor): A tensor of shape (num_nodes, 3) containing the 3D coordinates of each node. Only
             the x and y coordinates have an effect on the output.
-        support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating which nodes are fixed (True) or free (False).
+        is_support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating which nodes are fixed (True) or free (False).
         edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge.
     """
-    coordinates = torch.clone(coordinates)  # check if this is necessary
+    is_support = is_support.view(-1)
+
+    coords = torch.clone(coords)  # check if this is necessary
 
     C = create_branch_node_matrix(edge_index)
-    C_free = C[:, ~support]
+    C_free = C[:, ~is_support]
     C_free_transposed = torch.transpose(C_free, 0, 1)
 
-    u = torch.mv(C, coordinates[:, 0])
-    v = torch.mv(C, coordinates[:, 1])
+    u = torch.mv(C, coords[:, 0])
+    v = torch.mv(C, coords[:, 1])
     U = torch.diag(u)
     V = torch.diag(v)
     A = torch.vstack((torch.mm(C_free_transposed, U), torch.mm(C_free_transposed, V)))

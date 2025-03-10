@@ -1,1 +1,1 @@
-from .plot import plot_pyg_data
+from .plot import plot_data

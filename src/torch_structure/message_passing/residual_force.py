@@ -6,6 +6,7 @@ class ResidualForce(MessagePassing):  # only works for undirected graphs!
         super().__init__(aggr='add')
     
     def forward(self, x, force, edge_index, load):
+        force = force.view(-1)
         out = self.propagate(edge_index, x=x, force=force)
         out = out + load
         return out

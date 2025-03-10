@@ -1,5 +1,5 @@
 import torch
-from torch_structure.gmp import StiffnessAggregator
+from torch_structure.message_passing import StiffnessAggregator
 
 def edge_direction(edge_index, x, return_length=False):
     row, col = edge_index
