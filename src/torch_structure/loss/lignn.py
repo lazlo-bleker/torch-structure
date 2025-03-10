@@ -1,5 +1,6 @@
 import torch
 from torch.nn import NLLLoss
+from torch_structure.message_passing import LocalLogicLoss, WeightedMax
 
 class LogicLoss(torch.nn.Module):
     """ Theory-informed loss function for determining topology diagram validity """
@@ -7,7 +8,7 @@ class LogicLoss(torch.nn.Module):
         super(LogicLoss, self).__init__()
         self.search_depth = search_depth
         self.device = device
-        self.local = LocalTheoryLoss(reduction=reduction)
+        self.local = LocalLogicLoss(reduction=reduction)
         self.wmax = WeightedMax()
         self.nllloss = NLLLoss(reduction=reduction)
         self.mean_dim = (0, 1) if reduction == 'mean' else 1

@@ -302,12 +302,12 @@ class Bridge(Structure):
     def create_feature_dict(self):
         self.array_output()
         coords = self.array_dict['coordinates_node']
-        support_node_indices = set(self.array_dict['support_node_indices'][0])
-        origin_node_indices = set(self.array_dict['origin_node_indices'][0])
-        cable_node_indices = set(self.array_dict['cable_node_indices'][0])
-        arch_mid_height = coords[list(cable_node_indices.intersection(origin_node_indices))[0]][2]
-        arch_base_height = coords[list(cable_node_indices.intersection(support_node_indices))[0]][2]
-        arch_rise = arch_mid_height - arch_base_height
+        # support_node_indices = set(self.array_dict['support_node_indices'][0])
+        # origin_node_indices = set(self.array_dict['origin_node_indices'][0])
+        # cable_node_indices = set(self.array_dict['cable_node_indices'][0])
+        # arch_mid_height = coords[list(cable_node_indices.intersection(origin_node_indices))[0]][2]
+        # arch_base_height = coords[list(cable_node_indices.intersection(support_node_indices))[0]][2]
+        # arch_rise = arch_mid_height - arch_base_height
         bbox_length, bbox_width, bbox_height = coords.max(axis=0) - coords.min(axis=0)
         feature_dict = self.params.copy()
         

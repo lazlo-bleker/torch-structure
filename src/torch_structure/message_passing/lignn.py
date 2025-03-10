@@ -2,7 +2,6 @@ import torch
 from torch.nn import MSELoss
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.aggr import SumAggregation, MaxAggregation
-from torch_geometric.nn import MessagePassing
 
 class LocalLogicLoss(MessagePassing):
     """ Loss function for determining whether each node is connected to the correct number of trail edges """

@@ -48,7 +48,7 @@ class GridShell:
         looped_corner_points = corner_points + [corner_points[0]]
         centroid = self.polygon_centroid(corner_points)
         if pattern in ['standard', 'singularity']:
-            graph.add_node(f'centroid', pattern_coords=centroid, is_support=centroid_support, is_boundary=torch.tensor(False))
+            graph.add_node('centroid', pattern_coords=centroid, is_support=centroid_support, is_boundary=torch.tensor(False))
         elif pattern == 'opening':
             angles = torch.zeros(n)
             for i in range(n):
@@ -224,7 +224,7 @@ class GridShell:
                     next_node = f'quad_{i}_{j}_{j}'
                     graph.add_edge(prev_node, next_node, is_boundary_edge=torch.tensor(False))
                     prev_node = next_node
-                graph.add_edge(prev_node, f'centroid', is_boundary_edge=torch.tensor(False))
+                graph.add_edge(prev_node, 'centroid', is_boundary_edge=torch.tensor(False))
 
         load = torch.zeros((graph.num_nodes, 3), dtype=torch.float)
         load[~graph.is_support.view(-1)] = torch.tensor([0.0, 0.0, -1.0], dtype=torch.float)

@@ -1,14 +1,22 @@
 """
 TorchStructure is a python package for graph-based autodifferentiable structural design and engineering.
 """
-
-import torch_structure.data
-import torch_structure.formfinding
-import torch_structure.generators
-import torch_structure.message_passing
-import torch_structure.loss
-import torch_structure.plot
-
-import torch_structure.utils
+from . import data
+from . import formfinding
+from . import generators
+from . import message_passing
+from . import loss
+from . import plot
+from . import utils
 
 __version__ = "0.0.1"
+
+__all__ = [
+    "data",
+    "formfinding",
+    "generators",
+    "message_passing",
+    "loss",
+    "plot",
+    "utils",
+]
