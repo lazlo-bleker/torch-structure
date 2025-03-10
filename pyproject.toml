@@ -6,19 +6,19 @@ authors = [
 ]
 
 dependencies = [
-    "scipy",
-    "matplotlib",
-    "pydantic"
+    "matplotlib>=3.10.1",
+    "pydantic>=2.10.6",
+    "scipy>=1.15.2",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "mkdocs-material==9.5.44",
-    "mkdocstrings-python==1.12.2",
-    "mkdocs-gen-files==0.5.0",
-    "pytest==8.3.3",
-    "pytest-cov==6.0.0",
-    "ruff>=0.9.10"
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-material>=9.5.44",
+    "mkdocstrings>=0.28.3",
+    "pytest>=8.3.3",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.9.10",
 ]
 
 [build-system]
