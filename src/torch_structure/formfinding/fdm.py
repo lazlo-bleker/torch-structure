@@ -69,8 +69,8 @@ def fdm(
         node_counts = torch.bincount(batch)
         max_size = node_counts.max().item()
 
-        I = torch.eye(max_size, device=device)
-        A_batched = I.unsqueeze(0).repeat(n_graphs, 1, 1)
+        identity = torch.eye(max_size, device=device)
+        A_batched = identity.unsqueeze(0).repeat(n_graphs, 1, 1)
         b_batched = torch.zeros(n_graphs, max_size, 3, device=device)
         pad_mask = torch.zeros(n_graphs * max_size, dtype=torch.bool, device=device)
         ff_coords = []
