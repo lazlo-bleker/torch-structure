@@ -2,14 +2,17 @@ import torch
 import numpy as np
 from torch_structure.message_passing import StiffnessAggregator
 
+
 def scipy_jacobian(func):
     func_grad_and_value = torch.func.grad_and_value(func)
+
     def func_scipy(x_np, *args):
         x = torch.tensor(x_np, dtype=torch.float32)
         grad_val, loss_val = func_grad_and_value(x, *args)
         loss, grad = loss_val.item(), grad_val.detach().numpy()
-        func_scipy.best_loss = min(loss, func_scipy.best_loss) 
+        func_scipy.best_loss = min(loss, func_scipy.best_loss)
         return loss, grad
+
     func_scipy.best_loss = np.inf
     return func_scipy
 

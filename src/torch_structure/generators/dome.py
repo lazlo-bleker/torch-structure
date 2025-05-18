@@ -3,14 +3,16 @@ import math
 
 from torch_structure.data import Data
 
+
 class Dome:
-    def __init__(self,
+    def __init__(
+        self,
         n_trails,
         n_rings,
         trail_length,
         center_deviation_force,
-        opening = False,
-    ):  
+        opening=False,
+    ):
         # Topological parameters
         self.n_trails = n_trails
         self.n_rings = n_rings
@@ -21,7 +23,7 @@ class Dome:
         self.center_deviation_force = center_deviation_force
 
         if self.n_trails % 2 != 0:
-            raise ValueError('Number of trails must be even.')
+            raise ValueError("Number of trails must be even.")
 
         self.generate_graph()
         self.graph.mpcem()
@@ -31,27 +33,29 @@ class Dome:
     def generate_graph(self):
         # Initialize data object
         node_attrs = {
-            'coords': torch.empty((0, 3), dtype=torch.float),
-            'load': torch.empty((0, 3), dtype=torch.float),
-            'support_condition': torch.empty((0, 3), dtype=torch.long),
-            'is_origin_node': torch.empty((0, 1), dtype=torch.bool),
-            'sequence': torch.empty((0, 1), dtype=torch.long)
+            "coords": torch.empty((0, 3), dtype=torch.float),
+            "load": torch.empty((0, 3), dtype=torch.float),
+            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
+            "sequence": torch.empty((0, 1), dtype=torch.long),
         }
         edge_attrs = {
-            'force': torch.empty((0, 1), dtype=torch.float),
-            'length': torch.empty((0, 1), dtype=torch.float),
-            'is_trail_edge': torch.empty((0, 1), dtype=torch.bool),
-            'force_sign': torch.empty((0, 1), dtype=torch.float)
+            "force": torch.empty((0, 1), dtype=torch.float),
+            "length": torch.empty((0, 1), dtype=torch.float),
+            "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
+            "force_sign": torch.empty((0, 1), dtype=torch.float),
         }
         default_attrs = {
-            'force': torch.tensor([torch.nan]),
-            'length': torch.tensor([torch.nan]),
-            'coords': torch.full((3,), torch.nan),
-            'load': torch.zeros(3, dtype=torch.float),
-            'support_condition': torch.zeros(3, dtype=torch.bool),
-            'is_origin_node': torch.tensor(0, dtype=torch.bool),
+            "force": torch.tensor([torch.nan]),
+            "length": torch.tensor([torch.nan]),
+            "coords": torch.full((3,), torch.nan),
+            "load": torch.zeros(3, dtype=torch.float),
+            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
-        self.graph = Data(node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs)
+        self.graph = Data(
+            node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
+        )
 
         # Create topology diagram
         centroid = torch.tensor([0.0, 0.0, 0.0])
@@ -62,16 +66,18 @@ class Dome:
             angle = angles[i]
             if self.opening:
                 origin_diameter = self.trail_length
-                x = torch.cos(angle) * 0.5*origin_diameter
-                y = torch.sin(angle) * 0.5*origin_diameter
+                x = torch.cos(angle) * 0.5 * origin_diameter
+                y = torch.sin(angle) * 0.5 * origin_diameter
                 origin_coords = centroid + torch.tensor([x, y, 0.0])
                 origin_load = torch.tensor([0.0, 0.0, -1.0])
             else:
                 origin_coords = centroid
                 x_load = torch.cos(angle) * self.center_deviation_force
                 y_load = torch.sin(angle) * self.center_deviation_force
-                origin_load = torch.tensor([x_load, y_load, -1.0/self.n_trails])
-            self.generate_trail(origin_coords=origin_coords, origin_load=origin_load, id=i)
+                origin_load = torch.tensor([x_load, y_load, -1.0 / self.n_trails])
+            self.generate_trail(
+                origin_coords=origin_coords, origin_load=origin_load, id=i
+            )
 
         # Add ring deviations
         for i in range(1, self.n_rings):
@@ -105,16 +111,20 @@ class Dome:
             load=origin_load,
         )
         for i in range(1, self.n_rings + 1):
-            support_condition = torch.tensor([True, True, True]) if i == self.n_rings else torch.tensor([False, False, False])
+            support_condition = (
+                torch.tensor([True, True, True])
+                if i == self.n_rings
+                else torch.tensor([False, False, False])
+            )
             self.graph.add_node(
                 f"trail_{id}_node_{i}",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(i),
                 load=torch.tensor([0.0, 0.0, -1.0]),
-                support_condition=support_condition
+                support_condition=support_condition,
             )
             self.graph.add_edge(
-                f"trail_{id}_node_{i-1}",
+                f"trail_{id}_node_{i - 1}",
                 f"trail_{id}_node_{i}",
                 is_trail_edge=torch.tensor(True),
                 length=self.trail_length,
@@ -123,7 +133,7 @@ class Dome:
 
     def fix_graph(self):
         self.graph.add_node(
-            'centroid',
+            "centroid",
             coords=torch.tensor([0.0, 0.0, 0.0]),
             load=torch.tensor([0.0, 0.0, -1.0]),
         )

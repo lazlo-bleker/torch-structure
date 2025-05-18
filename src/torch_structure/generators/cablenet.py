@@ -69,7 +69,7 @@ class CableNet:
         rectangle,
         square,
         curve_boundaries,
-        circle
+        circle,
     ):
         # if pattern == "opening" and not centroid_support:
         #     raise ValueError("Opening pattern requires centroid support.")
@@ -91,12 +91,16 @@ class CableNet:
             "is_opening_edge": torch.tensor(False),
             "ring": torch.tensor(torch.nan),
         }
-        graph = Data(node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs)
+        graph = Data(
+            node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
+        )
 
         if rectangle:
             corner_points = self.sample_rectangle(square=square)
         elif circle:
-            corner_points = self.sample_unit_circle(n, angles=torch.linspace(0, 2 * math.pi, n + 1)[:-1])
+            corner_points = self.sample_unit_circle(
+                n, angles=torch.linspace(0, 2 * math.pi, n + 1)[:-1]
+            )
         else:
             corner_points = self.sample_unit_circle(n)
         looped_corner_points = corner_points + [corner_points[0]]
@@ -174,7 +178,10 @@ class CableNet:
                 )[1:-1]
             else:
                 boundary_curve = self.quadratic_bezier(
-                    start_boundary, control_point, end_boundary, boundary_density * 2 + 3
+                    start_boundary,
+                    control_point,
+                    end_boundary,
+                    boundary_density * 2 + 3,
                 )[1:-1]
             prev_node = f"corner_{i}"
 
@@ -279,14 +286,17 @@ class CableNet:
                         is_boundary=torch.tensor(True),
                     )
                     graph.add_edge(
-                        prev_node, next_node, is_boundary_edge=torch.tensor(False), is_opening_edge=torch.tensor(True)
+                        prev_node,
+                        next_node,
+                        is_boundary_edge=torch.tensor(False),
+                        is_opening_edge=torch.tensor(True),
                     )
                     prev_node = next_node
                 graph.add_edge(
                     next_node,
                     f"opening_{(i + 1) % n}",
                     is_boundary_edge=torch.tensor(False),
-                    is_opening_edge=torch.tensor(True)
+                    is_opening_edge=torch.tensor(True),
                 )
             else:
                 raise ValueError(f"Invalid pattern: {pattern}")
@@ -395,7 +405,9 @@ class CableNet:
                         )
                         prev_node = next_node
                     graph.add_edge(
-                        prev_node, "centroid", is_boundary_edge=torch.tensor(False), 
+                        prev_node,
+                        "centroid",
+                        is_boundary_edge=torch.tensor(False),
                     )
             elif pattern == "opening":
                 for j in range(2 * boundary_density + 1):
@@ -433,11 +445,17 @@ class CableNet:
                     for k in range(2 * boundary_density + 1):
                         next_node = f"quad_{i}_{j}_{k}"
                         graph.add_edge(
-                            prev_node, next_node, is_boundary_edge=torch.tensor(False), ring=torch.tensor(j)
+                            prev_node,
+                            next_node,
+                            is_boundary_edge=torch.tensor(False),
+                            ring=torch.tensor(j),
                         )
                         prev_node = next_node
                     graph.add_edge(
-                        prev_node, boundary_3[j], is_boundary_edge=torch.tensor(False), ring=torch.tensor(j)
+                        prev_node,
+                        boundary_3[j],
+                        is_boundary_edge=torch.tensor(False),
+                        ring=torch.tensor(j),
                     )
             else:
                 raise ValueError(f"Invalid pattern: {pattern}")
@@ -452,11 +470,17 @@ class CableNet:
                 for j in range(boundary_density):
                     next_node = f"quad_{i}_{j}_{j}"
                     graph.add_edge(
-                        prev_node, next_node, is_boundary_edge=torch.tensor(False), is_diagonal_edge=torch.tensor(True)
+                        prev_node,
+                        next_node,
+                        is_boundary_edge=torch.tensor(False),
+                        is_diagonal_edge=torch.tensor(True),
                     )
                     prev_node = next_node
                 graph.add_edge(
-                    prev_node, "centroid", is_boundary_edge=torch.tensor(False), is_diagonal_edge=torch.tensor(True)
+                    prev_node,
+                    "centroid",
+                    is_boundary_edge=torch.tensor(False),
+                    is_diagonal_edge=torch.tensor(True),
                 )
 
         load = torch.zeros((graph.num_nodes, 3), dtype=torch.float)
@@ -603,9 +627,7 @@ class CableNet:
     @staticmethod
     def compute_optimal_rotation(polygon_angles):
         print(torch.tensor(math.pi), len(polygon_angles))
-        circle_angles = torch.linspace(
-            0.0, 2 * math.pi, len(polygon_angles) + 1
-        )[:-1]
+        circle_angles = torch.linspace(0.0, 2 * math.pi, len(polygon_angles) + 1)[:-1]
         angular_differences = polygon_angles - circle_angles
         theta_shift = torch.arctan2(
             torch.sum(torch.sin(angular_differences)),
@@ -704,17 +726,19 @@ class CableNet:
     def nd_linspace(start: torch.tensor, end: torch.tensor, num_points: int):
         t = torch.linspace(0, 1, num_points).view(-1, 1)
         return start + t * (end - start)
-    
+
     @staticmethod
     def generate_random_sequence(n):
         if n < 4:
             raise ValueError("n must be at least 4")
-        
+
         sequence = np.array([1, 0, 1, 0])  # Start with [1, 0, 1, 0] as a numpy array
-        
+
         while len(sequence) < n:
             insert_index = random.randint(0, len(sequence))  # Choose a random index
             insert_value = random.choice([0, 1])  # Randomly choose 0 or 1
-            sequence = np.insert(sequence, insert_index, insert_value)  # Insert at the chosen position
-        
+            sequence = np.insert(
+                sequence, insert_index, insert_value
+            )  # Insert at the chosen position
+
         return torch.tensor(sequence)

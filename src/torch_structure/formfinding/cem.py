@@ -63,7 +63,9 @@ def mpcem_algorithm(
         if coords[trail_dst].isnan().any():
             coords[trail_dst] = new_coords
         else:
-            coords[trail_dst] = coords[trail_dst] + (1 - damping_factor) * (new_coords - coords[trail_dst])
+            coords[trail_dst] = coords[trail_dst] + (1 - damping_factor) * (
+                new_coords - coords[trail_dst]
+            )
 
         # print(f"MPCEM Iteration {i}, delta coords = {torch.norm(coords - prev_coords)}")
         if torch.norm(coords - prev_coords) < tolerance:
@@ -78,6 +80,7 @@ def mpcem_algorithm(
         print(f"MP-CEM finished in {i} iterations. Converged: {converged}.")
 
     return coords, force.unsqueeze(1), reaction_force
+
 
 def cem_algorithm(
     coords,
@@ -120,10 +123,11 @@ def cem_algorithm(
             k_mask = sequence == k
             if not enhanced_first_iteration and i == 0:
                 indirect_edges = ~is_trail_edge & ~k_mask[edge_index[0]]
-                valid_edges = valid_nodes[edge_index[0]] & k_mask[edge_index[1]] & ~indirect_edges
+                valid_edges = (
+                    valid_nodes[edge_index[0]] & k_mask[edge_index[1]] & ~indirect_edges
+                )
             else:
                 valid_edges = valid_nodes[edge_index[0]] & k_mask[edge_index[1]]
-           
 
             # Calculate outgoing trail force
             residual_force = residual_force_update(
@@ -153,7 +157,9 @@ def cem_algorithm(
             if coords[current_trail_dst].isnan().any():
                 coords[current_trail_dst] = new_coords
             else:
-                coords[current_trail_dst] = coords[current_trail_dst] + (1 - damping_factor) * (new_coords - coords[current_trail_dst])
+                coords[current_trail_dst] = coords[current_trail_dst] + (
+                    1 - damping_factor
+                ) * (new_coords - coords[current_trail_dst])
 
         # print(f'CEM iteration {i}, delta coords: {torch.norm(coords - prev_coords)}')
         if torch.norm(coords - prev_coords) < tolerance:

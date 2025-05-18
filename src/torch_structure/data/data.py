@@ -11,7 +11,7 @@ from torch_structure.formfinding import (
     tna,
     mpcem_algorithm,
     cem_algorithm,
-    fdm
+    fdm,
 )
 from torch_structure.loss import ResidualForceLoss
 
@@ -76,17 +76,19 @@ class Data:
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute 'is_support' or 'support_condition'"
             )
-        
+
     @property
     def support(self):
-        return self.is_support ### REMOVE LATER TEMP
-        
+        return self.is_support  ### REMOVE LATER TEMP
+
     @property
     def length_from_coords(self):
         # derive from 'coords' if available
         if "coords" in self.node_attr_list:
             src, dst = self.edge_index
-            length = torch.norm(self.coords[src] - self.coords[dst], dim=1, keepdim=True)
+            length = torch.norm(
+                self.coords[src] - self.coords[dst], dim=1, keepdim=True
+            )
             return length
 
         else:
@@ -94,13 +96,15 @@ class Data:
                 f"'{self.__class__.__name__}' object has no attribute or 'coords'"
             )
 
-    @property 
+    @property
     def bbox(self):
         if "coords" not in self.node_attr_list:
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute 'coords' required for bounding box calculation."
             )
-        return torch.stack([self.coords.min(dim=0).values, self.coords.max(dim=0).values], dim=0)
+        return torch.stack(
+            [self.coords.min(dim=0).values, self.coords.max(dim=0).values], dim=0
+        )
 
     @property
     def directed_edge_index(self):
@@ -170,17 +174,21 @@ class Data:
         # Check if node exists
         if name not in self.node_name_to_index:
             raise ValueError(f"Node '{name}' does not exist!")
-        
+
         main_node_index = self.node_name_to_index[name]
 
         for node in nodes:
             if node not in self.node_name_to_index:
                 raise ValueError(f"Node '{node}' does not exist!")
-            
+
             node_index = self.node_name_to_index[node]
-            
+
             # replace all occurence of node_index with main_node_index
-            self.data.edge_index = torch.where(self.data.edge_index == node_index, main_node_index, self.data.edge_index)
+            self.data.edge_index = torch.where(
+                self.data.edge_index == node_index,
+                main_node_index,
+                self.data.edge_index,
+            )
 
         for node in nodes:
             del_node_index = self.node_name_to_index[node]
@@ -188,7 +196,9 @@ class Data:
             # remove node from all node attributes
             for attr in self.node_attr_list:
                 values = getattr(self.data, attr)
-                values = torch.cat([values[:del_node_index], values[del_node_index + 1:]], dim=0)
+                values = torch.cat(
+                    [values[:del_node_index], values[del_node_index + 1 :]], dim=0
+                )
                 setattr(self.data, attr, values)
 
             # remove node from node_name_to_index
@@ -203,7 +213,11 @@ class Data:
                     self.node_name_to_index[node_name] = node_index - 1
 
             # update edge_index
-            self.data.edge_index = torch.where(self.data.edge_index > del_node_index, self.data.edge_index - 1, self.data.edge_index)     
+            self.data.edge_index = torch.where(
+                self.data.edge_index > del_node_index,
+                self.data.edge_index - 1,
+                self.data.edge_index,
+            )
 
     def add_node(self, name: str, **kwargs):
         """
@@ -258,15 +272,15 @@ class Data:
     #     """
     #     if node_1 not in self.node_name_to_index or node_2 not in self.node_name_to_index:
     #         raise ValueError("One or both nodes do not exist!")
-        
+
     #     src_index, dst_index = self.node_name_to_index[node_1], self.node_name_to_index[node_2]
-        
+
     #     # Find and remove edge
     #     src, dst = self.edge_index
     #     mask = ~((src == src_index) & (dst == dst_index))  # would be nice to replace this with a lookup
 
     #     self.data.edge_index = self.edge_index[:, mask]
-        
+
     #     # Remove associated edge attributes
     #     for attr in self.edge_attr_list:
     #         values = getattr(self.data, attr)
@@ -292,7 +306,7 @@ class Data:
 
         # Add edge to edge_name_to_index
         main_name = f"{src}-{dst}" if name is None else name
-        self.edge_name_to_index[main_name] = self.num_edges  
+        self.edge_name_to_index[main_name] = self.num_edges
         reciprocal_name = f"{dst}-{src}" if name is None else f"{name}_reciprocal"
         self.edge_name_to_index[reciprocal_name] = self.num_edges + 1
 
@@ -495,11 +509,11 @@ class Data:
                 kwargs[arg] = value
 
         return kwargs
-    
+
     def to_networkx(self, **kwargs):
         self.data.num_nodes = self.num_nodes
         return pyg.utils.to_networkx(self.data, **kwargs)
-    
+
     def copy(self):
         new_obj = type(self).__new__(type(self))
         for key, value in self.__dict__.items():

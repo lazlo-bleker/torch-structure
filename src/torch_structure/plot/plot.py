@@ -55,7 +55,11 @@ def plot_data(
     force = force.view(-1) if force is not None else force
     is_support = is_support.view(-1) if is_support is not None else is_support
 
-    colors = {"red": "#E40714", "blue": "#0578BF", "green": "#007F00"}  # Todo: move to config
+    colors = {
+        "red": "#E40714",
+        "blue": "#0578BF",
+        "green": "#007F00",
+    }  # Todo: move to config
 
     coords_np = coords.detach().cpu().numpy()
     x = coords_np[:, 0]
@@ -67,7 +71,11 @@ def plot_data(
     if force is not None:
         force_np = force.detach().cpu().numpy()
         edge_color = np.where(force_np > 0, colors["red"], colors["blue"])
-        edge_label = np.where(force_np > 0, "Tension (Predicted Equilibrium Geometry)", "Compression (Predicted Equilibrium Geometry)")
+        edge_label = np.where(
+            force_np > 0,
+            "Tension (Predicted Equilibrium Geometry)",
+            "Compression (Predicted Equilibrium Geometry)",
+        )
         lw = np.sqrt(np.abs(force_np)) if not lw_constant else np.ones(num_edges)
         lw = lw * lw_scale
     else:
@@ -89,11 +97,13 @@ def plot_data(
                 if node in edge_index[0].cpu().numpy():
                     triangle_size = support_marker_offset
                     ax.plot(
-                        [x[node]], [y[node]], [z[node] - triangle_size],
+                        [x[node]],
+                        [y[node]],
+                        [z[node] - triangle_size],
                         marker="^",
                         markersize=support_marker_size,
                         color="black",
-                        linestyle="None"
+                        linestyle="None",
                     )
 
     # Plot edges
@@ -170,8 +180,8 @@ def plot_data(
         ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
         ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
-        ax.set_box_aspect([1,1,1])
-        ax.set_proj_type('ortho')
+        ax.set_box_aspect([1, 1, 1])
+        ax.set_proj_type("ortho")
 
     # Set legend
     if legend:
@@ -186,7 +196,7 @@ def plot_data(
     # Save file if path is provided
     if path is not None:
         plt.savefig((f"{path}.png"), bbox_inches="tight")
-    
+
     # Show plot
     if show:
         plt.show()
