@@ -1,5 +1,4 @@
 import torch
-import math
 
 from torch_structure.data import Data
 
