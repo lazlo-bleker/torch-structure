@@ -363,11 +363,13 @@ class Data:
             )
 
     def succesors(self, node_name):
+        # Todo: implement networkx-style successors
         raise NotImplementedError
 
     neighbors = succesors
 
     def predecessors(self, node_name):
+        # Todo: implement networkx-style predecessors
         raise NotImplementedError
 
     def verify_equilibrium(self, tolerance=1e-7, verbose=False, **kwargs):
