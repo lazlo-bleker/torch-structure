@@ -2,10 +2,17 @@ import torch_geometric as pyg
 import torch
 import warnings
 import inspect
+import copy
 
 from torch_structure.data.view import NodeView
 from torch_structure.plot import plot_data
-from torch_structure.formfinding import laplacian_smoothing, tna, mpcem, cem
+from torch_structure.formfinding import (
+    laplacian_smoothing,
+    tna,
+    mpcem_algorithm,
+    cem_algorithm,
+    fdm
+)
 from torch_structure.loss import ResidualForceLoss
 
 
@@ -14,6 +21,7 @@ class Data:
         "data",
         "default_attrs",
         "node_name_to_index",
+        "edge_name_to_index",
         "node_attr_list",
         "edge_attr_list",
         "graph_attr_list",
@@ -40,6 +48,7 @@ class Data:
         )
         self.default_attrs = default_attrs
         self.node_name_to_index = {}
+        self.edge_name_to_index = {}
         self.node_attr_list = [kwarg for kwarg in node_attrs.keys()]
         self.edge_attr_list = [kwarg for kwarg in edge_attrs.keys()]
         self.graph_attr_list = [kwarg for kwarg in graph_attrs.keys()]
@@ -67,6 +76,31 @@ class Data:
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute 'is_support' or 'support_condition'"
             )
+        
+    @property
+    def support(self):
+        return self.is_support ### REMOVE LATER TEMP
+        
+    @property
+    def length_from_coords(self):
+        # derive from 'coords' if available
+        if "coords" in self.node_attr_list:
+            src, dst = self.edge_index
+            length = torch.norm(self.coords[src] - self.coords[dst], dim=1, keepdim=True)
+            return length
+
+        else:
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute or 'coords'"
+            )
+
+    @property 
+    def bbox(self):
+        if "coords" not in self.node_attr_list:
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute 'coords' required for bounding box calculation."
+            )
+        return torch.stack([self.coords.min(dim=0).values, self.coords.max(dim=0).values], dim=0)
 
     @property
     def directed_edge_index(self):
@@ -128,6 +162,49 @@ class Data:
         """
         self.default_attrs = self.default_attrs | kwargs
 
+    def merge_nodes(self, name: str, nodes: list[str]):
+        """
+        Merges multiple nodes into a single node. The node inherits the set of edges connected to the
+        merged nodes. Edges between merged nodes are removed.
+        """
+        # Check if node exists
+        if name not in self.node_name_to_index:
+            raise ValueError(f"Node '{name}' does not exist!")
+        
+        main_node_index = self.node_name_to_index[name]
+
+        for node in nodes:
+            if node not in self.node_name_to_index:
+                raise ValueError(f"Node '{node}' does not exist!")
+            
+            node_index = self.node_name_to_index[node]
+            
+            # replace all occurence of node_index with main_node_index
+            self.data.edge_index = torch.where(self.data.edge_index == node_index, main_node_index, self.data.edge_index)
+
+        for node in nodes:
+            del_node_index = self.node_name_to_index[node]
+
+            # remove node from all node attributes
+            for attr in self.node_attr_list:
+                values = getattr(self.data, attr)
+                values = torch.cat([values[:del_node_index], values[del_node_index + 1:]], dim=0)
+                setattr(self.data, attr, values)
+
+            # remove node from node_name_to_index
+            del self.node_name_to_index[node]
+
+            # decrement number of nodes
+            self._num_nodes -= 1
+
+            # update node_name_to_index
+            for node_name, node_index in self.node_name_to_index.items():
+                if node_index > del_node_index:
+                    self.node_name_to_index[node_name] = node_index - 1
+
+            # update edge_index
+            self.data.edge_index = torch.where(self.data.edge_index > del_node_index, self.data.edge_index - 1, self.data.edge_index)     
+
     def add_node(self, name: str, **kwargs):
         """
         Adds a new node.
@@ -175,7 +252,28 @@ class Data:
                 torch.cat([getattr(self.data, attr), value.unsqueeze(0)], dim=0),
             )
 
-    def add_edge(self, src: str, dst: str, **kwargs):
+    # def remove_edge(self, node_1: str, node_2: str):
+    #     """
+    #     Removes the edge between `node_1` to `node_2`.
+    #     """
+    #     if node_1 not in self.node_name_to_index or node_2 not in self.node_name_to_index:
+    #         raise ValueError("One or both nodes do not exist!")
+        
+    #     src_index, dst_index = self.node_name_to_index[node_1], self.node_name_to_index[node_2]
+        
+    #     # Find and remove edge
+    #     src, dst = self.edge_index
+    #     mask = ~((src == src_index) & (dst == dst_index))  # would be nice to replace this with a lookup
+
+    #     self.data.edge_index = self.edge_index[:, mask]
+        
+    #     # Remove associated edge attributes
+    #     for attr in self.edge_attr_list:
+    #         values = getattr(self.data, attr)
+    #         values = values[mask]
+    #         setattr(self.data, attr, values)
+
+    def add_edge(self, src: str, dst: str, name=None, **kwargs):
         """
         Adds a new edge from `src` to `dst`.
         """
@@ -191,6 +289,12 @@ class Data:
             self.add_node(src)
         if dst not in self.node_name_to_index:
             self.add_node(dst)
+
+        # Add edge to edge_name_to_index
+        main_name = f"{src}-{dst}" if name is None else name
+        self.edge_name_to_index[main_name] = self.num_edges  
+        reciprocal_name = f"{dst}-{src}" if name is None else f"{name}_reciprocal"
+        self.edge_name_to_index[reciprocal_name] = self.num_edges + 1
 
         # Update directed mask and reciprocal edge
         self.data.directed_mask = torch.cat(
@@ -289,33 +393,43 @@ class Data:
         coords, _, _ = laplacian_smoothing(verbose=verbose, **kwargs)
         self.data.coords[:, :2] = coords
 
-    def mpcem(self, **kwargs):
+    def mpcem(self, inplace=False, **kwargs):
         # Create semi-directed graph
         edge_mask = ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
 
-        kwargs = self._prepare_kwargs(mpcem, edge_mask=edge_mask, **kwargs)
+        kwargs = self._prepare_kwargs(mpcem_algorithm, edge_mask=edge_mask, **kwargs)
 
-        coords, semi_directed_force, reaction_force = mpcem(**kwargs)
+        coords, semi_directed_force, reaction_force = mpcem_algorithm(**kwargs)
         force = self.edge_attr_to_undirected(semi_directed_force, edge_mask)
 
-        self.__setattr__("coords", coords, attr_type="node")
-        self.__setattr__("reaction_force", reaction_force, attr_type="node")
-        self.__setattr__("force", force, attr_type="edge")
+        return_data = self if inplace else self.copy()
 
-    def cem(self, **kwargs):
+        return_data.__setattr__("coords", coords, attr_type="node")
+        return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
+        return_data.__setattr__("force", force, attr_type="edge")
+
+        if not inplace:
+            return return_data
+
+    def cem(self, inplace=False, **kwargs):
         # Create semi-directed graph
         edge_mask = ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
 
-        kwargs = self._prepare_kwargs(cem, edge_mask=edge_mask, **kwargs)
+        kwargs = self._prepare_kwargs(cem_algorithm, edge_mask=edge_mask, **kwargs)
 
-        coords, semi_directed_force, reaction_force = cem(**kwargs)
+        coords, semi_directed_force, reaction_force = cem_algorithm(**kwargs)
         force = self.edge_attr_to_undirected(semi_directed_force, edge_mask)
 
-        self.__setattr__("coords", coords, attr_type="node")
-        self.__setattr__("reaction_force", reaction_force, attr_type="node")
-        self.__setattr__("force", force, attr_type="edge")
+        return_data = self if inplace else self.copy()
 
-    def tna(self, **kwargs):
+        return_data.__setattr__("coords", coords, attr_type="node")
+        return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
+        return_data.__setattr__("force", force, attr_type="edge")
+
+        if not inplace:
+            return return_data
+
+    def tna(self, inplace=False, **kwargs):
         edge_mask = self.directed_mask.view(-1)
         kwargs = self._prepare_kwargs(tna, edge_mask=edge_mask, **kwargs)
 
@@ -323,9 +437,29 @@ class Data:
         force = self.edge_attr_to_undirected(directed_force, edge_mask)
         force_density = self.edge_attr_to_undirected(directed_force_density, edge_mask)
 
-        self.__setattr__("coords", coords, attr_type="node")
-        self.__setattr__("force", force, attr_type="edge")
-        self.__setattr__("force_density", force_density, attr_type="edge")
+        return_data = self if inplace else self.copy()
+
+        return_data.__setattr__("coords", coords, attr_type="node")
+        return_data.__setattr__("force", force, attr_type="edge")
+        return_data.__setattr__("force_density", force_density, attr_type="edge")
+
+        if not inplace:
+            return return_data
+
+    def fdm(self, inplace=False, **kwargs):
+        edge_mask = self.directed_mask.view(-1)
+        kwargs = self._prepare_kwargs(fdm, edge_mask=edge_mask, **kwargs)
+
+        coords, directed_force = fdm(**kwargs, directed=True)
+        force = self.edge_attr_to_undirected(directed_force, edge_mask)
+
+        return_data = self if inplace else self.copy()
+
+        return_data.__setattr__("coords", coords, attr_type="node")
+        return_data.__setattr__("force", force, attr_type="edge")
+
+        if not inplace:
+            return return_data
 
     def edge_attr_to_undirected(self, edge_attr, mask):
         mask = mask.view(-1)
@@ -361,6 +495,19 @@ class Data:
                 kwargs[arg] = value
 
         return kwargs
+    
+    def to_networkx(self, **kwargs):
+        self.data.num_nodes = self.num_nodes
+        return pyg.utils.to_networkx(self.data, **kwargs)
+    
+    def copy(self):
+        new_obj = type(self).__new__(type(self))
+        for key, value in self.__dict__.items():
+            if key == "data":
+                object.__setattr__(new_obj, key, self.data.clone())
+            else:
+                object.__setattr__(new_obj, key, copy.deepcopy(value))
+        return new_obj
 
     def plot(self, **kwargs):
         if "coords" not in kwargs:

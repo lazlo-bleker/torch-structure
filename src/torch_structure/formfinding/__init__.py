@@ -1,4 +1,4 @@
-from .cem import mpcem, cem
+from .cem import mpcem_algorithm, cem_algorithm
 from .fdm import fdm
 from .laplacian_smooth import laplacian_smoothing
 from .tna import tna
@@ -9,8 +9,8 @@ from .utils import (
 )
 
 __all__ = [
-    "mpcem",
-    "cem",
+    "mpcem_algorithm",
+    "cem_algorithm",
     "fdm",
     "laplacian_smoothing",
     "tna",

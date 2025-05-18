@@ -2,7 +2,7 @@ import torch
 from torch_structure.message_passing import ResidualForce
 
 
-def mpcem(
+def mpcem_algorithm(
     coords,
     load,
     is_support,
@@ -13,10 +13,13 @@ def mpcem(
     force_sign,
     force,
     max_iter=100,
-    tolerance=1e-8,
+    tolerance=1e-5,
+    damping_factor=0.5,
     verbose=False,
 ):
     """Message Passing-based Combinatorial Equilibrium Modelling"""
+
+    coords = torch.clone(coords)
     is_support = is_support.view(-1)
     is_origin_node = is_origin_node.view(-1)
     is_trail_edge = is_trail_edge.view(-1)
@@ -56,8 +59,13 @@ def mpcem(
             * length[is_trail_edge].unsqueeze(1)
             * -force_sign[is_trail_edge].unsqueeze(1)
         )
-        coords[trail_dst] = coords[trail_src] + coords_update
+        new_coords = coords[trail_src] + coords_update
+        if coords[trail_dst].isnan().any():
+            coords[trail_dst] = new_coords
+        else:
+            coords[trail_dst] = coords[trail_dst] + (1 - damping_factor) * (new_coords - coords[trail_dst])
 
+        # print(f"MPCEM Iteration {i}, delta coords = {torch.norm(coords - prev_coords)}")
         if torch.norm(coords - prev_coords) < tolerance:
             converged = True
             break
@@ -71,8 +79,7 @@ def mpcem(
 
     return coords, force.unsqueeze(1), reaction_force
 
-
-def cem(
+def cem_algorithm(
     coords,
     load,
     is_support,
@@ -84,10 +91,14 @@ def cem(
     force,
     sequence,
     max_iter=100,
-    tolerance=1e-8,
+    tolerance=1e-5,
+    damping_factor=0.0,
+    enhanced_first_iteration=False,
     verbose=False,
 ):
     """Combinatorial Equilibrium Modelling"""
+
+    coords = torch.clone(coords)
     is_support = is_support.view(-1)
     is_origin_node = is_origin_node.view(-1)
     is_trail_edge = is_trail_edge.view(-1)
@@ -107,7 +118,12 @@ def cem(
             # only consider edges with a coordinate (estimate) for both nodes and pointing to a node in the current sequence
             valid_nodes = ~torch.isnan(coords).any(dim=1)
             k_mask = sequence == k
-            valid_edges = valid_nodes[edge_index[0]] & k_mask[edge_index[1]]
+            if not enhanced_first_iteration and i == 0:
+                indirect_edges = ~is_trail_edge & ~k_mask[edge_index[0]]
+                valid_edges = valid_nodes[edge_index[0]] & k_mask[edge_index[1]] & ~indirect_edges
+            else:
+                valid_edges = valid_nodes[edge_index[0]] & k_mask[edge_index[1]]
+           
 
             # Calculate outgoing trail force
             residual_force = residual_force_update(
@@ -116,7 +132,7 @@ def cem(
             # if i > 0 and torch.norm(residual_force[trail_src] - trail_force, dim=1).max() < tolerance:
             #     converged = True
             #     break
-            trail_force = residual_force[k_mask]
+            trail_force = residual_force[k_mask & ~is_support]
 
             # Update force of trail edges
             current_trail_edge = k_mask[edge_index[0]] & is_trail_edge
@@ -132,15 +148,21 @@ def cem(
                 * length[current_trail_edge].unsqueeze(1)
                 * -force_sign[current_trail_edge].unsqueeze(1)
             )
-            coords[current_trail_dst] = coords[current_trail_src] + coords_update
 
+            new_coords = coords[current_trail_src] + coords_update
+            if coords[current_trail_dst].isnan().any():
+                coords[current_trail_dst] = new_coords
+            else:
+                coords[current_trail_dst] = coords[current_trail_dst] + (1 - damping_factor) * (new_coords - coords[current_trail_dst])
+
+        # print(f'CEM iteration {i}, delta coords: {torch.norm(coords - prev_coords)}')
         if torch.norm(coords - prev_coords) < tolerance:
             converged = True
             break
 
     # Calculate reaction force
     reaction_force = torch.full((coords.shape[0], 3), float("nan"))
-    reaction_force[is_support] = -trail_force
+    reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
         print(f"CEM finished in {i * max_k} iterations. Converged: {converged}.")
