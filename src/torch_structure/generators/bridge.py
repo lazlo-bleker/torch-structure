@@ -1,3 +1,5 @@
+# Todo: Update outdated data structure
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -603,11 +605,11 @@ class Bridge(Structure):
 
         # Node features
         coordinates_node = torch.tensor(
-            self.array_dict["coordinates_node"], dtype=torch.float
+            self.array_dict["coordinates_node"], dtype=torch.float64
         )
-        load_node = torch.tensor(self.array_dict["load_node"], dtype=torch.float)
+        load_node = torch.tensor(self.array_dict["load_node"], dtype=torch.float64)
         support_node = torch.tensor(
-            self.array_dict["support_node"], dtype=torch.float
+            self.array_dict["support_node"], dtype=torch.float64
         ).unsqueeze(1)
         meta_data["node_features"] = {
             0: {"description": "x_coordinate", "type": "numerical"},
@@ -625,10 +627,10 @@ class Bridge(Structure):
 
         # Edge features
         force_edge = torch.tensor(
-            self.array_dict["force_edge"], dtype=torch.float
+            self.array_dict["force_edge"], dtype=torch.float64
         ).unsqueeze(1)
         length_edge = torch.tensor(
-            self.array_dict["length_edge"], dtype=torch.float
+            self.array_dict["length_edge"], dtype=torch.float64
         ).unsqueeze(1)
         force_density_edge = force_edge / length_edge
         meta_data["edge_features"] = {

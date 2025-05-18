@@ -1,3 +1,5 @@
+# Todo: Update outdated data structure
+
 import numpy as np
 
 

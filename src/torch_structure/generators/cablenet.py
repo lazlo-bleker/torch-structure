@@ -1,14 +1,17 @@
 import torch
 import math
+import numpy as np
+import random
 
 from torch_structure.data import Data
 
 
-class GridShell:
+class CableNet:
     def __init__(
         self,
         n: int,
         boundary_density: int,
+        support_height: float,
         pattern="standard",
         diagonals=torch.tensor(False),
         centroid_support=torch.tensor(False),
@@ -40,6 +43,7 @@ class GridShell:
         self.square = torch.tensor(square)
         self.curve_boundaries = torch.tensor(curve_boundaries)
         self.circle = torch.tensor(circle)
+        self.support_height = support_height
 
         self.graph = self.generate_graph(
             n=n,
@@ -73,6 +77,7 @@ class GridShell:
             "pattern_coords": torch.empty((0, 2), dtype=torch.float),
             "is_support": torch.empty((0, 1), dtype=torch.bool),
             "is_boundary": torch.empty((0, 1), dtype=torch.bool),
+            "z_coord": torch.empty((0, 1), dtype=torch.float),
         }
         edge_attrs = {
             "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
@@ -81,6 +86,7 @@ class GridShell:
             "ring": torch.empty((0, 1), dtype=torch.int),
         }
         default_attrs = {
+            "z_coord": torch.tensor(0.0),
             "is_diagonal_edge": torch.tensor(False),
             "is_opening_edge": torch.tensor(False),
             "ring": torch.tensor(torch.nan),
@@ -126,18 +132,20 @@ class GridShell:
                 )
 
         # add corner points
+        support_sequence = self.generate_random_sequence(self.n) * self.support_height
         for i, point in enumerate(corner_points):
             graph.add_node(
                 f"corner_{i}",
                 pattern_coords=point,
                 is_support=torch.tensor(True),
                 is_boundary=torch.tensor(True),
+                z_coord=support_sequence[i],
             )
 
         # add mesh skeleton points
         for i in range(n):
             if unsupported_boundaries:
-                is_support = torch.randint(0, 2, (1,)).bool()
+                is_support = False
                 # is_support = torch.tensor(False)  # remove later
             else:
                 is_support = torch.tensor(True)
@@ -453,12 +461,12 @@ class GridShell:
 
         load = torch.zeros((graph.num_nodes, 3), dtype=torch.float)
         load[~graph.is_support.view(-1)] = torch.tensor(
-            [0.0, 0.0, -1.0], dtype=torch.float
+            [0.0, 0.0, -0.1], dtype=torch.float
         )
         graph.load = load
 
         graph.coords = torch.cat(
-            [graph.pattern_coords, torch.zeros((graph.pattern_coords.shape[0], 1))],
+            [graph.pattern_coords, graph.z_coord],
             dim=1,
         )
 
@@ -696,3 +704,17 @@ class GridShell:
     def nd_linspace(start: torch.tensor, end: torch.tensor, num_points: int):
         t = torch.linspace(0, 1, num_points).view(-1, 1)
         return start + t * (end - start)
+    
+    @staticmethod
+    def generate_random_sequence(n):
+        if n < 4:
+            raise ValueError("n must be at least 4")
+        
+        sequence = np.array([1, 0, 1, 0])  # Start with [1, 0, 1, 0] as a numpy array
+        
+        while len(sequence) < n:
+            insert_index = random.randint(0, len(sequence))  # Choose a random index
+            insert_value = random.choice([0, 1])  # Randomly choose 0 or 1
+            sequence = np.insert(sequence, insert_index, insert_value)  # Insert at the chosen position
+        
+        return torch.tensor(sequence)
