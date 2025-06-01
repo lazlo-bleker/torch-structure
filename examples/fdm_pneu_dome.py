@@ -23,30 +23,20 @@ data = pneu_dome.graph
 
 
 ## apply loads
-load = pneu_dome.calculate_loads(10,10,-5)
+load = pneu_dome.calculate_loads(data,10,10,10)
 
 data.load = load
 
-print(load)
 
-# ----------------------------------
-# 3. Assign force densities to edges
-# ----------------------------------
 q = torch.full((data.num_edges,), 40.0)
 
-# Assign higher stiffness to boundary edges
 q[data.is_boundary_edge.view(-1)] = 250.0
 
-# Set force density values on the graph
 data.force_density = q.unsqueeze(1)
 
-# ------------------
-# 4. Solve using FDM
-# ------------------
+
 data = data.fdm()
 
-# -------------------------------
-# 5. Plot the resulting structure
-# -------------------------------
+
 data.plot(title="Pneu Dome", legend=False)
 plt.show()
