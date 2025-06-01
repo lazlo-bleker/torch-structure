@@ -1,0 +1,52 @@
+"""
+Example: Form-find a Cable Net with the Force Density Method (FDM)
+"""
+
+import torch
+import torch_structure as ts
+import matplotlib.pyplot as plt
+
+# --------------------------------
+# 1. Create inital cable net setup
+# --------------------------------
+input_params = {
+    'num_parallel_lines': 10,                     
+    'num_meridians': 10,           
+    'radius': 5          
+}
+
+# ----------------------------------
+# 2. Generate the cable net geometry
+# ----------------------------------
+pneu_dome = ts.generators.PneuDome(**input_params)
+data = pneu_dome.graph  
+
+
+## apply loads
+load = pneu_dome.calculate_loads(10,10,-5)
+
+data.load = load
+
+print(load)
+
+# ----------------------------------
+# 3. Assign force densities to edges
+# ----------------------------------
+q = torch.full((data.num_edges,), 40.0)
+
+# Assign higher stiffness to boundary edges
+q[data.is_boundary_edge.view(-1)] = 250.0
+
+# Set force density values on the graph
+data.force_density = q.unsqueeze(1)
+
+# ------------------
+# 4. Solve using FDM
+# ------------------
+data = data.fdm()
+
+# -------------------------------
+# 5. Plot the resulting structure
+# -------------------------------
+data.plot(title="Pneu Dome", legend=False)
+plt.show()

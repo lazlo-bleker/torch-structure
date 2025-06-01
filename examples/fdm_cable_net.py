@@ -14,12 +14,12 @@ input_params = {
     'boundary_density': 5,           # Density of grid
     'diagonals': False,              # Add diagonal edges
     'centroid_support': False,       # Support in the center
-    'pattern': 'standard',           # Grid layout pattern
-    'unsupported_boundaries': True,  # Only corner supports
+    'pattern': 'singularity',           # Grid layout pattern
+    'unsupported_boundaries': False,  # Only corner supports
     'curve_boundaries': True,        # Curve the boundary edges
     'rectangle': False,              # Set corner supports in a rectangle
     'square': False,                 # Set corner supports in a square
-    'circle': False,                 # Set corner supports in a circle
+    'circle': True,                 # Set corner supports in a circle
     'support_height': 0.6            # Elevation of supports
 }
 
@@ -38,7 +38,7 @@ q = torch.full((data.num_edges,), 40.0)
 q[data.is_boundary_edge.view(-1)] = 250.0
 
 # Assign stiffness to diagonal edges (if present)
-q[data.is_diagonal_edge.view(-1)] = 60.0
+#q[data.is_diagonal_edge.view(-1)] = 60.0
 
 # Set force density values on the graph
 data.force_density = q.unsqueeze(1)
@@ -46,7 +46,7 @@ data.force_density = q.unsqueeze(1)
 # ------------------
 # 4. Solve using FDM
 # ------------------
-data = data.fdm()
+#data = data.fdm()
 
 # -------------------------------
 # 5. Plot the resulting structure
