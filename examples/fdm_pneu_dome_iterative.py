@@ -6,30 +6,22 @@ import torch
 import torch_structure as ts
 import matplotlib.pyplot as plt
 
-# --------------------------------
-# 1. Create inital cable net setup
-# --------------------------------
+
 input_params = {
     'num_parallel_lines': 10,                     
     'num_meridians': 10,           
     'radius': 5          
 }
 
-# ----------------------------------
-# 2. Generate the cable net geometry
-# ----------------------------------
+
 pneu_dome = ts.generators.PneuDome(**input_params)
 data = pneu_dome.graph  
 
-# ----------------------------------
-# 3. Assign force densities to edges
-# ----------------------------------
+
 q = torch.full((data.num_edges,), 40.0)
 
-# Assign higher stiffness to boundary edges
 q[data.is_boundary_edge.view(-1)] = 250.0
 
-# Set force density values on the graph
 data.force_density = q.unsqueeze(1)
 
 eps = 1e-5
@@ -39,7 +31,6 @@ norm_steps = []
 
 for i in range(max_its):
 
-    ## apply loads
     load = pneu_dome.calculate_loads(data, 10, 10, 16)
 
     data.load = load
