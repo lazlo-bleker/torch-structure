@@ -130,11 +130,16 @@ class NerviDome:
                 if i == self.n_rings
                 else torch.tensor([False, False, False])
             )
+            load = (
+                torch.tensor([0.0, 0.0, 0.0])
+                if i == self.n_rings
+                else torch.tensor([0.0, 0.0, -1.0])
+            )
             self.graph.add_node(
                 f"trail_{id}_node_{i}",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(i),
-                load=torch.tensor([0.0, 0.0, -1.0]),
+                load=load,
                 support_condition=support_condition,
             )
             self.graph.add_edge(
