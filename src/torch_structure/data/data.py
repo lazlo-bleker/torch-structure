@@ -3,6 +3,7 @@ import torch
 import warnings
 import inspect
 import copy
+import json
 
 from torch_structure.data.view import NodeView
 from torch_structure.plot import plot_data
@@ -11,6 +12,7 @@ from torch_structure.formfinding import (
     tna,
     mpcem_algorithm,
     cem_algorithm,
+    seq_cem_algorithm,
     fdm,
 )
 from torch_structure.loss import ResidualForceLoss
@@ -54,6 +56,31 @@ class Data:
         self.graph_attr_list = [kwarg for kwarg in graph_attrs.keys()]
         self._num_nodes = edge_index.max().item() + 1 if edge_index.numel() > 0 else 0
 
+    @classmethod
+    def from_pyg_data(cls, pyg_data):
+        def reconstruct_default_attrs(saved):
+            return {
+                k: torch.tensor(v["value"], dtype=getattr(torch, v["dtype"]))
+                for k, v in saved.items()
+            }
+        
+        # Parse metadata from JSON string
+        if not hasattr(pyg_data, "metadata"):
+            raise ValueError("No metadata found in the provided PyG Data object.")
+        
+        metadata_str = pyg_data.metadata
+        metadata = json.loads(metadata_str)
+        metadata["default_attrs"] = reconstruct_default_attrs(metadata["default_attrs"])
+
+        # Create wrapper instance
+        obj = cls()
+        obj.data = pyg_data
+        del obj.data.metadata
+        for key, value in metadata.items():
+            setattr(obj, key, value)
+
+        return obj
+
     def __getattr__(self, name):
         """Redirect attribute getter to `self.data`"""
         if hasattr(self.data, name):
@@ -62,6 +89,32 @@ class Data:
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{name}'"
         )
+    
+    @property
+    def metadata(self):
+        def serialize_tensor(t):
+            return {
+                "value": t.tolist(),
+                "dtype": str(t.dtype).replace("torch.", "")
+            }
+
+        return {
+            "default_attrs": {
+                k: serialize_tensor(v) for k, v in self.default_attrs.items()
+            },
+            "node_name_to_index": self.node_name_to_index,
+            "edge_name_to_index": self.edge_name_to_index,
+            "node_attr_list": self.node_attr_list,
+            "edge_attr_list": self.edge_attr_list,
+            "graph_attr_list": self.graph_attr_list,
+            "_num_nodes": self._num_nodes,
+        }
+    
+    def export_pyg_data(self, include_metadata=True):
+        data = self.data.clone()
+        if include_metadata:
+            data.metadata = json.dumps(self.metadata)
+        return data
 
     @property
     def is_support(self):
@@ -110,7 +163,7 @@ class Data:
     def directed_edge_index(self):
         return self.edge_index[:, self.directed_mask.view(-1)]
 
-    def __setattr__(self, name, value, attr_type=None):
+    def __setattr__(self, name, value, attr_type=None, track_history=False):
         """Redirect attribute setter to `self.data`"""
         # Only redirect non-internal attributes
         if name in self._internal_attrs:
@@ -144,7 +197,11 @@ class Data:
                     self.graph_attr_list.append(name)
 
             # Set attribute value
-            setattr(self.data, name, value)
+            if track_history:
+                self._track_history(name, value)
+                setattr(self.data, name, value[-1])  # Set last value as current
+            else:
+                setattr(self.data, name, value)
 
     def __repr__(self):
         return self.data.__repr__()
@@ -259,7 +316,6 @@ class Data:
 
             if value.dim() == 0:
                 value = value.unsqueeze(0)
-
             setattr(
                 self.data,
                 attr,
@@ -416,13 +472,14 @@ class Data:
         kwargs = self._prepare_kwargs(mpcem_algorithm, edge_mask=edge_mask, **kwargs)
 
         coords, semi_directed_force, reaction_force = mpcem_algorithm(**kwargs)
-        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask)
+        track_history = kwargs.get("track_history", False)
+        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask, batched=track_history)
 
         return_data = self if inplace else self.copy()
 
-        return_data.__setattr__("coords", coords, attr_type="node")
+        return_data.__setattr__("coords", coords, attr_type="node", track_history=track_history)
         return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
-        return_data.__setattr__("force", force, attr_type="edge")
+        return_data.__setattr__("force", force, attr_type="edge", track_history=track_history)
 
         if not inplace:
             return return_data
@@ -434,13 +491,33 @@ class Data:
         kwargs = self._prepare_kwargs(cem_algorithm, edge_mask=edge_mask, **kwargs)
 
         coords, semi_directed_force, reaction_force = cem_algorithm(**kwargs)
-        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask)
+        track_history = kwargs.get("track_history", False)
+        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask, batched=track_history)
 
         return_data = self if inplace else self.copy()
 
-        return_data.__setattr__("coords", coords, attr_type="node")
+        return_data.__setattr__("coords", coords, attr_type="node", track_history=track_history)
         return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
-        return_data.__setattr__("force", force, attr_type="edge")
+        return_data.__setattr__("force", force, attr_type="edge", track_history=track_history)
+
+        if not inplace:
+            return return_data
+        
+    def seqcem(self, inplace=False, **kwargs):
+        # Create semi-directed graph
+        edge_mask = ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
+
+        kwargs = self._prepare_kwargs(seq_cem_algorithm, edge_mask=edge_mask, **kwargs)
+
+        coords, semi_directed_force, reaction_force = seq_cem_algorithm(**kwargs)
+        track_history = kwargs.get("track_history", False)
+        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask, batched=track_history)
+
+        return_data = self if inplace else self.copy()
+
+        return_data.__setattr__("coords", coords, attr_type="node", track_history=track_history)
+        return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
+        return_data.__setattr__("force", force, attr_type="edge", track_history=track_history)
 
         if not inplace:
             return return_data
@@ -477,15 +554,26 @@ class Data:
         if not inplace:
             return return_data
 
-    def edge_attr_to_undirected(self, edge_attr, mask):
+    def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
         mask = mask.view(-1)
-        value = torch.empty((self.num_edges, 1), dtype=edge_attr.dtype)
 
-        # set defined values
-        value[mask] = edge_attr
+        if batched:
+            value = torch.empty((edge_attr.shape[0], self.num_edges), dtype=edge_attr.dtype)
 
-        # set reciprocal values
-        value[~mask] = value[self.reciprocal_edge[~mask].view(-1)]
+            # set defined values
+            value[:, mask] = edge_attr
+
+            # set reciprocal values
+            value[:, ~mask] = value[:, self.reciprocal_edge[~mask].view(-1)]
+
+        else:
+            value = torch.empty((self.num_edges, 1), dtype=edge_attr.dtype)
+
+            # set defined values
+            value[mask] = edge_attr
+
+            # set reciprocal values
+            value[~mask] = value[self.reciprocal_edge[~mask].view(-1)]
 
         return value
 
@@ -524,6 +612,28 @@ class Data:
             else:
                 object.__setattr__(new_obj, key, copy.deepcopy(value))
         return new_obj
+    
+    def _track_history(self, attr_name, value):  # Todo: requires attr exists in self.data
+        history_attr_name = f"{attr_name}_history"
+        current_attr = getattr(self.data, attr_name)
+
+        # Set correct view for 1D tensors
+        if current_attr.dim() == 2 and current_attr.shape[1] == 1:
+            current_attr = current_attr.view(-1)
+
+        # Add batch dimension if needed
+        if value.dim() == current_attr.dim() - 1:
+            value = value.unsqueeze(0)
+
+        if hasattr(self.data, history_attr_name):
+            history = getattr(self.data, history_attr_name)
+            new_history = torch.cat(
+                [history, value], dim=0
+            )
+        else:
+            new_history = torch.cat([current_attr.unsqueeze(0), value], dim=0)
+
+        setattr(self.data, history_attr_name, new_history)
 
     def plot(self, **kwargs):
         if "coords" not in kwargs:
