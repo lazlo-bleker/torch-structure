@@ -26,7 +26,7 @@ class Dome:
             raise ValueError("Number of trails must be even.")
 
         self.generate_graph()
-        self.graph.mpcem()
+        self.graph = self.graph.mpcem()
         if not self.opening:
             self.fix_graph()
 
