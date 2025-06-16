@@ -34,7 +34,7 @@ class PneuDome:
             "z_coord": torch.empty((0, 1), dtype=torch.float)
         }
         edge_attrs = {
-            "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
+            "is_meridian": torch.empty((0, 1), dtype=torch.bool),
         }
         default_attrs = {
             "z_coord": torch.tensor(0.0),
@@ -69,26 +69,20 @@ class PneuDome:
                     is_boundary = False
                 )
 
-
         #edges to centroid                
         for j in range(num_meridians):
             
-            graph.add_edge(str(num_parallel_lines) + str(j), "centroid", torch.tensor(False))
-
+            graph.add_edge(str(num_parallel_lines) + str(j), "centroid", torch.tensor(True))
 
         #rest of edges
         for i in range(num_parallel_lines):
             for j in range(num_meridians):
 
-                if i == 0:
-                    is_boundary_edge = torch.tensor(True)
-                else:
-                    is_boundary_edge = torch.tensor(False)
+                if i > 0:
 
-                graph.add_edge(str(i) + str(j), str(i) + str((j+1) % num_meridians), is_boundary_edge)
-
-                if i < num_parallel_lines:
-                    graph.add_edge(str(i) + str(j), str(i+1) + str(j), torch.tensor(False))
+                    graph.add_edge(str(i) + str(j), str(i) + str((j+1) % num_meridians), torch.tensor(False))
+                    
+                graph.add_edge(str(i) + str(j), str(i+1) + str(j), torch.tensor(True))
 
         graph.coords = torch.cat(
             [graph.pattern_coords, graph.z_coord],
@@ -112,10 +106,8 @@ class PneuDome:
         #we assume pressure to be evenly distributed from surface to node
 
         #scrappy for now for trial purposes
-        #dont forget triangles on up
 
-
-        #nodes with four trazepoids around them
+        #nodes with four trapezoids around them
         k = 0
 
         for j in range(num_meridians):
