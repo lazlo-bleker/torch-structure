@@ -13,6 +13,7 @@ def fdm(
     use_batching=True,
     directed=False,
     solve_only_z=False,
+    C = None,
 ):
     """
     Performs the Force Density Method (FDM) to find the equilibrium state of a structure given its coordinates, loads,
@@ -43,8 +44,8 @@ def fdm(
     # halve force densities to account for undirected graph
     if not directed:
         force_density = 0.5 * force_density
-
-    C = create_branch_node_matrix(edge_index)
+    if C is None:
+        C = create_branch_node_matrix(edge_index)
     C_free = C[:, ~support]
     C_fixed = C[:, support]
     C_free_transposed = torch.transpose(C_free, 0, 1)

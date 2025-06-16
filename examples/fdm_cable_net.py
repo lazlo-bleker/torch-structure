@@ -46,7 +46,8 @@ data.force_density = q.unsqueeze(1)
 # ------------------
 # 4. Solve using FDM
 # ------------------
-#data = data.fdm()
+
+data = data.fdm(C=ts.formfinding.utils.create_branch_node_matrix(data.edge_index[:, data.directed_mask.view(-1)]))
 
 # -------------------------------
 # 5. Plot the resulting structure

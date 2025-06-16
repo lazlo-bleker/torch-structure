@@ -20,13 +20,13 @@ input_params = {
 pneu_dome = ts.generators.PneuDome(**input_params)
 data = pneu_dome.graph  
 
-force_densities = torch.full((data.num_edges,), 40.0)
+force_densities = torch.full((data.num_edges,), 40.0, dtype=torch.float64)
 
 eps = 1e-5
 max_its = 100
 
-
-def iterative_fdm(data, eps, max_its, parallel_lines, meridians):
+C = ts.formfinding.utils.create_branch_node_matrix(data.edge_index[:, data.directed_mask.view(-1)])
+def iterative_fdm(data, eps, max_its, parallel_lines, meridians, C):
 
     norm_steps = []
 
@@ -38,7 +38,7 @@ def iterative_fdm(data, eps, max_its, parallel_lines, meridians):
 
         old_coords = data.coords
 
-        data = data.fdm()
+        data.fdm(inplace=True, C=C)
 
         #print(data.verify_equilibrium(verbose = True))
         data.pattern_coords = data.coords[:, :2]
@@ -81,12 +81,9 @@ def same_lengths(force_densities, data, eps, max_its, parallel_lines, meridians)
    
     data.force_density = force_densities
 
-    data = iterative_fdm(data, eps, max_its, parallel_lines, meridians)
-
-    lengths = data.length_from_coords(data.is_meridian.view(-1))
-
-    return (lengths - torch.mean(lengths))**2
-
+    data = iterative_fdm(data, eps, max_its, parallel_lines, meridians, C)
+    lengths = data.length_from_coords[~data.is_meridian.view(-1)] # the is_meridian mask is filled with False, I took the complement for now but you should doubgle check how you create it
+    return torch.mean((lengths - torch.mean(lengths))**2)
 
 result = minimize(
     fun=same_lengths,
@@ -104,8 +101,13 @@ result = minimize(
 
 data = result
 
-data.plot()
-plt.show()
+print(result)
+
+# The result contains the optimized force densities,
+# we still need to assign the to the data object and form-find one moer time before plotting
+
+# data.plot()
+# plt.show()
 
 
 
