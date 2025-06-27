@@ -70,7 +70,7 @@ pip install torch_structure
     Followed by creating an editable installation using the following command from within the cloned repository:
 
     ```bash
-    pip install torch_structure -e .  
+    pip install -e .  
     ```
 
 ### 5. Verify the Installation
