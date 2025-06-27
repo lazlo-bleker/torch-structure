@@ -24,7 +24,7 @@ jobs:
           uv venv --python 3.12
           uv pip install torch
           uv pip install torch_geometric
-          uv sync --group dev
+          uv pip install -e .[dev]
 
       - name: Run tests
         run: |
