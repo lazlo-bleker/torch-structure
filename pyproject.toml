@@ -5,12 +5,12 @@ authors = [
     {name = "Lazlo Bleker", email = "lazlo.bleker@tum.de"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 
 dependencies = [
-    "matplotlib>=3.10.1",
+    "matplotlib>=3.9.0",
     "pydantic>=2.10.6",
-    "scipy>=1.15.2",
+    "scipy>=1.13",
 ]
 
 [dependency-groups]
