@@ -3,7 +3,7 @@ import math
 import numpy as np
 import random
 
-from torch_structure.data import Data
+from torch_structure.data import StructData
 
 
 class CableNet:
@@ -91,7 +91,7 @@ class CableNet:
             "is_opening_edge": torch.tensor(False),
             "ring": torch.tensor(torch.nan),
         }
-        graph = Data(
+        graph = StructData(
             node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
         )
 

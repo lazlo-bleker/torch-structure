@@ -1,7 +1,7 @@
 import torch
 import math
 
-from torch_structure.data import Data
+from torch_structure.data import StructData
 
 
 class Dome:
@@ -53,7 +53,7 @@ class Dome:
             "support_condition": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
-        self.graph = Data(
+        self.graph = StructData(
             node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
         )
 

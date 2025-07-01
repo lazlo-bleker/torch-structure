@@ -1,5 +1,5 @@
-from .data import Data
+from .data import StructData
 from .dataset import Dataset, save, LegacyDataset
 from .view import NodeView
 
-__all__ = ["Data", "Dataset", "NodeView", "save", "LegacyDataset"]
+__all__ = ["StructData", "Dataset", "NodeView", "save", "LegacyDataset"]

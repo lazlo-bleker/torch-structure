@@ -1,5 +1,5 @@
 from torch_geometric.data import InMemoryDataset
-from torch_structure.data import Data
+from torch_structure.data import StructData
 import os
 
 
@@ -29,7 +29,7 @@ class Dataset(InMemoryDataset):
     
     def export_ts_data(self, idx):
         pyg_data = super().get(idx)
-        return Data.from_pyg_data(pyg_data)
+        return StructData.from_pyg_data(pyg_data)
 
 def save(data_list, root, include_metadata=True):
     dataset = Dataset(root, load=False)

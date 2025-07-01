@@ -1,7 +1,7 @@
 import torch
 import math
 
-from torch_structure.data import Data
+from torch_structure.data import StructData
 
 
 class GridShell:
@@ -85,7 +85,7 @@ class GridShell:
             "is_opening_edge": torch.tensor(False),
             "ring": torch.tensor(torch.nan),
         }
-        graph = Data(
+        graph = StructData(
             node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
         )
 

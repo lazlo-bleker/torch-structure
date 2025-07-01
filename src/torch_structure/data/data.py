@@ -18,7 +18,7 @@ from torch_structure.formfinding import (
 from torch_structure.loss import ResidualForceLoss
 
 
-class Data:
+class StructData:
     _internal_attrs = {
         "data",
         "default_attrs",
@@ -65,10 +65,13 @@ class Data:
             }
         
         # Parse metadata from JSON string
+        leading_underscore = False
         if not hasattr(pyg_data, "metadata"):
-            raise ValueError("No metadata found in the provided PyG Data object.")
+            leading_underscore = True
+            if not hasattr(pyg_data, "_metadata"):
+                raise ValueError("Provided PyG Data object has no metadata attribute.")
         
-        metadata_str = pyg_data.metadata
+        metadata_str = pyg_data._metadata if leading_underscore else pyg_data.metadata
         metadata = json.loads(metadata_str)
         metadata["default_attrs"] = reconstruct_default_attrs(metadata["default_attrs"])
 
