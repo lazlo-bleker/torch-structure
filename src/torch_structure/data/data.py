@@ -103,11 +103,6 @@ class StructData:
             f"'{self.__class__.__name__}' object has no attribute '{name}'"
         )
     
-    def __copy__(self):
-        new = self.__class__()
-        new.__dict__.update(self.__dict__)
-        return new
-    
     @property
     def metadata(self):
         def serialize_tensor(t):
@@ -636,6 +631,9 @@ class StructData:
             else:
                 object.__setattr__(new_obj, key, copy.deepcopy(value))
         return new_obj
+    
+    def __copy__(self):
+        return self.copy()
     
     def delete_attribute(self, attr_name):
         """
