@@ -45,8 +45,7 @@ class AddLaplacianZNoise(BaseTransform):
         compute_lpe = (not hasattr(data, "laplacian_pe")
                        or data.laplacian_pe.size(1) < self.n_eigenvectors)
         if compute_lpe:
-            self._add_lpe(data).to(device)
-
+            data = self._add_lpe(data).to(device=device)
         coefficients = torch.randn(self.n_eigenvectors, device=device)
         laplacian_sum = torch.matmul(data.laplacian_pe, coefficients)
         noise = laplacian_sum * (self.max_noise / laplacian_sum.abs().max())
