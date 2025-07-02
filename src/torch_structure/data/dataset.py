@@ -16,8 +16,8 @@ class LegacyDataset(InMemoryDataset):
         return self.data_list[idx]  # .data
 
 class Dataset(InMemoryDataset):
-    def __init__(self, root, load=True):
-        super().__init__(root)
+    def __init__(self, root, load=True, transform=None):
+        super().__init__(root, transform=transform)
         if load and os.path.exists(self.processed_paths[0]):
             self.load(self.processed_paths[0])
         else:
@@ -27,7 +27,7 @@ class Dataset(InMemoryDataset):
     def processed_file_names(self):
         return ['data.pt']
     
-    def export_ts_data(self, idx):
+    def get(self, idx):
         pyg_data = super().get(idx)
         return StructData.from_pyg_data(pyg_data)
 
