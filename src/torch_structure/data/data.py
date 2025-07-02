@@ -616,6 +616,24 @@ class StructData:
                 object.__setattr__(new_obj, key, copy.deepcopy(value))
         return new_obj
     
+    def delete_attribute(self, attr_name):
+        """
+        Deletes an attribute from the data object.
+        """
+        if hasattr(self.data, attr_name):
+            delattr(self.data, attr_name)
+            if attr_name in self.node_attr_list:
+                self.node_attr_list.remove(attr_name)
+            elif attr_name in self.edge_attr_list:
+                self.edge_attr_list.remove(attr_name)
+            elif attr_name in self.graph_attr_list:
+                self.graph_attr_list.remove(attr_name)
+            
+            if attr_name in self.default_attrs:
+                del self.default_attrs[attr_name]
+        else:
+            raise AttributeError(f"Attribute '{attr_name}' does not exist in data.")
+    
     def _track_history(self, attr_name, value):  # Todo: requires attr exists in self.data
         history_attr_name = f"{attr_name}_history"
         current_attr = getattr(self.data, attr_name)
