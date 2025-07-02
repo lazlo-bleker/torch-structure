@@ -575,9 +575,10 @@ class StructData:
 
     def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
         mask = mask.view(-1)
+        device = edge_attr.device
 
         if batched:
-            value = torch.empty((edge_attr.shape[0], self.num_edges), dtype=edge_attr.dtype)
+            value = torch.empty((edge_attr.shape[0], self.num_edges), dtype=edge_attr.dtype, device=device)
 
             # set defined values
             value[:, mask] = edge_attr
@@ -586,7 +587,7 @@ class StructData:
             value[:, ~mask] = value[:, self.reciprocal_edge[~mask].view(-1)]
 
         else:
-            value = torch.empty((self.num_edges, 1), dtype=edge_attr.dtype)
+            value = torch.empty((self.num_edges, 1), dtype=edge_attr.dtype, device=device)
 
             # set defined values
             value[mask] = edge_attr
