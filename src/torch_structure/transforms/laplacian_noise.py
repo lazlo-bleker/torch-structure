@@ -37,14 +37,16 @@ class AddLaplacianZNoise(BaseTransform):
     def __call__(self, data):
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
+        
+        device = data.coords.device
 
         # Ensure data has the specified number of eigenvectors
         compute_lpe = (not hasattr(data, "laplacian_pe")
                        or data.laplacian_pe.size(1) < self.n_eigenvectors)
         if compute_lpe:
-            data = self._add_lpe(data)
+            lpe_data = self._add_lpe(data).to(device)
 
-        laplacian_pe_mean = torch.mean(data.laplacian_pe, dim=1)
+        laplacian_pe_mean = torch.mean(lpe_data.laplacian_pe, dim=1)
         noise = laplacian_pe_mean * (self.max_noise / laplacian_pe_mean.abs().max())
         data.coords[:, 2] = (1 + noise) * data.coords[:, 2]
         return data
