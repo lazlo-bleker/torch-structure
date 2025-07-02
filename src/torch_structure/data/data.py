@@ -635,6 +635,14 @@ class StructData:
     def __copy__(self):
         return self.copy()
     
+    def to(self, *args, **kwargs) -> "StructData":
+        """
+        Moves the data object to the specified device.
+        """
+        new_data = self.copy()
+        new_data.data = self.data.to(*args, **kwargs)
+        return new_data
+    
     def delete_attribute(self, attr_name):
         """
         Deletes an attribute from the data object.
