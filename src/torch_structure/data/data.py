@@ -17,6 +17,14 @@ from torch_structure.formfinding import (
 )
 from torch_structure.loss import ResidualForceLoss
 
+class Data(pyg.data.Data):
+    def __inc__(self, key, value, *args, **kwargs):
+        if key == "reciprocal_edge":
+            return self.num_edges
+        elif 'index' in key:
+            return self.num_nodes
+        else:
+            return 0
 
 class StructData:
     _internal_attrs = {
