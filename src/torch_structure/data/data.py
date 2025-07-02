@@ -211,6 +211,9 @@ class StructData:
             else:
                 setattr(self.data, name, value)
 
+    def __setitem__(self, key, value):
+        self.__setattr__(key, value)
+
     def __repr__(self):
         return self.data.__repr__()
 
