@@ -190,18 +190,21 @@ class StructData:
         else:
             # Determine attribute type (node, edge, or graph)
             if attr_type is None:
-                if value.shape[0] == self.num_nodes == self.num_edges:
-                    warnings.warn(
-                        f"""Cannot infer attribute type for attribute '{name}' (graph has equal number of nodes and edges).
-                        Defaulting to node attribute.""",
-                        UserWarning,
-                    )
-                if value.shape[0] == self.num_nodes:
-                    attr_type = "node"
-                elif value.shape[0] == self.num_edges:
-                    attr_type = "edge"
-                else:
+                if len(value.shape) == 0:
                     attr_type = "graph"
+                else:
+                    if value.shape[0] == self.num_nodes == self.num_edges:
+                        warnings.warn(
+                            f"""Cannot infer attribute type for attribute '{name}' (graph has equal number of nodes and edges).
+                            Defaulting to node attribute.""",
+                            UserWarning,
+                        )
+                    if value.shape[0] == self.num_nodes:
+                        attr_type = "node"
+                    elif value.shape[0] == self.num_edges:
+                        attr_type = "edge"
+                    else:
+                        attr_type = "graph"
 
             # Update attribute list
             if attr_type == "node":
