@@ -48,7 +48,7 @@ class StructData:
     ):
         directed_mask = torch.empty((0, 1), dtype=torch.bool)
         reciprocal_edge = torch.empty((0, 1), dtype=torch.long)
-        self.data = pyg.data.Data(
+        self.data = Data(
             edge_index=edge_index,
             directed_mask=directed_mask,
             reciprocal_edge=reciprocal_edge,
