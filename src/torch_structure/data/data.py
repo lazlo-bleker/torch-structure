@@ -66,26 +66,28 @@ class StructData:
 
     @classmethod
     def from_pyg_data(cls, pyg_data):
+        obj = cls()
+        obj.data = pyg_data
+
+        # Parse metadata from JSON string
+        leading_underscore = False
+        if not hasattr(pyg_data, "metadata"):
+            leading_underscore = True
+            if not hasattr(pyg_data, "_metadata"):
+                # raise ValueError("Provided PyG Data object has no metadata attribute.")
+                return obj
+
         def reconstruct_default_attrs(saved):
             return {
                 k: torch.tensor(v["value"], dtype=getattr(torch, v["dtype"]))
                 for k, v in saved.items()
             }
         
-        # Parse metadata from JSON string
-        leading_underscore = False
-        if not hasattr(pyg_data, "metadata"):
-            leading_underscore = True
-            if not hasattr(pyg_data, "_metadata"):
-                raise ValueError("Provided PyG Data object has no metadata attribute.")
-        
         metadata_str = pyg_data._metadata if leading_underscore else pyg_data.metadata
         metadata = json.loads(metadata_str)
         metadata["default_attrs"] = reconstruct_default_attrs(metadata["default_attrs"])
 
         # Create wrapper instance
-        obj = cls()
-        obj.data = pyg_data
         del obj.data.metadata
         for key, value in metadata.items():
             setattr(obj, key, value)
