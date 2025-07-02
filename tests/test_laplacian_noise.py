@@ -1,5 +1,5 @@
 import torch
-from torch_structure.transforms.laplacian_noise import AddLaplacianZNoise
+from torch_structure.transforms.laplacian_z_noise import AddLaplacianZNoise
 
 def test_add_laplacian_z_noise_on_dome(dome_data):
     data = dome_data.data
