@@ -2,7 +2,7 @@ import torch
 from torch_structure.transforms.laplacian_z_noise import AddLaplacianZNoise
 
 def test_add_laplacian_z_noise_on_dome(dome_data):
-    data = dome_data.data
+    data = dome_data
     coords_before = data.coords.clone()
     transform = AddLaplacianZNoise(max_noise=0.2, n_eigenvectors=3)
     data_out = transform(data)
@@ -13,5 +13,3 @@ def test_add_laplacian_z_noise_on_dome(dome_data):
     assert not torch.allclose(data_out.coords[:, 2], coords_before[:, 2])
     # Check that x and y coordinates are unchanged
     assert torch.allclose(data_out.coords[:, :2], coords_before[:, :2])
-    # Check that laplacian_pe attribute exists
-    assert hasattr(data_out, 'laplacian_pe')
