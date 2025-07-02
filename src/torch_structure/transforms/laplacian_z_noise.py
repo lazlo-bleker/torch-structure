@@ -7,9 +7,9 @@ class AddLaplacianZNoise(BaseTransform):
     Applies Laplacian-eigenvector-modulated multiplicative noise to the
     z-coordinate of each node.
 
-    This transform computes the mean of the Laplacian eigenvectors for each
-    node, rescales it to lie in the range ``[-max_noise, max_noise]``, and
-    multiplies the node's z-coordinate accordingly.
+    This transform samples a linear combination of Laplacian eigenvectors, 
+    rescales it to lie in the range ``[-max_noise, max_noise]``, and
+    multiplies each node's z-coordinate with this noise coefficient.
 
     If the Laplacian positional encoding is missing or has fewer dimensions
     than requested, it will be recomputed.
@@ -24,17 +24,18 @@ class AddLaplacianZNoise(BaseTransform):
         >>> transform = AddLaplacianZNoise(max_noise=0.1)
         >>> data = transform(data)
     """
-    def __init__(self, max_noise, n_eigenvectors=20):
+    def __init__(self, max_noise, n_eigenvectors=20, keep_lpe=False):
         super().__init__()
         self.max_noise = max_noise
         self.n_eigenvectors = n_eigenvectors
+        self.keep_lpe = keep_lpe
         self._add_lpe = torch_geometric.transforms.AddLaplacianEigenvectorPE(
                 self.n_eigenvectors,
                 attr_name='laplacian_pe',
                 is_undirected=False
             )
 
-    def __call__(self, data):
+    def forward(self, data):
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
         
@@ -44,11 +45,16 @@ class AddLaplacianZNoise(BaseTransform):
         compute_lpe = (not hasattr(data, "laplacian_pe")
                        or data.laplacian_pe.size(1) < self.n_eigenvectors)
         if compute_lpe:
-            lpe_data = self._add_lpe(data).to(device)
+            self._add_lpe(data).to(device)
 
-        laplacian_pe_mean = torch.mean(lpe_data.laplacian_pe, dim=1)
-        noise = laplacian_pe_mean * (self.max_noise / laplacian_pe_mean.abs().max())
+        coefficients = torch.randn(self.n_eigenvectors, device=device)
+        laplacian_sum = torch.matmul(data.laplacian_pe, coefficients)
+        noise = laplacian_sum * (self.max_noise / laplacian_sum.abs().max())
         data.coords[:, 2] = (1 + noise) * data.coords[:, 2]
+
+        if not self.keep_lpe and compute_lpe:
+            del data.data.laplacian_pe
+        
         return data
     
     def __repr__(self):
