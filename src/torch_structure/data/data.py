@@ -17,14 +17,16 @@ from torch_structure.formfinding import (
 )
 from torch_structure.loss import ResidualForceLoss
 
+
 class Data(pyg.data.Data):
     def __inc__(self, key, value, *args, **kwargs):
         if key == "reciprocal_edge":
             return self.num_edges
-        elif 'index' in key:
+        elif "index" in key:
             return self.num_nodes
         else:
             return 0
+
 
 class StructData:
     _internal_attrs = {
@@ -61,7 +63,9 @@ class StructData:
         self.node_attr_list = [kwarg for kwarg in node_attrs.keys()]
         self.edge_attr_list = [kwarg for kwarg in edge_attrs.keys()]
         self.graph_attr_list = [kwarg for kwarg in graph_attrs.keys()]
-        self.data.num_nodes = edge_index.max().item() + 1 if edge_index.numel() > 0 else 0
+        self.data.num_nodes = (
+            edge_index.max().item() + 1 if edge_index.numel() > 0 else 0
+        )
 
     @classmethod
     def from_pyg_data(cls, pyg_data):
@@ -81,7 +85,7 @@ class StructData:
                 k: torch.tensor(v["value"], dtype=getattr(torch, v["dtype"]))
                 for k, v in saved.items()
             }
-        
+
         metadata_str = pyg_data._metadata if leading_underscore else pyg_data.metadata
         metadata = json.loads(metadata_str)
         metadata["default_attrs"] = reconstruct_default_attrs(metadata["default_attrs"])
@@ -101,14 +105,11 @@ class StructData:
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{name}'"
         )
-    
+
     @property
     def metadata(self):
         def serialize_tensor(t):
-            return {
-                "value": t.tolist(),
-                "dtype": str(t.dtype).replace("torch.", "")
-            }
+            return {"value": t.tolist(), "dtype": str(t.dtype).replace("torch.", "")}
 
         return {
             "default_attrs": {
@@ -120,7 +121,7 @@ class StructData:
             "edge_attr_list": self.edge_attr_list,
             "graph_attr_list": self.graph_attr_list,
         }
-    
+
     def export_pyg_data(self, include_metadata=True):
         data = self.data.clone()
         if include_metadata:
@@ -486,13 +487,19 @@ class StructData:
 
         coords, semi_directed_force, reaction_force = mpcem_algorithm(**kwargs)
         track_history = kwargs.get("track_history", False)
-        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask, batched=track_history)
+        force = self.edge_attr_to_undirected(
+            semi_directed_force, edge_mask, batched=track_history
+        )
 
         return_data = self if inplace else self.copy()
 
-        return_data.__setattr__("coords", coords, attr_type="node", track_history=track_history)
+        return_data.__setattr__(
+            "coords", coords, attr_type="node", track_history=track_history
+        )
         return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
-        return_data.__setattr__("force", force, attr_type="edge", track_history=track_history)
+        return_data.__setattr__(
+            "force", force, attr_type="edge", track_history=track_history
+        )
 
         if not inplace:
             return return_data
@@ -505,17 +512,23 @@ class StructData:
 
         coords, semi_directed_force, reaction_force = cem_algorithm(**kwargs)
         track_history = kwargs.get("track_history", False)
-        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask, batched=track_history)
+        force = self.edge_attr_to_undirected(
+            semi_directed_force, edge_mask, batched=track_history
+        )
 
         return_data = self if inplace else self.copy()
 
-        return_data.__setattr__("coords", coords, attr_type="node", track_history=track_history)
+        return_data.__setattr__(
+            "coords", coords, attr_type="node", track_history=track_history
+        )
         return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
-        return_data.__setattr__("force", force, attr_type="edge", track_history=track_history)
+        return_data.__setattr__(
+            "force", force, attr_type="edge", track_history=track_history
+        )
 
         if not inplace:
             return return_data
-        
+
     def seqcem(self, inplace=False, **kwargs):
         # Create semi-directed graph
         edge_mask = ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
@@ -524,13 +537,19 @@ class StructData:
 
         coords, semi_directed_force, reaction_force = seq_cem_algorithm(**kwargs)
         track_history = kwargs.get("track_history", False)
-        force = self.edge_attr_to_undirected(semi_directed_force, edge_mask, batched=track_history)
+        force = self.edge_attr_to_undirected(
+            semi_directed_force, edge_mask, batched=track_history
+        )
 
         return_data = self if inplace else self.copy()
 
-        return_data.__setattr__("coords", coords, attr_type="node", track_history=track_history)
+        return_data.__setattr__(
+            "coords", coords, attr_type="node", track_history=track_history
+        )
         return_data.__setattr__("reaction_force", reaction_force, attr_type="node")
-        return_data.__setattr__("force", force, attr_type="edge", track_history=track_history)
+        return_data.__setattr__(
+            "force", force, attr_type="edge", track_history=track_history
+        )
 
         if not inplace:
             return return_data
@@ -572,7 +591,11 @@ class StructData:
         device = edge_attr.device
 
         if batched:
-            value = torch.empty((edge_attr.shape[0], self.num_edges), dtype=edge_attr.dtype, device=device)
+            value = torch.empty(
+                (edge_attr.shape[0], self.num_edges),
+                dtype=edge_attr.dtype,
+                device=device,
+            )
 
             # set defined values
             value[:, mask] = edge_attr
@@ -581,7 +604,9 @@ class StructData:
             value[:, ~mask] = value[:, self.reciprocal_edge[~mask].view(-1)]
 
         else:
-            value = torch.empty((self.num_edges, 1), dtype=edge_attr.dtype, device=device)
+            value = torch.empty(
+                (self.num_edges, 1), dtype=edge_attr.dtype, device=device
+            )
 
             # set defined values
             value[mask] = edge_attr
@@ -625,10 +650,10 @@ class StructData:
             else:
                 object.__setattr__(new_obj, key, copy.deepcopy(value))
         return new_obj
-    
+
     def __copy__(self):
         return self.copy()
-    
+
     def to(self, *args, **kwargs) -> "StructData":
         """
         Moves the data object to the specified device.
@@ -636,7 +661,7 @@ class StructData:
         new_data = self.copy()
         new_data.data = self.data.to(*args, **kwargs)
         return new_data
-    
+
     def delete_attribute(self, attr_name):
         """
         Deletes an attribute from the data object.
@@ -649,13 +674,15 @@ class StructData:
                 self.edge_attr_list.remove(attr_name)
             elif attr_name in self.graph_attr_list:
                 self.graph_attr_list.remove(attr_name)
-            
+
             if attr_name in self.default_attrs:
                 del self.default_attrs[attr_name]
         else:
             raise AttributeError(f"Attribute '{attr_name}' does not exist in data.")
-    
-    def _track_history(self, attr_name, value):  # Todo: requires attr exists in self.data
+
+    def _track_history(
+        self, attr_name, value
+    ):  # Todo: requires attr exists in self.data
         history_attr_name = f"{attr_name}_history"
         current_attr = getattr(self.data, attr_name)
 
@@ -669,9 +696,7 @@ class StructData:
 
         if hasattr(self.data, history_attr_name):
             history = getattr(self.data, history_attr_name)
-            new_history = torch.cat(
-                [history, value], dim=0
-            )
+            new_history = torch.cat([history, value], dim=0)
         else:
             new_history = torch.cat([current_attr.unsqueeze(0), value], dim=0)
 

@@ -134,12 +134,16 @@ def plot_data(
             #     label="External Load",
             # )
             ax.quiver(
-                x[node], y[node], z[node],     # Base of the arrow
-                d_x, d_y, d_z,                 # Direction vector
+                x[node],
+                y[node],
+                z[node],  # Base of the arrow
+                d_x,
+                d_y,
+                d_z,  # Direction vector
                 color=colors["green"],
-                length=1.5,                    # This is scaled by the components
+                length=1.5,  # This is scaled by the components
                 normalize=False,
-                arrow_length_ratio=0.5,        # Adjust as needed
+                arrow_length_ratio=0.5,  # Adjust as needed
             )
 
     # Plot residual forces
@@ -208,6 +212,7 @@ def plot_data(
     # Show plot
     if show:
         plt.show()
+
 
 def plot_data_xz(
     coords,
@@ -321,17 +326,19 @@ def plot_data_xz(
             d_z = force_scale * load_np[node, 2]
             if max(abs(d_x), abs(d_z)) > 1e-5:
                 ax.plot(
-                    [x[node], x[node] + d_x*0.01],
-                    [z[node], z[node] + d_z*0.01],
+                    [x[node], x[node] + d_x * 0.01],
+                    [z[node], z[node] + d_z * 0.01],
                     color=colors["green"],
                     label="External Load",
                 )
                 ax.arrow(
-                    x[node], z[node],         # start point (x, y)
-                    d_x, d_z,                 # delta (dx, dz)
+                    x[node],
+                    z[node],  # start point (x, y)
+                    d_x,
+                    d_z,  # delta (dx, dz)
                     color=colors["green"],
-                    head_width=0.1,          # adjust as needed
-                    head_length=0.1,          # adjust as needed
+                    head_width=0.1,  # adjust as needed
+                    head_length=0.1,  # adjust as needed
                     length_includes_head=True,
                 )
 
@@ -350,7 +357,7 @@ def plot_data_xz(
                         markersize=support_marker_size,
                         color=support_marker_color,
                         linestyle="None",
-                        label="Support"
+                        label="Support",
                     )
 
     # Plot residual forces
@@ -383,7 +390,7 @@ def plot_data_xz(
                 markersize=4,
                 color="#FFEC99",
                 linestyle="None",
-                label="Considered in Step"
+                label="Considered in Step",
             )
 
     # Set axes visibility
@@ -392,15 +399,24 @@ def plot_data_xz(
 
     # Scale axes
     if equal_axes:
-        ax.set_aspect('equal', adjustable='box')
+        ax.set_aspect("equal", adjustable="box")
 
     # Set legend
     if legend:
         handles, labels = ax.get_legend_handles_labels()
         unique_labels = dict(zip(labels, handles))
         order = [3, 2, 4, 0, 1, 5]
-        unique_labels = {k: unique_labels[k] for k in np.array(list(unique_labels.keys()))[order]}
-        ax.legend(unique_labels.values(), unique_labels.keys(), frameon=False, ncol=3, loc="lower center", bbox_to_anchor=(0.5, -2.8))
+        unique_labels = {
+            k: unique_labels[k] for k in np.array(list(unique_labels.keys()))[order]
+        }
+        ax.legend(
+            unique_labels.values(),
+            unique_labels.keys(),
+            frameon=False,
+            ncol=3,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -2.8),
+        )
 
     # Set title
     if title is not None:

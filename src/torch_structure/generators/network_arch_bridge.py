@@ -131,14 +131,14 @@ class NetwokrkArchBridge:
             "deck_trail_1_node_0",
             is_trail_edge=torch.tensor(False),
             force=self.deck_force,
-            optim_group=self.n_optim_groups
+            optim_group=self.n_optim_groups,
         )
         self.graph.add_edge(
             "deck_trail_2_node_0",
             "deck_trail_3_node_0",
             is_trail_edge=torch.tensor(False),
             force=self.deck_force,
-            optim_group=self.n_optim_groups
+            optim_group=self.n_optim_groups,
         )
         self.n_optim_groups += 1
 

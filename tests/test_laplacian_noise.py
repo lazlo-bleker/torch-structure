@@ -1,6 +1,7 @@
 import torch
 from torch_structure.transforms.laplacian_z_noise import AddLaplacianZNoise
 
+
 def test_add_laplacian_z_noise(dome_data):
     data = dome_data
     coords_before = data.coords.clone()

@@ -76,7 +76,11 @@ class CableStayedBridge:
                 load=self.deck_load,
             )
             for j in range(1, self.n_deck_trail_edges + 1):
-                load = torch.zeros(3, dtype=torch.float) if j == self.n_deck_trail_edges else self.deck_load
+                load = (
+                    torch.zeros(3, dtype=torch.float)
+                    if j == self.n_deck_trail_edges
+                    else self.deck_load
+                )
                 support_condition = (
                     torch.tensor([True, True, True])
                     if j == self.n_deck_trail_edges
@@ -142,10 +146,10 @@ class CableStayedBridge:
                     force_sign=torch.tensor(-1.0),
                 )
             # Backstay
-            back_stay_offset = (1 - 2 * (i % 2)) * self.tower_offset * self.back_stay_distance
-            backstay_origin_coords = torch.tensor(
-                [tower_x[i], back_stay_offset, 0.01]
+            back_stay_offset = (
+                (1 - 2 * (i % 2)) * self.tower_offset * self.back_stay_distance
             )
+            backstay_origin_coords = torch.tensor([tower_x[i], back_stay_offset, 0.01])
             self.graph.add_node(
                 f"backstay_trail_{i}_node_0",
                 coords=backstay_origin_coords,
@@ -162,7 +166,7 @@ class CableStayedBridge:
                 f"backstay_trail_{i}_node_0",
                 f"backstay_trail_{i}_node_1",
                 is_trail_edge=torch.tensor(True),
-                length=0.4*self.tower_height,
+                length=0.4 * self.tower_height,
                 force_sign=torch.tensor(1.0),
             )
             self.graph.add_edge(
@@ -171,9 +175,6 @@ class CableStayedBridge:
                 is_trail_edge=torch.tensor(False),
                 force=self.back_stay_force,
             )
-
-
-
 
         # Cables
         deck_nodes = [

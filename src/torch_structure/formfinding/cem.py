@@ -38,7 +38,11 @@ def mpcem_algorithm(
 
         # only consider edges with a coordinate (estimate) for both nodes
         valid_nodes = ~torch.isnan(coords).any(dim=1)
-        valid_edges = valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]] & ~is_support[edge_index[1]]
+        valid_edges = (
+            valid_nodes[edge_index[0]]
+            & valid_nodes[edge_index[1]]
+            & ~is_support[edge_index[1]]
+        )
 
         # Calculate outgoing trail force
         residual_force = residual_force_update(
@@ -144,10 +148,17 @@ def cem_algorithm(
             if not enhanced_first_iteration and i == 0:
                 indirect_edges = ~is_trail_edge & ~k_mask[edge_index[0]]
                 valid_edges = (
-                    valid_nodes[edge_index[0]] & k_mask[edge_index[1]] & ~indirect_edges & ~is_support[edge_index[1]]
+                    valid_nodes[edge_index[0]]
+                    & k_mask[edge_index[1]]
+                    & ~indirect_edges
+                    & ~is_support[edge_index[1]]
                 )
             else:
-                valid_edges = valid_nodes[edge_index[0]] & k_mask[edge_index[1]] & ~is_support[edge_index[1]]
+                valid_edges = (
+                    valid_nodes[edge_index[0]]
+                    & k_mask[edge_index[1]]
+                    & ~is_support[edge_index[1]]
+                )
 
             # Calculate outgoing trail force
             # print("CEM valid edges: ", torch.where(valid_edges)[0])
@@ -187,8 +198,12 @@ def cem_algorithm(
                     coords_history = coords.unsqueeze(0).clone()
                     force_history = force.unsqueeze(0).clone()
                 else:
-                    coords_history = torch.cat((coords_history, coords.unsqueeze(0)), dim=0)
-                    force_history = torch.cat((force_history, force.unsqueeze(0)), dim=0)
+                    coords_history = torch.cat(
+                        (coords_history, coords.unsqueeze(0)), dim=0
+                    )
+                    force_history = torch.cat(
+                        (force_history, force.unsqueeze(0)), dim=0
+                    )
 
             n_steps += 1
 
@@ -202,12 +217,15 @@ def cem_algorithm(
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
-        print(f"CEM finished in {(i + 1) * max_k}, {n_steps} iterations. Converged: {converged}.")
+        print(
+            f"CEM finished in {(i + 1) * max_k}, {n_steps} iterations. Converged: {converged}."
+        )
 
     if track_history:
         return coords_history, force_history, reaction_force
     else:
         return coords, force.unsqueeze(1), reaction_force
+
 
 def seq_cem_algorithm(
     coords,
@@ -265,15 +283,21 @@ def seq_cem_algorithm(
                     break
                 seq_mask = torch.zeros_like(k_mask, dtype=torch.bool)
                 seq_mask[node_idx] = True
-            
 
                 if not enhanced_first_iteration and i == 0:
                     indirect_edges = ~is_trail_edge & ~k_mask[edge_index[0]]
                     valid_edges = (
-                        valid_nodes[edge_index[0]] & seq_mask[edge_index[1]] & ~indirect_edges & ~is_support[edge_index[1]]
+                        valid_nodes[edge_index[0]]
+                        & seq_mask[edge_index[1]]
+                        & ~indirect_edges
+                        & ~is_support[edge_index[1]]
                     )
                 else:
-                    valid_edges = valid_nodes[edge_index[0]] & seq_mask[edge_index[1]] & ~is_support[edge_index[1]]
+                    valid_edges = (
+                        valid_nodes[edge_index[0]]
+                        & seq_mask[edge_index[1]]
+                        & ~is_support[edge_index[1]]
+                    )
 
                 # Calculate outgoing trail force
                 # print("CEM (sequential) valid edges: ", torch.where(valid_edges)[0])
@@ -288,7 +312,9 @@ def seq_cem_algorithm(
                 # Update force of trail edges
                 current_trail_edge = seq_mask[edge_index[0]] & is_trail_edge
                 trail_force_mag = torch.norm(trail_force, dim=1)
-                force[current_trail_edge] = force_sign[current_trail_edge] * trail_force_mag
+                force[current_trail_edge] = (
+                    force_sign[current_trail_edge] * trail_force_mag
+                )
 
                 # Update coordinates
                 current_trail_src, current_trail_dst = edge_index[:, current_trail_edge]
@@ -313,11 +339,15 @@ def seq_cem_algorithm(
                         coords_history = coords.unsqueeze(0).clone()
                         force_history = force.unsqueeze(0).clone()
                     else:
-                        coords_history = torch.cat((coords_history, coords.unsqueeze(0)), dim=0)
-                        force_history = torch.cat((force_history, force.unsqueeze(0)), dim=0)
+                        coords_history = torch.cat(
+                            (coords_history, coords.unsqueeze(0)), dim=0
+                        )
+                        force_history = torch.cat(
+                            (force_history, force.unsqueeze(0)), dim=0
+                        )
 
                 n_steps += 1
-                
+
         # print(f'CEM (sequential) iteration {i}, delta coords: {torch.norm(coords - prev_coords)}')
         if torch.norm(coords - prev_coords) < tolerance:
             converged = True
@@ -328,7 +358,9 @@ def seq_cem_algorithm(
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
-        print(f"CEM (sequential) finished in {(i + 1) * max_k * len(k_node_indices)}, {n_steps} iterations. Converged: {converged}.")
+        print(
+            f"CEM (sequential) finished in {(i + 1) * max_k * len(k_node_indices)}, {n_steps} iterations. Converged: {converged}."
+        )
 
     if track_history:
         return coords_history, force_history, reaction_force

@@ -3,26 +3,32 @@ from torch_geometric.data import Batch
 from torch_structure.data import StructData, Dataset
 from typing import List, Optional, Sequence, Union
 
+
 class Collater:
     def __init__(
         self,
         dataset: Union[Dataset, Sequence[StructData]],
         follow_batch: Optional[List[str]] = None,
-        exclude_keys: Optional[List[str]] = None):
+        exclude_keys: Optional[List[str]] = None,
+    ):
         self.dataset = dataset
         self.follow_batch = follow_batch
         self.exclude_keys = exclude_keys
 
     def __call__(self, batch: List[StructData]) -> StructData:
         pyg_list = [struct_data.data for struct_data in batch]
-        batched = Batch.from_data_list(pyg_list, follow_batch=self.follow_batch, exclude_keys=self.exclude_keys)
+        batched = Batch.from_data_list(
+            pyg_list, follow_batch=self.follow_batch, exclude_keys=self.exclude_keys
+        )
         struct_data = StructData.from_pyg_data(batched)
 
         struct_data.node_attr_list = batch[0].node_attr_list
         struct_data.edge_attr_list = batch[0].edge_attr_list
         struct_data.graph_attr_list = batch[0].graph_attr_list
-        
+
         return struct_data
+
+
 class DataLoader(torch.utils.data.DataLoader):
     r"""A data loader which merges data objects from a
     :class:`torch_structure.data.Dataset` to a mini-batch.
@@ -40,6 +46,7 @@ class DataLoader(torch.utils.data.DataLoader):
         **kwargs (optional): Additional arguments of
             :class:`torch.utils.data.DataLoader`.
     """
+
     # TODO: Data objects can be either of type :class:`~torch_geometric.data.StructData` or
     # :class:`~torch_geometric.data.StructHeteroData`.
     def __init__(
@@ -49,9 +56,10 @@ class DataLoader(torch.utils.data.DataLoader):
         shuffle: bool = False,
         follow_batch: Optional[List[str]] = None,
         exclude_keys: Optional[List[str]] = None,
-        **kwargs):
+        **kwargs,
+    ):
         # Remove for PyTorch Lightning:
-        kwargs.pop('collate_fn', None)
+        kwargs.pop("collate_fn", None)
 
         # Save for PyTorch Lightning < 1.6:
         self.follow_batch = follow_batch

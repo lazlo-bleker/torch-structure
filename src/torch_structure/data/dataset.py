@@ -15,6 +15,7 @@ class LegacyDataset(InMemoryDataset):
     def get(self, idx):
         return self.data_list[idx]  # .data
 
+
 class Dataset(InMemoryDataset):
     def __init__(self, root, load=True, transform=None):
         super().__init__(root, transform=transform)
@@ -25,13 +26,16 @@ class Dataset(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return ['data.pt']
-    
+        return ["data.pt"]
+
     def get(self, idx):
         pyg_data = super().get(idx)
         return StructData.from_pyg_data(pyg_data)
 
+
 def save(data_list, root, include_metadata=True):
     dataset = Dataset(root, load=False)
-    pyg_data_list = [data.export_pyg_data(include_metadata=include_metadata) for data in data_list]
+    pyg_data_list = [
+        data.export_pyg_data(include_metadata=include_metadata) for data in data_list
+    ]
     dataset.save(pyg_data_list, dataset.processed_paths[0])

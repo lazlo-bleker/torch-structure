@@ -2,12 +2,13 @@ import torch
 import torch_geometric
 from torch_geometric.transforms import BaseTransform
 
+
 class AddLaplacianZNoise(BaseTransform):
     r"""
     Applies Laplacian-eigenvector-modulated multiplicative noise to the
     z-coordinate of each node.
 
-    This transform samples a linear combination of Laplacian eigenvectors, 
+    This transform samples a linear combination of Laplacian eigenvectors,
     rescales it to lie in the range ``[-max_noise, max_noise]``, and
     multiplies each node's z-coordinate with this noise coefficient.
 
@@ -24,26 +25,27 @@ class AddLaplacianZNoise(BaseTransform):
         >>> transform = AddLaplacianZNoise(max_noise=0.1)
         >>> data = transform(data)
     """
+
     def __init__(self, max_noise, n_eigenvectors=20, keep_lpe=False):
         super().__init__()
         self.max_noise = max_noise
         self.n_eigenvectors = n_eigenvectors
         self.keep_lpe = keep_lpe
         self._add_lpe = torch_geometric.transforms.AddLaplacianEigenvectorPE(
-                self.n_eigenvectors,
-                attr_name='laplacian_pe',
-                is_undirected=False
-            )
+            self.n_eigenvectors, attr_name="laplacian_pe", is_undirected=False
+        )
 
     def forward(self, data):
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
-        
+
         device = data.coords.device
 
         # Ensure data has the specified number of eigenvectors
-        compute_lpe = (not hasattr(data, "laplacian_pe")
-                       or data.laplacian_pe.size(1) < self.n_eigenvectors)
+        compute_lpe = (
+            not hasattr(data, "laplacian_pe")
+            or data.laplacian_pe.size(1) < self.n_eigenvectors
+        )
         if compute_lpe:
             data = self._add_lpe(data).to(device=device)
         coefficients = torch.randn(self.n_eigenvectors, device=device)
@@ -53,9 +55,11 @@ class AddLaplacianZNoise(BaseTransform):
 
         if not self.keep_lpe and compute_lpe:
             del data.data.laplacian_pe
-        
+
         return data
-    
+
     def __repr__(self):
-        return (f"{self.__class__.__name__}(max_noise={self.max_noise}, "
-                f"n_eigenvectors={self.n_eigenvectors})")
+        return (
+            f"{self.__class__.__name__}(max_noise={self.max_noise}, "
+            f"n_eigenvectors={self.n_eigenvectors})"
+        )

@@ -1,7 +1,7 @@
 """
 Example: Optimize Cable Forces in a Cable-Stayed Bridge using CEM and scipy
 
-This example demonstrates how to use torch_structure to optimize the force distribution 
+This example demonstrates how to use torch_structure to optimize the force distribution
 in a cable-stayed bridge so that the bridge deck is as flat as possible.
 """
 
@@ -14,15 +14,15 @@ import matplotlib.pyplot as plt
 # 1. Create initial bridge setup
 # ------------------------------
 bridge_params = {
-    'n_towers': 5,                                  # Number of vertical towers
-    'n_cables': 5,                                  # Number of cables on each side of a tower
-    'deck_trail_length': 1.0,                       # Spacing between deck nodes
-    'tower_trail_length': 0.3,                      # Spacing between tower nodes
-    'center_deviation_force': torch.tensor(-10.0),  # Axial force halfway along the deck
-    'cable_deviation_force': torch.tensor(1.0),     # Tension in cables
-    'deck_load': torch.tensor([0.0, 0.0, -1.0]),    # Downward gravity load on the deck
-    'tower_height': 5.0,                            # Height of each tower
-    'tower_offset': 1.0                             # Horizontal distance from peak of towers to the deck
+    "n_towers": 5,  # Number of vertical towers
+    "n_cables": 5,  # Number of cables on each side of a tower
+    "deck_trail_length": 1.0,  # Spacing between deck nodes
+    "tower_trail_length": 0.3,  # Spacing between tower nodes
+    "center_deviation_force": torch.tensor(-10.0),  # Axial force halfway along the deck
+    "cable_deviation_force": torch.tensor(1.0),  # Tension in cables
+    "deck_load": torch.tensor([0.0, 0.0, -1.0]),  # Downward gravity load on the deck
+    "tower_height": 5.0,  # Height of each tower
+    "tower_offset": 1.0,  # Horizontal distance from peak of towers to the deck
 }
 
 # Generate bridge structure
@@ -45,9 +45,12 @@ reciprocal_force_mask = torch.zeros(data.num_edges, dtype=torch.bool).unsqueeze(
 reciprocal_force_mask[reciprocal_force_idx] = True
 
 # Create a mask for all deck nodes (used to check flatness)
-deck_node_indices = [i for name, i in data.node_name_to_index.items() if "deck_trail" in name]
+deck_node_indices = [
+    i for name, i in data.node_name_to_index.items() if "deck_trail" in name
+]
 deck_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
 deck_mask[deck_node_indices] = True
+
 
 # -------------------------------
 # 3. Define optimization function
@@ -65,15 +68,20 @@ def deck_flatness(optim_forces, data, force_mask, reciprocal_force_mask, deck_ma
 
     # Compute mean square Z deviation (measure of flatness)
     deck_z = data.coords[deck_mask][:, 2]
-    return torch.mean(deck_z ** 2)
+    return torch.mean(deck_z**2)
+
 
 # Define callback for logging progress (optional)
 def make_callback():
     def callback(x):
-        print(f"Iteration {callback.iteration:3d} | Loss: {deck_flatness.best_loss:.6f}")
+        print(
+            f"Iteration {callback.iteration:3d} | Loss: {deck_flatness.best_loss:.6f}"
+        )
         callback.iteration += 1
+
     callback.iteration = 0
     return callback
+
 
 # -------------------
 # 5. Run optimization
@@ -89,12 +97,7 @@ result = minimize(
     method="SLSQP",
     jac=True,
     callback=make_callback(),
-    options={
-        'disp': True,
-        'ftol': 1e-7,
-        'gtol': 1e-7,
-        'maxiter': 100
-    }
+    options={"disp": True, "ftol": 1e-7, "gtol": 1e-7, "maxiter": 100},
 )
 
 # ---------------------------------------
