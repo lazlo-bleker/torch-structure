@@ -35,7 +35,6 @@ class StructData:
         "node_attr_list",
         "edge_attr_list",
         "graph_attr_list",
-        "_num_nodes",
     }
 
     def __init__(
@@ -62,7 +61,7 @@ class StructData:
         self.node_attr_list = [kwarg for kwarg in node_attrs.keys()]
         self.edge_attr_list = [kwarg for kwarg in edge_attrs.keys()]
         self.graph_attr_list = [kwarg for kwarg in graph_attrs.keys()]
-        self._num_nodes = edge_index.max().item() + 1 if edge_index.numel() > 0 else 0
+        self.data.num_nodes = edge_index.max().item() + 1 if edge_index.numel() > 0 else 0
 
     @classmethod
     def from_pyg_data(cls, pyg_data):
@@ -120,7 +119,6 @@ class StructData:
             "node_attr_list": self.node_attr_list,
             "edge_attr_list": self.edge_attr_list,
             "graph_attr_list": self.graph_attr_list,
-            "_num_nodes": self._num_nodes,
         }
     
     def export_pyg_data(self, include_metadata=True):
@@ -232,10 +230,6 @@ class StructData:
         """
         return NodeView(self.data, self.node_name_to_index, self.node_attr_list)
 
-    @property
-    def num_nodes(self):
-        return self._num_nodes
-
     def set_default_attributes(self, **kwargs):
         """
         Sets default edge/node attributes.
@@ -281,7 +275,7 @@ class StructData:
             del self.node_name_to_index[node]
 
             # decrement number of nodes
-            self._num_nodes -= 1
+            self.data.num_nodes -= 1
 
             # update node_name_to_index
             for node_name, node_index in self.node_name_to_index.items():
@@ -311,7 +305,7 @@ class StructData:
             raise ValueError(f"Node '{name}' already exists!")
 
         self.node_name_to_index[name] = self.num_nodes  # Add node to node_name_to_index
-        self._num_nodes += 1  # Increment number of nodes
+        self.data.num_nodes += 1  # Increment number of nodes
 
         # Add node attributes
         for attr in self.node_attr_list:
@@ -621,7 +615,6 @@ class StructData:
         return kwargs
 
     def to_networkx(self, **kwargs):
-        self.data.num_nodes = self.num_nodes
         return pyg.utils.to_networkx(self.data, **kwargs)
 
     def copy(self):
