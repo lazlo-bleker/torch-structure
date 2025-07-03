@@ -618,7 +618,6 @@ class GridShell:
 
     @staticmethod
     def compute_optimal_rotation(polygon_angles):
-        print(torch.tensor(math.pi), len(polygon_angles))
         circle_angles = torch.linspace(0.0, 2 * math.pi, len(polygon_angles) + 1)[:-1]
         angular_differences = polygon_angles - circle_angles
         theta_shift = torch.arctan2(
