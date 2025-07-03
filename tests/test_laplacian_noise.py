@@ -1,7 +1,7 @@
 import torch
 from torch_structure.transforms.laplacian_z_noise import AddLaplacianZNoise
 
-def test_add_laplacian_z_noise_on_dome(dome_data):
+def test_add_laplacian_z_noise(dome_data):
     data = dome_data
     coords_before = data.coords.clone()
     transform = AddLaplacianZNoise(max_noise=0.2, n_eigenvectors=3)
