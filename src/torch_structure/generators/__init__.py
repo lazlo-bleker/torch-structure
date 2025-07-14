@@ -15,5 +15,5 @@ __all__ = [
     "CableNet",
     "CableStayedBridge",
     "NerviDome",
-    "NetwokrkArchBridge",
+    "NetworkArchBridge",
 ]

@@ -4,7 +4,7 @@ import numpy as np
 from torch_structure.data import StructData
 
 
-class NetwokrkArchBridge:
+class NetworkArchBridge:
     def __init__(
         self,
         n_trail_edges,
