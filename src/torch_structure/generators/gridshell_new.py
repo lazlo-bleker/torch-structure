@@ -1,24 +1,35 @@
 import torch
 import math
+import numpy as np
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 
 
 class GridShellGenerator(BaseGenerator):
-    def __init__(
-        self,
-        n: int,
-        boundary_density: int,
-        pattern="standard",
-        diagonals=torch.tensor(False),
-        centroid_support=torch.tensor(False),
-        unsupported_boundaries=torch.tensor(False),
-        rectangle=torch.tensor(False),
-        square=torch.tensor(False),
-        curve_boundaries=torch.tensor(False),
-        circle=torch.tensor(False),
-    ):
+    def __init__(self, **overrides):
+        super().__init__(**overrides)
+        self.node_attrs = {
+            "pattern_coords": torch.empty((0, 2), dtype=torch.float),
+            "is_support": torch.empty((0, 1), dtype=torch.bool),
+            "is_boundary": torch.empty((0, 1), dtype=torch.bool),
+        }
+        self.edge_attrs = {
+            "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
+            "is_diagonal_edge": torch.empty((0, 1), dtype=torch.bool),
+            "is_opening_edge": torch.empty((0, 1), dtype=torch.bool),
+            "ring": torch.empty((0, 1), dtype=torch.int),
+        }
+        self.default_attrs = {
+            "is_diagonal_edge": torch.tensor(False),
+            "is_opening_edge": torch.tensor(False),
+            "ring": torch.tensor(torch.nan),
+        }
+        
+    def validate_input(self, n, boundary_density, pattern, diagonals, centroid_support,
+                       unsupported_boundaries, rectangle, square, curve_boundaries, circle,
+                       q_target_field, q_target_boundary, opening_radius, boundary_support_list,
+                       boundary_curvature_list):
         if pattern not in ["standard", "singularity", "opening"]:
             raise ValueError(f"Invalid pattern: {pattern}")
         if rectangle and n != 4:
@@ -29,33 +40,67 @@ class GridShellGenerator(BaseGenerator):
             raise ValueError("Circle requires pattern='singularity' or 'opening'.")
         if circle and (square or rectangle):
             raise ValueError("Circle is incompatible with square or rectangle")
-        self.n = n
-        self.boundary_density = boundary_density
-        self.pattern = pattern
-        self.diagonals = torch.tensor(
-            diagonals
-        )  # only compatible with standard pattern
-        self.centroid_support = torch.tensor(centroid_support)
-        self.unsupported_boundaries = torch.tensor(unsupported_boundaries)
-        self.rectangle = torch.tensor(rectangle)
-        self.square = torch.tensor(square)
-        self.curve_boundaries = torch.tensor(curve_boundaries)
-        self.circle = torch.tensor(circle)
+        if pattern == "opening" and not centroid_support:
+            raise ValueError("Opening pattern requires centroid support.")
+        
+    def sample_input(self, n=None, boundary_density=None, pattern=None, diagonals=None,
+                     centroid_support=None, unsupported_boundaries=True, rectangle=False,
+                     square=False, curve_boundaries=True, circle=False, q_target_field=None,
+                     q_target_boundary=None, opening_radius=None, boundary_support_list=None,
+                     boundary_curvature_list=None):
+        if n is None:
+            n = np.random.randint(3, 7)
+        if boundary_density is None:
+            boundary_density = np.random.randint(3, 8)
+        if centroid_support is None:
+            centroid_support = np.random.choice([True, False], p=[0.3, 0.7])
+        if pattern is None:
+            pattern = np.random.choice(['standard', 'singularity', 'opening']) if centroid_support else 'standard'
+        if diagonals is None:
+            diagonals = np.random.choice([True, False]) if pattern == 'standard' else False
+        if q_target_field is None:
+            q_target_field = np.random.uniform(-15.0, -25.0)
+        if q_target_boundary is None:
+            q_target_boundary = np.random.uniform(-80.0, -120.0)
+        if opening_radius is None:
+            if pattern == 'opening':
+                opening_radius = torch.rand(1) * 0.05 + 0.1
+            else:
+                opening_radius = torch.nan
+        if boundary_support_list is None:
+            if unsupported_boundaries:
+                boundary_support_list = np.random.choice([True, False], size=n, p=[0.5, 0.5])
+            else:
+                boundary_support_list = [True] * n
+        if boundary_curvature_list is None:
+            if curve_boundaries:
+                boundary_curvature_list = np.empty(n)
+                boundary_curvature_list[boundary_support_list] = np.random.rand(boundary_support_list.sum()) - 0.5
+                boundary_curvature_list[~boundary_support_list] = np.random.rand((~boundary_support_list).sum()) * 0.2 + 0.3
+            else:
+                boundary_curvature_list = np.zeros(n)
 
-        self.graph = self.generate_graph(
-            n=n,
-            boundary_density=self.boundary_density,
-            pattern=self.pattern,
-            diagonals=self.diagonals,
-            centroid_support=self.centroid_support,
-            unsupported_boundaries=self.unsupported_boundaries,
-            rectangle=self.rectangle,
-            square=self.square,
-            curve_boundaries=self.curve_boundaries,
-            circle=self.circle,
-        )
-
-    def generate_graph(
+        input = {
+            'n': n,
+            'boundary_density': boundary_density,
+            'pattern': pattern,
+            'diagonals': torch.tensor(diagonals),
+            'centroid_support': torch.tensor(centroid_support),
+            'unsupported_boundaries': torch.tensor(unsupported_boundaries),
+            'rectangle': torch.tensor(rectangle),
+            'square': torch.tensor(square),
+            'curve_boundaries': torch.tensor(curve_boundaries),
+            'circle': torch.tensor(circle),
+            'q_target_field': torch.tensor(q_target_field, dtype=torch.float),
+            'q_target_boundary': torch.tensor(q_target_boundary, dtype=torch.float),
+            'opening_radius': torch.tensor(opening_radius, dtype=torch.float),
+            'boundary_support_list': torch.tensor(boundary_support_list, dtype=torch.bool),
+            'boundary_curvature_list': torch.tensor(boundary_curvature_list, dtype=torch.float),
+        }
+        
+        return input
+        
+    def generate(
         self,
         n,
         boundary_density,
@@ -67,27 +112,14 @@ class GridShellGenerator(BaseGenerator):
         square,
         curve_boundaries,
         circle,
+        q_target_field,
+        q_target_boundary,
+        opening_radius,
+        boundary_support_list,
+        boundary_curvature_list,
     ):
-        # if pattern == "opening" and not centroid_support:
-        #     raise ValueError("Opening pattern requires centroid support.")
-        node_attrs = {
-            "pattern_coords": torch.empty((0, 2), dtype=torch.float),
-            "is_support": torch.empty((0, 1), dtype=torch.bool),
-            "is_boundary": torch.empty((0, 1), dtype=torch.bool),
-        }
-        edge_attrs = {
-            "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
-            "is_diagonal_edge": torch.empty((0, 1), dtype=torch.bool),
-            "is_opening_edge": torch.empty((0, 1), dtype=torch.bool),
-            "ring": torch.empty((0, 1), dtype=torch.int),
-        }
-        default_attrs = {
-            "is_diagonal_edge": torch.tensor(False),
-            "is_opening_edge": torch.tensor(False),
-            "ring": torch.tensor(torch.nan),
-        }
         graph = StructData(
-            node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
+            node_attrs=self.node_attrs, edge_attrs=self.edge_attrs, default_attrs=self.default_attrs
         )
 
         if rectangle:
@@ -114,7 +146,6 @@ class GridShellGenerator(BaseGenerator):
                     corner_points[i][1] - centroid[1], corner_points[i][0] - centroid[0]
                 )
             circle_angles = self.compute_optimal_rotation(angles)
-            opening_radius = torch.rand(1) * 0.05 + 0.1
             for i in range(n):
                 pattern_coord = (
                     torch.tensor(
@@ -141,25 +172,13 @@ class GridShellGenerator(BaseGenerator):
 
         # add mesh skeleton points
         for i in range(n):
-            if unsupported_boundaries:
-                is_support = torch.randint(0, 2, (1,)).bool()
-                # is_support = torch.tensor(False)  # remove later
-            else:
-                is_support = torch.tensor(True)
+            is_support = boundary_support_list[i]
             start_boundary, end_boundary = (
                 looped_corner_points[i],
                 looped_corner_points[i + 1],
             )
             center_boundary = 0.5 * (start_boundary + end_boundary)
-            if curve_boundaries:
-                if is_support:
-                    curvature_param = torch.rand(1) - 0.5
-                else:
-                    curvature_param = torch.rand(1) * 0.2 + 0.3
-                    # curvature_param = torch.rand(1) * 0.2 + 1.0  # remove later
-            else:
-                curvature_param = 0.0
-            # curvature_param = -curvature_param  # remove later
+            curvature_param = boundary_curvature_list[i]
             control_point = center_boundary + curvature_param * (
                 centroid - center_boundary
             )
@@ -487,10 +506,24 @@ class GridShellGenerator(BaseGenerator):
             dim=1,
         )
 
+
         # Compute distance to centroid
         graph.centroid_distance = torch.linalg.norm(
             graph.pattern_coords - centroid, dim=1, keepdim=True
         )
+
+        graph.xy_laplacian_smoothing(is_fixed=graph.is_boundary, verbose=False)
+        q_target = q_target_field * torch.ones(graph.num_edges)
+        q_target[graph.is_boundary_edge.view(-1)] = q_target_boundary
+        graph.q_target = q_target.unsqueeze(1)
+
+        graph = graph.tna(verbose=False)
+
+        if graph.bbox[0, 2] < 0 or graph.bbox[1, 2] > 3.0:
+            raise ValueError(f"Z-coordinates out of bounds: ({graph.bbox[0, 2]}, {graph.bbox[1, 2]})")
+        
+        if graph.force_density.max() > 0.0:
+            raise ValueError(f"Tension element(s) present: {graph.force_density.max()}")
 
         return graph
 

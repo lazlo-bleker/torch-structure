@@ -2,6 +2,7 @@ from .base_generator import BaseGenerator
 from .structure import Structure
 from .bridge import Bridge
 from .gridshell import GridShell
+from .gridshell_new import GridShellGenerator
 from .nervi_dome import NerviDome
 from .cablenet import CableNet
 from .cable_stayed_bridge import CableStayedBridge
@@ -13,6 +14,7 @@ __all__ = [
     "Structure",
     "Bridge",
     "GridShell",
+    "GridShellGenerator",
     "Dome",
     "CableNet",
     "CableStayedBridge",
