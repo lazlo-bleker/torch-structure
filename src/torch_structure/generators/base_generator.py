@@ -6,12 +6,21 @@ class BaseGenerator(ABC):
 
     def __init__(self, **overrides):
         self.overrides = overrides
+        self.max_attempts = 100
 
     def __call__(self):
-        self.input = self.sample_input(**self.overrides)
-        self.validate_input(**self.input)
-        data = self.generate(**self.input)
-        return data
+        return self._build()
+    
+    def _build(self) -> StructData:
+        for _ in range(self.max_attempts):
+            self.input = self.sample_input(**self.overrides)
+            self.validate_input(**self.input)
+            try:
+                return self.generate(**self.input)
+            except Exception:
+                continue
+
+        raise RuntimeError(f"Failed to generate structure after {self.max_attempts} attempts.")
 
     @abstractmethod
     def sample_input(self, **overrides) -> dict:
