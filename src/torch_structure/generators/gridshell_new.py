@@ -29,7 +29,8 @@ class GridShellGenerator(BaseGenerator):
     def validate_input(self, n, boundary_density, pattern, diagonals, centroid_support,
                        unsupported_boundaries, rectangle, square, curve_boundaries, circle,
                        q_target_field, q_target_boundary, opening_radius, boundary_support_list,
-                       boundary_curvature_list):
+                       boundary_curvature_list, rectangle_width, rectangle_height, square_size,
+                       corner_angle_list):
         if pattern not in ["standard", "singularity", "opening"]:
             raise ValueError(f"Invalid pattern: {pattern}")
         if rectangle and n != 4:
@@ -47,9 +48,13 @@ class GridShellGenerator(BaseGenerator):
                      centroid_support=None, unsupported_boundaries=True, rectangle=False,
                      square=False, curve_boundaries=True, circle=False, q_target_field=None,
                      q_target_boundary=None, opening_radius=None, boundary_support_list=None,
-                     boundary_curvature_list=None):
+                     boundary_curvature_list=None, rectangle_width=None, rectangle_height=None,
+                     square_size=None, corner_angle_list=None):
         if n is None:
-            n = np.random.randint(3, 7)
+            if rectangle or square:
+                n = 4
+            else:
+                n = np.random.randint(3, 7)
         if boundary_density is None:
             boundary_density = np.random.randint(3, 8)
         if centroid_support is None:
@@ -79,6 +84,34 @@ class GridShellGenerator(BaseGenerator):
                 boundary_curvature_list[~boundary_support_list] = np.random.rand((~boundary_support_list).sum()) * 0.2 + 0.3
             else:
                 boundary_curvature_list = np.zeros(n)
+        if rectangle_width is None:
+            if rectangle:
+                rectangle_width = torch.rand(1) * 0.9 + 0.1
+            else:
+                rectangle_width = torch.nan
+        if rectangle_height is None:
+            if rectangle:
+                rectangle_height = torch.rand(1) * 0.9 + 0.1
+            else:
+                rectangle_height = torch.nan
+        if square_size is None:
+            if square:
+                square_size = torch.rand(1) * 0.9 + 0.1
+            else:
+                square_size = torch.nan
+        if corner_angle_list is None:
+            min_angle = torch.tensor(math.pi) / 8
+            corner_angle_list = []
+            while len(corner_angle_list) < n:
+                angle = (torch.rand(1) * 2 * math.pi).item()
+                # Check if the new angle is far enough from all others
+                if all(
+                    abs((angle - a + math.pi) % (2 * math.pi) - math.pi) >= min_angle
+                    for a in corner_angle_list
+                ):
+                    corner_angle_list.append(angle)
+            corner_angle_list.sort()
+        
 
         input = {
             'n': n,
@@ -96,6 +129,10 @@ class GridShellGenerator(BaseGenerator):
             'opening_radius': torch.tensor(opening_radius, dtype=torch.float),
             'boundary_support_list': torch.tensor(boundary_support_list, dtype=torch.bool),
             'boundary_curvature_list': torch.tensor(boundary_curvature_list, dtype=torch.float),
+            'rectangle_width': torch.tensor(rectangle_width, dtype=torch.float),
+            'rectangle_height': torch.tensor(rectangle_height, dtype=torch.float),
+            'square_size': torch.tensor(square_size, dtype=torch.float),
+            'corner_angle_list': torch.tensor(corner_angle_list, dtype=torch.float),
         }
         
         return input
@@ -117,19 +154,28 @@ class GridShellGenerator(BaseGenerator):
         opening_radius,
         boundary_support_list,
         boundary_curvature_list,
+        rectangle_width,
+        rectangle_height,
+        square_size,
+        corner_angle_list,
     ):
         graph = StructData(
             node_attrs=self.node_attrs, edge_attrs=self.edge_attrs, default_attrs=self.default_attrs
         )
 
         if rectangle:
-            corner_points = self.sample_rectangle(square=square)
+            if square:
+                corner_points = self.sample_rectangle(width=square_size, square=True)
+            else:
+                corner_points = self.sample_rectangle(
+                    width=rectangle_width, height=rectangle_height, square=False
+                )
         elif circle:
             corner_points = self.sample_unit_circle(
                 n, angles=torch.linspace(0, 2 * math.pi, n + 1)[:-1]
             )
         else:
-            corner_points = self.sample_unit_circle(n)
+            corner_points = self.sample_unit_circle(n, angles=corner_angle_list)
         looped_corner_points = corner_points + [corner_points[0]]
         centroid = self.polygon_centroid(looped_corner_points)
         if pattern in ["standard", "singularity"]:
@@ -693,18 +739,16 @@ class GridShellGenerator(BaseGenerator):
         return torch.tensor([Cx, Cy])
 
     @staticmethod
-    def sample_rectangle(square=False):
+    def sample_rectangle(width, height=None, square=False):
         """
         Randomly samples a rectangle with a minimum aspect ratio of 1:2.
 
         Returns:
             list of tuple: List of (x, y) coordinates of the rectangle vertices.
         """
-        width = torch.rand(1) * 0.9 + 0.1
         if square:
             height = width
-        else:
-            height = torch.rand(1) * 0.9 + 0.1
+        
         x0, y0 = -0.5 * width, -0.5 * height
         x1, y1 = 0.5 * width, 0.5 * height
 
@@ -716,7 +760,7 @@ class GridShellGenerator(BaseGenerator):
         ]
 
     @staticmethod
-    def sample_unit_circle(n, min_angle=torch.tensor(math.pi) / 8, angles=None):
+    def sample_unit_circle(n, angles=None):
         """
         Randomly samples n points on a unit circle, ensuring a minimum angle between points.
 
@@ -730,18 +774,6 @@ class GridShellGenerator(BaseGenerator):
         if n == 0:
             return []
 
-        if angles is None:
-            angles = []
-            while len(angles) < n:
-                angle = torch.rand(1) * 2 * math.pi
-                # Check if the new angle is far enough from all others
-                if all(
-                    abs((angle - a + math.pi) % (2 * math.pi) - math.pi) >= min_angle
-                    for a in angles
-                ):
-                    angles.append(angle)
-
-        angles.sort()
         points = [
             torch.tensor([torch.cos(angle), torch.sin(angle)]) for angle in angles
         ]
