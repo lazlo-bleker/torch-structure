@@ -27,7 +27,6 @@ class BaseGenerator(ABC):
         """Samples missing input parameters."""
         pass
 
-    @abstractmethod
     def validate_input(self, **input) -> None:
         """Raises errors if inputs are invalid."""
         pass
