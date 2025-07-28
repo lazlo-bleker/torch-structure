@@ -1,3 +1,4 @@
+# ToDo: Refactor to inherit from BaseGenerator
 # Todo: Update outdated data structure
 
 import numpy as np

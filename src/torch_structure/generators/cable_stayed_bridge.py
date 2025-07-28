@@ -1,3 +1,5 @@
+# ToDo: Refactor to inherit from BaseGenerator
+
 import torch
 
 from torch_structure.data import StructData
