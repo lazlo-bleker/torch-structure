@@ -709,6 +709,5 @@ class StructData:
             kwargs["edge_index"] = self.edge_index
         if "force" not in kwargs:
             if "force" in self.edge_attr_list:
-                print("Using edge force attribute for plotting.")
                 kwargs["force"] = self.force
         plot_data(**kwargs)
