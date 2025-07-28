@@ -9,6 +9,7 @@ from torch_structure.generators.base_generator import BaseGenerator
 class GridShellGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)
+        self.max_attempts = 100
         self.node_attrs = {
             "pattern_coords": torch.empty((0, 2), dtype=torch.float),
             "is_support": torch.empty((0, 1), dtype=torch.bool),
