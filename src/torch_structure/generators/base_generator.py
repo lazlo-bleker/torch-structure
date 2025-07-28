@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from torch_structure.data import StructData
 
+
 class BaseGenerator(ABC):
     r"""An abstract base class for writing structure generators."""
 
@@ -10,7 +11,7 @@ class BaseGenerator(ABC):
 
     def __call__(self):
         return self._build()
-    
+
     def _build(self) -> StructData:
         if self.max_attempts == 1:
             self.input = self.sample_input(**self.overrides)
@@ -25,7 +26,9 @@ class BaseGenerator(ABC):
                 except Exception:
                     continue
 
-        raise RuntimeError(f"Failed to generate structure after {self.max_attempts} attempts.")
+        raise RuntimeError(
+            f"Failed to generate structure after {self.max_attempts} attempts."
+        )
 
     @abstractmethod
     def sample_input(self, **overrides) -> dict:

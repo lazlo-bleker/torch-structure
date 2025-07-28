@@ -26,12 +26,29 @@ class GridShellGenerator(BaseGenerator):
             "is_opening_edge": torch.tensor(False),
             "ring": torch.tensor(torch.nan),
         }
-        
-    def validate_input(self, n, boundary_density, pattern, diagonals, centroid_support,
-                       unsupported_boundaries, rectangle, square, curve_boundaries, circle,
-                       q_target_field, q_target_boundary, opening_radius, boundary_support_list,
-                       boundary_curvature_list, rectangle_width, rectangle_height, square_size,
-                       corner_angle_list):
+
+    def validate_input(
+        self,
+        n,
+        boundary_density,
+        pattern,
+        diagonals,
+        centroid_support,
+        unsupported_boundaries,
+        rectangle,
+        square,
+        curve_boundaries,
+        circle,
+        q_target_field,
+        q_target_boundary,
+        opening_radius,
+        boundary_support_list,
+        boundary_curvature_list,
+        rectangle_width,
+        rectangle_height,
+        square_size,
+        corner_angle_list,
+    ):
         if pattern not in ["standard", "singularity", "opening"]:
             raise ValueError(f"Invalid pattern: {pattern}")
         if rectangle and n != 4:
@@ -44,13 +61,29 @@ class GridShellGenerator(BaseGenerator):
             raise ValueError("Circle is incompatible with square or rectangle")
         if pattern == "opening" and not centroid_support:
             raise ValueError("Opening pattern requires centroid support.")
-        
-    def sample_input(self, n=None, boundary_density=None, pattern=None, diagonals=None,
-                     centroid_support=None, unsupported_boundaries=True, rectangle=False,
-                     square=False, curve_boundaries=True, circle=False, q_target_field=None,
-                     q_target_boundary=None, opening_radius=None, boundary_support_list=None,
-                     boundary_curvature_list=None, rectangle_width=None, rectangle_height=None,
-                     square_size=None, corner_angle_list=None):
+
+    def sample_input(
+        self,
+        n=None,
+        boundary_density=None,
+        pattern=None,
+        diagonals=None,
+        centroid_support=None,
+        unsupported_boundaries=True,
+        rectangle=False,
+        square=False,
+        curve_boundaries=True,
+        circle=False,
+        q_target_field=None,
+        q_target_boundary=None,
+        opening_radius=None,
+        boundary_support_list=None,
+        boundary_curvature_list=None,
+        rectangle_width=None,
+        rectangle_height=None,
+        square_size=None,
+        corner_angle_list=None,
+    ):
         if n is None:
             if rectangle or square:
                 n = 4
@@ -61,28 +94,40 @@ class GridShellGenerator(BaseGenerator):
         if centroid_support is None:
             centroid_support = np.random.choice([True, False], p=[0.3, 0.7])
         if pattern is None:
-            pattern = np.random.choice(['standard', 'singularity', 'opening']) if centroid_support else 'standard'
+            pattern = (
+                np.random.choice(["standard", "singularity", "opening"])
+                if centroid_support
+                else "standard"
+            )
         if diagonals is None:
-            diagonals = np.random.choice([True, False]) if pattern == 'standard' else False
+            diagonals = (
+                np.random.choice([True, False]) if pattern == "standard" else False
+            )
         if q_target_field is None:
             q_target_field = np.random.uniform(-15.0, -25.0)
         if q_target_boundary is None:
             q_target_boundary = np.random.uniform(-80.0, -120.0)
         if opening_radius is None:
-            if pattern == 'opening':
+            if pattern == "opening":
                 opening_radius = np.random.rand() * 0.05 + 0.1
             else:
                 opening_radius = np.nan
         if boundary_support_list is None:
             if unsupported_boundaries:
-                boundary_support_list = np.random.choice([True, False], size=n, p=[0.5, 0.5])
+                boundary_support_list = np.random.choice(
+                    [True, False], size=n, p=[0.5, 0.5]
+                )
             else:
                 boundary_support_list = [True] * n
         if boundary_curvature_list is None:
             if curve_boundaries:
                 boundary_curvature_list = np.empty(n)
-                boundary_curvature_list[boundary_support_list] = np.random.rand(boundary_support_list.sum()) - 0.5
-                boundary_curvature_list[~boundary_support_list] = np.random.rand((~boundary_support_list).sum()) * 0.2 + 0.3
+                boundary_curvature_list[boundary_support_list] = (
+                    np.random.rand(boundary_support_list.sum()) - 0.5
+                )
+                boundary_curvature_list[~boundary_support_list] = (
+                    np.random.rand((~boundary_support_list).sum()) * 0.2 + 0.3
+                )
             else:
                 boundary_curvature_list = np.zeros(n)
         if rectangle_width is None:
@@ -112,32 +157,35 @@ class GridShellGenerator(BaseGenerator):
                 ):
                     corner_angle_list.append(angle)
             corner_angle_list.sort()
-        
 
         input = {
-            'n': n,
-            'boundary_density': boundary_density,
-            'pattern': pattern,
-            'diagonals': torch.tensor(diagonals),
-            'centroid_support': torch.tensor(centroid_support),
-            'unsupported_boundaries': torch.tensor(unsupported_boundaries),
-            'rectangle': torch.tensor(rectangle),
-            'square': torch.tensor(square),
-            'curve_boundaries': torch.tensor(curve_boundaries),
-            'circle': torch.tensor(circle),
-            'q_target_field': torch.tensor(q_target_field, dtype=torch.float),
-            'q_target_boundary': torch.tensor(q_target_boundary, dtype=torch.float),
-            'opening_radius': torch.tensor(opening_radius, dtype=torch.float),
-            'boundary_support_list': torch.tensor(boundary_support_list, dtype=torch.bool),
-            'boundary_curvature_list': torch.tensor(boundary_curvature_list, dtype=torch.float),
-            'rectangle_width': torch.tensor(rectangle_width, dtype=torch.float),
-            'rectangle_height': torch.tensor(rectangle_height, dtype=torch.float),
-            'square_size': torch.tensor(square_size, dtype=torch.float),
-            'corner_angle_list': torch.tensor(corner_angle_list, dtype=torch.float),
+            "n": n,
+            "boundary_density": boundary_density,
+            "pattern": pattern,
+            "diagonals": torch.tensor(diagonals),
+            "centroid_support": torch.tensor(centroid_support),
+            "unsupported_boundaries": torch.tensor(unsupported_boundaries),
+            "rectangle": torch.tensor(rectangle),
+            "square": torch.tensor(square),
+            "curve_boundaries": torch.tensor(curve_boundaries),
+            "circle": torch.tensor(circle),
+            "q_target_field": torch.tensor(q_target_field, dtype=torch.float),
+            "q_target_boundary": torch.tensor(q_target_boundary, dtype=torch.float),
+            "opening_radius": torch.tensor(opening_radius, dtype=torch.float),
+            "boundary_support_list": torch.tensor(
+                boundary_support_list, dtype=torch.bool
+            ),
+            "boundary_curvature_list": torch.tensor(
+                boundary_curvature_list, dtype=torch.float
+            ),
+            "rectangle_width": torch.tensor(rectangle_width, dtype=torch.float),
+            "rectangle_height": torch.tensor(rectangle_height, dtype=torch.float),
+            "square_size": torch.tensor(square_size, dtype=torch.float),
+            "corner_angle_list": torch.tensor(corner_angle_list, dtype=torch.float),
         }
-        
+
         return input
-        
+
     def generate(
         self,
         n,
@@ -161,7 +209,9 @@ class GridShellGenerator(BaseGenerator):
         corner_angle_list,
     ):
         graph = StructData(
-            node_attrs=self.node_attrs, edge_attrs=self.edge_attrs, default_attrs=self.default_attrs
+            node_attrs=self.node_attrs,
+            edge_attrs=self.edge_attrs,
+            default_attrs=self.default_attrs,
         )
 
         if rectangle:
@@ -553,7 +603,6 @@ class GridShellGenerator(BaseGenerator):
             dim=1,
         )
 
-
         # Compute distance to centroid
         graph.centroid_distance = torch.linalg.norm(
             graph.pattern_coords - centroid, dim=1, keepdim=True
@@ -567,8 +616,10 @@ class GridShellGenerator(BaseGenerator):
         graph = graph.tna(verbose=False)
 
         if graph.bbox[0, 2] < 0 or graph.bbox[1, 2] > 3.0:
-            raise ValueError(f"Z-coordinates out of bounds: ({graph.bbox[0, 2]}, {graph.bbox[1, 2]})")
-        
+            raise ValueError(
+                f"Z-coordinates out of bounds: ({graph.bbox[0, 2]}, {graph.bbox[1, 2]})"
+            )
+
         if graph.force_density.max() > 0.0:
             raise ValueError(f"Tension element(s) present: {graph.force_density.max()}")
 
@@ -749,7 +800,7 @@ class GridShellGenerator(BaseGenerator):
         """
         if square:
             height = width
-        
+
         x0, y0 = -0.5 * width, -0.5 * height
         x1, y1 = 0.5 * width, 0.5 * height
 

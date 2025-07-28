@@ -33,18 +33,22 @@ class DomeGenerator(BaseGenerator):
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
 
-    def validate_input(self,
-                       n_trails,
-                       n_rings,
-                       trail_length,
-                       center_deviation_force,
-                       opening):
+    def validate_input(
+        self, n_trails, n_rings, trail_length, center_deviation_force, opening
+    ):
         if n_trails % 2 != 0:
             raise ValueError("Number of trails must be even.")
-        
-    def sample_input(self, n_trails=None, n_rings=None, trail_length=None, center_deviation_force=None, opening=False):
+
+    def sample_input(
+        self,
+        n_trails=None,
+        n_rings=None,
+        trail_length=None,
+        center_deviation_force=None,
+        opening=False,
+    ):
         if n_trails is None:
-            n_trails = 2*np.random.randint(5, 15)
+            n_trails = 2 * np.random.randint(5, 15)
         if n_rings is None:
             n_rings = np.random.randint(3, 6)
         if trail_length is None:
@@ -60,10 +64,14 @@ class DomeGenerator(BaseGenerator):
             "opening": opening,
         }
 
-    def generate(self, n_trails, n_rings, trail_length, center_deviation_force, opening):
+    def generate(
+        self, n_trails, n_rings, trail_length, center_deviation_force, opening
+    ):
         # Initialize data object
         data = StructData(
-            node_attrs=self.node_attrs, edge_attrs=self.edge_attrs, default_attrs=self.default_attrs
+            node_attrs=self.node_attrs,
+            edge_attrs=self.edge_attrs,
+            default_attrs=self.default_attrs,
         )
 
         # Create topology diagram
@@ -85,7 +93,12 @@ class DomeGenerator(BaseGenerator):
                 y_load = torch.sin(angle) * center_deviation_force
                 origin_load = torch.tensor([x_load, y_load, -1.0 / n_trails])
             self.generate_trail(
-                data=data, origin_coords=origin_coords, origin_load=origin_load, id=i, n_rings=n_rings, trail_length=trail_length
+                data=data,
+                origin_coords=origin_coords,
+                origin_load=origin_load,
+                id=i,
+                n_rings=n_rings,
+                trail_length=trail_length,
             )
 
         # Add ring deviations
@@ -118,7 +131,7 @@ class DomeGenerator(BaseGenerator):
 
         if self.filter(data):
             raise RuntimeError("Negative inclination detected.")
-        
+
         # Scale to unit length
         radius = torch.norm(data.coords[:, 0:2], dim=1).max()
         data.coords /= radius
@@ -134,7 +147,9 @@ class DomeGenerator(BaseGenerator):
 
         return data
 
-    def generate_trail(self, data, origin_coords, origin_load, id, n_rings, trail_length):
+    def generate_trail(
+        self, data, origin_coords, origin_load, id, n_rings, trail_length
+    ):
         data.add_node(
             f"trail_{id}_node_0",
             coords=origin_coords,

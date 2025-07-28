@@ -29,11 +29,29 @@ class CableNetGenerator(BaseGenerator):
             "is_opening_edge": torch.tensor(False),
             "ring": torch.tensor(torch.nan),
         }
-        
-    def validate_inputs(self, n, boundary_density, support_height, pattern, diagonals, centroid_support,
-                        unsupported_boundaries, rectangle, square, curve_boundaries, circle, q_field,
-                        q_boundary, q_diagonal, rectangle_width, rectangle_height, square_size,
-                        corner_angle_list, corner_support_sequence):
+
+    def validate_inputs(
+        self,
+        n,
+        boundary_density,
+        support_height,
+        pattern,
+        diagonals,
+        centroid_support,
+        unsupported_boundaries,
+        rectangle,
+        square,
+        curve_boundaries,
+        circle,
+        q_field,
+        q_boundary,
+        q_diagonal,
+        rectangle_width,
+        rectangle_height,
+        square_size,
+        corner_angle_list,
+        corner_support_sequence,
+    ):
         if n < 4:
             raise ValueError("n must be at least 4")
         if pattern not in ["standard", "singularity", "opening"]:
@@ -49,11 +67,28 @@ class CableNetGenerator(BaseGenerator):
         if len(corner_support_sequence) != n:
             raise ValueError("corner_support_sequence must have length n")
 
-    def sample_input(self, n=None, boundary_density=None, support_height=None, pattern="standard",
-                     diagonals=None, centroid_support=False, unsupported_boundaries=True,
-                     rectangle=False, square=False, curve_boundaries=True, circle=False, q_field=None,
-                     q_boundary=None, q_diagonal=None, rectangle_width=None, rectangle_height=None,
-                     square_size=None, corner_angle_list=None, corner_support_sequence=None):
+    def sample_input(
+        self,
+        n=None,
+        boundary_density=None,
+        support_height=None,
+        pattern="standard",
+        diagonals=None,
+        centroid_support=False,
+        unsupported_boundaries=True,
+        rectangle=False,
+        square=False,
+        curve_boundaries=True,
+        circle=False,
+        q_field=None,
+        q_boundary=None,
+        q_diagonal=None,
+        rectangle_width=None,
+        rectangle_height=None,
+        square_size=None,
+        corner_angle_list=None,
+        corner_support_sequence=None,
+    ):
         if n is None:
             if rectangle or square:
                 n = 4
@@ -64,7 +99,9 @@ class CableNetGenerator(BaseGenerator):
         if support_height is None:
             support_height = np.random.uniform(0.35, 0.8)
         if diagonals is None:
-            diagonals = np.random.choice([True, False]) if pattern == 'standard' else False
+            diagonals = (
+                np.random.choice([True, False]) if pattern == "standard" else False
+            )
         if q_field is None:
             q_field = np.random.uniform(30.0, 50.0)
         if q_boundary is None:
@@ -116,13 +153,15 @@ class CableNetGenerator(BaseGenerator):
             "q_field": q_field,
             "q_boundary": q_boundary,
             "q_diagonal": q_diagonal,
-            'rectangle_width': torch.tensor(rectangle_width, dtype=torch.float),
-            'rectangle_height': torch.tensor(rectangle_height, dtype=torch.float),
-            'square_size': torch.tensor(square_size, dtype=torch.float),
-            'corner_angle_list': torch.tensor(corner_angle_list, dtype=torch.float),
-            'corner_support_sequence': torch.tensor(corner_support_sequence, dtype=torch.long),
+            "rectangle_width": torch.tensor(rectangle_width, dtype=torch.float),
+            "rectangle_height": torch.tensor(rectangle_height, dtype=torch.float),
+            "square_size": torch.tensor(square_size, dtype=torch.float),
+            "corner_angle_list": torch.tensor(corner_angle_list, dtype=torch.float),
+            "corner_support_sequence": torch.tensor(
+                corner_support_sequence, dtype=torch.long
+            ),
         }
-        
+
         return input
 
     def generate(
@@ -148,7 +187,9 @@ class CableNetGenerator(BaseGenerator):
         corner_support_sequence,
     ):
         graph = StructData(
-            node_attrs=self.node_attrs, edge_attrs=self.edge_attrs, default_attrs=self.default_attrs
+            node_attrs=self.node_attrs,
+            edge_attrs=self.edge_attrs,
+            default_attrs=self.default_attrs,
         )
 
         if rectangle:
@@ -750,7 +791,7 @@ class CableNetGenerator(BaseGenerator):
         """
         if square:
             height = width
-        
+
         x0, y0 = -0.5 * width, -0.5 * height
         x1, y1 = 0.5 * width, 0.5 * height
 

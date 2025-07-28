@@ -13,7 +13,7 @@ def fdm(
     use_batching=True,
     directed=False,
     solve_only_z=False,
-    C = None,
+    C=None,
 ):
     """
     Performs the Force Density Method (FDM) to find the equilibrium state of a structure given its coordinates, loads,

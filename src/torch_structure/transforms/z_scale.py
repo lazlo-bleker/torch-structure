@@ -32,6 +32,4 @@ class ScaleZ(BaseTransform):
         return data
 
     def __repr__(self):
-        return (
-            f"{self.__class__.__name__}(scaling_factor={self.scaling_factor})"
-        )
+        return f"{self.__class__.__name__}(scaling_factor={self.scaling_factor})"
