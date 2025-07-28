@@ -70,9 +70,9 @@ class GridShellGenerator(BaseGenerator):
             q_target_boundary = np.random.uniform(-80.0, -120.0)
         if opening_radius is None:
             if pattern == 'opening':
-                opening_radius = torch.rand(1) * 0.05 + 0.1
+                opening_radius = np.random.rand() * 0.05 + 0.1
             else:
-                opening_radius = torch.nan
+                opening_radius = np.nan
         if boundary_support_list is None:
             if unsupported_boundaries:
                 boundary_support_list = np.random.choice([True, False], size=n, p=[0.5, 0.5])
@@ -676,7 +676,7 @@ class GridShellGenerator(BaseGenerator):
             list of tuple: Points on the circular arc.
         """
         # Compute radius from center to p0
-        radius = torch.linalg.norm(torch.tensor(p0) - torch.tensor(p2))
+        radius = torch.linalg.norm(p0 - p2)
 
         # Compute angles of p0 and p1 relative to the center
         angle0 = torch.arctan2(p0[1] - p2[1], p0[0] - p2[0])
