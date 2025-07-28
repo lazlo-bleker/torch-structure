@@ -4,23 +4,38 @@ import numpy as np
 import random
 
 from torch_structure.data import StructData
+from torch_structure.generators.base_generator import BaseGenerator
 
 
-class CableNet:
-    def __init__(
-        self,
-        n: int,
-        boundary_density: int,
-        support_height: float,
-        pattern="standard",
-        diagonals=torch.tensor(False),
-        centroid_support=torch.tensor(False),
-        unsupported_boundaries=torch.tensor(False),
-        rectangle=torch.tensor(False),
-        square=torch.tensor(False),
-        curve_boundaries=torch.tensor(False),
-        circle=torch.tensor(False),
-    ):
+class CableNetGenerator(BaseGenerator):
+    def __init__(self, **overrides):
+        super().__init__(**overrides)
+        self.max_attempts = 100
+        self.node_attrs = {
+            "pattern_coords": torch.empty((0, 2), dtype=torch.float),
+            "is_support": torch.empty((0, 1), dtype=torch.bool),
+            "is_boundary": torch.empty((0, 1), dtype=torch.bool),
+            "z_coord": torch.empty((0, 1), dtype=torch.float),
+        }
+        self.edge_attrs = {
+            "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
+            "is_diagonal_edge": torch.empty((0, 1), dtype=torch.bool),
+            "is_opening_edge": torch.empty((0, 1), dtype=torch.bool),
+            "ring": torch.empty((0, 1), dtype=torch.int),
+        }
+        self.default_attrs = {
+            "z_coord": torch.tensor(0.0),
+            "is_diagonal_edge": torch.tensor(False),
+            "is_opening_edge": torch.tensor(False),
+            "ring": torch.tensor(torch.nan),
+        }
+        
+    def validate_inputs(self, n, boundary_density, support_height, pattern, diagonals, centroid_support,
+                        unsupported_boundaries, rectangle, square, curve_boundaries, circle, q_field,
+                        q_boundary, q_diagonal, rectangle_width, rectangle_height, square_size,
+                        corner_angle_list, corner_support_sequence):
+        if n < 4:
+            raise ValueError("n must be at least 4")
         if pattern not in ["standard", "singularity", "opening"]:
             raise ValueError(f"Invalid pattern: {pattern}")
         if rectangle and n != 4:
@@ -31,34 +46,86 @@ class CableNet:
             raise ValueError("Circle requires pattern='singularity' or 'opening'.")
         if circle and (square or rectangle):
             raise ValueError("Circle is incompatible with square or rectangle")
-        self.n = n
-        self.boundary_density = boundary_density
-        self.pattern = pattern
-        self.diagonals = torch.tensor(
-            diagonals
-        )  # only compatible with standard pattern
-        self.centroid_support = torch.tensor(centroid_support)
-        self.unsupported_boundaries = torch.tensor(unsupported_boundaries)
-        self.rectangle = torch.tensor(rectangle)
-        self.square = torch.tensor(square)
-        self.curve_boundaries = torch.tensor(curve_boundaries)
-        self.circle = torch.tensor(circle)
-        self.support_height = support_height
+        if len(corner_support_sequence) != n:
+            raise ValueError("corner_support_sequence must have length n")
 
-        self.graph = self.generate_graph(
-            n=n,
-            boundary_density=self.boundary_density,
-            pattern=self.pattern,
-            diagonals=self.diagonals,
-            centroid_support=self.centroid_support,
-            unsupported_boundaries=self.unsupported_boundaries,
-            rectangle=self.rectangle,
-            square=self.square,
-            curve_boundaries=self.curve_boundaries,
-            circle=self.circle,
-        )
+    def sample_input(self, n=None, boundary_density=None, support_height=None, pattern="standard",
+                     diagonals=None, centroid_support=False, unsupported_boundaries=True,
+                     rectangle=False, square=False, curve_boundaries=True, circle=False, q_field=None,
+                     q_boundary=None, q_diagonal=None, rectangle_width=None, rectangle_height=None,
+                     square_size=None, corner_angle_list=None, corner_support_sequence=None):
+        if n is None:
+            if rectangle or square:
+                n = 4
+            else:
+                n = np.random.randint(4, 7)
+        if boundary_density is None:
+            boundary_density = np.random.randint(3, 8)
+        if support_height is None:
+            support_height = np.random.uniform(0.35, 0.8)
+        if diagonals is None:
+            diagonals = np.random.choice([True, False]) if pattern == 'standard' else False
+        if q_field is None:
+            q_field = np.random.uniform(30.0, 50.0)
+        if q_boundary is None:
+            q_boundary = np.random.uniform(200.0, 300.0)
+        if q_diagonal is None:
+            q_diagonal = np.random.uniform(30.0, 100.0)
+        if rectangle_width is None:
+            if rectangle:
+                rectangle_width = torch.rand(1) * 0.9 + 0.1
+            else:
+                rectangle_width = torch.nan
+        if rectangle_height is None:
+            if rectangle:
+                rectangle_height = torch.rand(1) * 0.9 + 0.1
+            else:
+                rectangle_height = torch.nan
+        if square_size is None:
+            if square:
+                square_size = torch.rand(1) * 0.9 + 0.1
+            else:
+                square_size = torch.nan
+        if corner_angle_list is None:
+            min_angle = torch.tensor(math.pi) / 8
+            corner_angle_list = []
+            while len(corner_angle_list) < n:
+                angle = (torch.rand(1) * 2 * math.pi).item()
+                # Check if the new angle is far enough from all others
+                if all(
+                    abs((angle - a + math.pi) % (2 * math.pi) - math.pi) >= min_angle
+                    for a in corner_angle_list
+                ):
+                    corner_angle_list.append(angle)
+            corner_angle_list.sort()
+        if corner_support_sequence is None:
+            corner_support_sequence = self.generate_random_sequence(n)
 
-    def generate_graph(
+        input = {
+            "n": n,
+            "boundary_density": boundary_density,
+            "support_height": support_height,
+            "pattern": pattern,
+            "diagonals": diagonals,
+            "centroid_support": centroid_support,
+            "unsupported_boundaries": unsupported_boundaries,
+            "rectangle": rectangle,
+            "square": square,
+            "curve_boundaries": curve_boundaries,
+            "circle": circle,
+            "q_field": q_field,
+            "q_boundary": q_boundary,
+            "q_diagonal": q_diagonal,
+            'rectangle_width': torch.tensor(rectangle_width, dtype=torch.float),
+            'rectangle_height': torch.tensor(rectangle_height, dtype=torch.float),
+            'square_size': torch.tensor(square_size, dtype=torch.float),
+            'corner_angle_list': torch.tensor(corner_angle_list, dtype=torch.float),
+            'corner_support_sequence': torch.tensor(corner_support_sequence, dtype=torch.long),
+        }
+        
+        return input
+
+    def generate(
         self,
         n,
         boundary_density,
@@ -70,39 +137,33 @@ class CableNet:
         square,
         curve_boundaries,
         circle,
+        support_height,
+        q_field,
+        q_boundary,
+        q_diagonal,
+        rectangle_width,
+        rectangle_height,
+        square_size,
+        corner_angle_list,
+        corner_support_sequence,
     ):
-        # if pattern == "opening" and not centroid_support:
-        #     raise ValueError("Opening pattern requires centroid support.")
-        node_attrs = {
-            "pattern_coords": torch.empty((0, 2), dtype=torch.float),
-            "is_support": torch.empty((0, 1), dtype=torch.bool),
-            "is_boundary": torch.empty((0, 1), dtype=torch.bool),
-            "z_coord": torch.empty((0, 1), dtype=torch.float),
-        }
-        edge_attrs = {
-            "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
-            "is_diagonal_edge": torch.empty((0, 1), dtype=torch.bool),
-            "is_opening_edge": torch.empty((0, 1), dtype=torch.bool),
-            "ring": torch.empty((0, 1), dtype=torch.int),
-        }
-        default_attrs = {
-            "z_coord": torch.tensor(0.0),
-            "is_diagonal_edge": torch.tensor(False),
-            "is_opening_edge": torch.tensor(False),
-            "ring": torch.tensor(torch.nan),
-        }
         graph = StructData(
-            node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
+            node_attrs=self.node_attrs, edge_attrs=self.edge_attrs, default_attrs=self.default_attrs
         )
 
         if rectangle:
-            corner_points = self.sample_rectangle(square=square)
+            if square:
+                corner_points = self.sample_rectangle(width=square_size, square=True)
+            else:
+                corner_points = self.sample_rectangle(
+                    width=rectangle_width, height=rectangle_height, square=False
+                )
         elif circle:
             corner_points = self.sample_unit_circle(
                 n, angles=torch.linspace(0, 2 * math.pi, n + 1)[:-1]
             )
         else:
-            corner_points = self.sample_unit_circle(n)
+            corner_points = self.sample_unit_circle(n, angles=corner_angle_list)
         looped_corner_points = corner_points + [corner_points[0]]
         centroid = self.polygon_centroid(looped_corner_points)
         if pattern in ["standard", "singularity"]:
@@ -136,7 +197,7 @@ class CableNet:
                 )
 
         # add corner points
-        support_sequence = self.generate_random_sequence(self.n) * self.support_height
+        support_sequence = corner_support_sequence * support_height
         for i, point in enumerate(corner_points):
             graph.add_node(
                 f"corner_{i}",
@@ -150,7 +211,6 @@ class CableNet:
         for i in range(n):
             if unsupported_boundaries:
                 is_support = False
-                # is_support = torch.tensor(False)  # remove later
             else:
                 is_support = torch.tensor(True)
             start_boundary, end_boundary = (
@@ -163,10 +223,8 @@ class CableNet:
                     curvature_param = torch.rand(1) - 0.5
                 else:
                     curvature_param = torch.rand(1) * 0.2 + 0.3
-                    # curvature_param = torch.rand(1) * 0.2 + 1.0  # remove later
             else:
                 curvature_param = 0.0
-            # curvature_param = -curvature_param  # remove later
             control_point = center_boundary + curvature_param * (
                 centroid - center_boundary
             )
@@ -499,16 +557,31 @@ class CableNet:
             graph.pattern_coords - centroid, dim=1, keepdim=True
         )
 
+        # Set force densities
+        q = np.random.uniform(30.0, 50.0) * torch.ones(graph.num_edges)
+        q[graph.is_boundary_edge.view(-1)] = np.random.uniform(200.0, 300.0)
+        q[graph.is_diagonal_edge.view(-1)] = np.random.uniform(30.0, 100.0)
+        graph.force_density = q.unsqueeze(1)
+
+        # Force density method
+        graph = graph.fdm()
+
+        if graph.bbox[0, 2] < 0.0 or graph.bbox[1, 2] > 1.0:
+            raise ValueError("Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2])
+
+        # Set support
+        graph.is_support = graph.is_support
+
         return graph
 
-    def is_internal_edge(self, u, v):
-        """Check if both nodes of the edge are not on the outer boundary."""
-        return self.is_internal_node(u) or self.is_internal_node(v)
+    # def is_internal_edge(self, u, v):
+    #     """Check if both nodes of the edge are not on the outer boundary."""
+    #     return self.is_internal_node(u) or self.is_internal_node(v)
 
-    def is_internal_node(self, node):
-        """Check if a node is internal (not on the outer boundary)."""
-        x, y = node
-        return 0 < x < self.n_cell_x and 0 < y < self.n_cell_y
+    # def is_internal_node(self, node):
+    #     """Check if a node is internal (not on the outer boundary)."""
+    #     x, y = node
+    #     return 0 < x < self.n_cell_x and 0 < y < self.n_cell_y
 
     @staticmethod
     def calculate_line(p1, p2):
@@ -668,18 +741,16 @@ class CableNet:
         return torch.tensor([Cx, Cy])
 
     @staticmethod
-    def sample_rectangle(square=False):
+    def sample_rectangle(width, height=None, square=False):
         """
         Randomly samples a rectangle with a minimum aspect ratio of 1:2.
 
         Returns:
             list of tuple: List of (x, y) coordinates of the rectangle vertices.
         """
-        width = torch.rand(1) * 0.9 + 0.1
         if square:
             height = width
-        else:
-            height = torch.rand(1) * 0.9 + 0.1
+        
         x0, y0 = -0.5 * width, -0.5 * height
         x1, y1 = 0.5 * width, 0.5 * height
 
@@ -691,7 +762,7 @@ class CableNet:
         ]
 
     @staticmethod
-    def sample_unit_circle(n, min_angle=torch.tensor(math.pi) / 8, angles=None):
+    def sample_unit_circle(n, angles=None):
         """
         Randomly samples n points on a unit circle, ensuring a minimum angle between points.
 
@@ -705,18 +776,6 @@ class CableNet:
         if n == 0:
             return []
 
-        if angles is None:
-            angles = []
-            while len(angles) < n:
-                angle = torch.rand(1) * 2 * math.pi
-                # Check if the new angle is far enough from all others
-                if all(
-                    abs((angle - a + math.pi) % (2 * math.pi) - math.pi) >= min_angle
-                    for a in angles
-                ):
-                    angles.append(angle)
-
-        angles.sort()
         points = [
             torch.tensor([torch.cos(angle), torch.sin(angle)]) for angle in angles
         ]
@@ -729,9 +788,6 @@ class CableNet:
 
     @staticmethod
     def generate_random_sequence(n):
-        if n < 4:
-            raise ValueError("n must be at least 4")
-
         sequence = np.array([1, 0, 1, 0])  # Start with [1, 0, 1, 0] as a numpy array
 
         while len(sequence) < n:
@@ -741,4 +797,4 @@ class CableNet:
                 sequence, insert_index, insert_value
             )  # Insert at the chosen position
 
-        return torch.tensor(sequence)
+        return sequence

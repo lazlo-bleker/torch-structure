@@ -3,7 +3,7 @@ from .structure import Structure
 from .bridge import Bridge
 from .gridshell import GridShellGenerator
 from .nervi_dome import NerviDome
-from .cablenet import CableNet
+from .cablenet import CableNetGenerator
 from .cable_stayed_bridge import CableStayedBridge
 from .network_arch_bridge import NetworkArchBridge
 from .dome import DomeGenerator
@@ -14,7 +14,7 @@ __all__ = [
     "Bridge",
     "GridShellGenerator",
     "DomeGenerator",
-    "CableNet",
+    "CableNetGenerator",
     "CableStayedBridge",
     "NerviDome",
     "NetworkArchBridge",
