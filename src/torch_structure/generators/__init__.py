@@ -1,21 +1,19 @@
 from .base_generator import BaseGenerator
 from .structure import Structure
 from .bridge import Bridge
-from .gridshell import GridShell
-from .gridshell_new import GridShellGenerator
+from .gridshell import GridShellGenerator
 from .nervi_dome import NerviDome
 from .cablenet import CableNet
 from .cable_stayed_bridge import CableStayedBridge
 from .network_arch_bridge import NetworkArchBridge
-from .dome import Dome
+from .dome import DomeGenerator
 
 __all__ = [
     "BaseGenerator",
     "Structure",
     "Bridge",
-    "GridShell",
     "GridShellGenerator",
-    "Dome",
+    "DomeGenerator",
     "CableNet",
     "CableStayedBridge",
     "NerviDome",
