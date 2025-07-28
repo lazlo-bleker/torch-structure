@@ -13,6 +13,7 @@ def fdm(
     use_batching=True,
     directed=False,
     solve_only_z=False,
+    C = None,
 ):
     """
     Performs the Force Density Method (FDM) to find the equilibrium state of a structure given its coordinates, loads,
@@ -28,6 +29,10 @@ def fdm(
         batch (torch.Tensor, optional): A tensor of shape (num_nodes, 1) indicating the batch assignment for each node. If not supplied
             a single linear system containing all nodes and edges of the entire batch is solved. Default is None.
         use_batching (bool, optional): If True, batching is used for solving the linear system. Default is True.
+        directed (bool, optional): If True, edges are assumed to be directed. If False, the force densities are halved to account for
+            undirected edges. Default is False.
+        solve_only_z (bool, optional): If True, only the z-coordinate of the free nodes is solved. Default is False.
+        C (torch.Tensor, optional): A precomputed branch-node matrix. If None, it is created using the edge_index. Default is None.
 
     Returns:
         A tuple containing:
@@ -44,7 +49,8 @@ def fdm(
     if not directed:
         force_density = 0.5 * force_density
 
-    C = create_branch_node_matrix(edge_index)
+    if C is None:
+        C = create_branch_node_matrix(edge_index)
     C_free = C[:, ~support]
     C_fixed = C[:, support]
     C_free_transposed = torch.transpose(C_free, 0, 1)
