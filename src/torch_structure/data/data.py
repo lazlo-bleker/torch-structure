@@ -96,6 +96,52 @@ class StructData:
             setattr(obj, key, value)
 
         return obj
+    
+    @classmethod
+    def from_rhino(cls, points, lines, tolerance=1e-6):
+        obj = cls()
+
+        coords_list = []
+        index_map = {}
+        for pt in points:
+            key = (round(pt.X / tolerance), round(pt.Y / tolerance), round(pt.Z / tolerance))
+            if key not in index_map:
+                index_map[key] = len(coords_list)
+                coords_list.append([pt.X, pt.Y, pt.Z])
+
+        def point_key(pt):
+            return (round(pt.X / tolerance), round(pt.Y / tolerance), round(pt.Z / tolerance))
+        
+        edges = []
+
+        for ln in lines:
+            i = index_map[point_key(ln.From)]
+            j = index_map[point_key(ln.To)]
+            edges.append((i, j))
+            edges.append((j, i))  # Add reciprocal edge
+
+        # Create edge_index tensor
+        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+        coords = torch.tensor(coords_list, dtype=torch.float)
+
+        num_edges = edge_index.size(1)
+    
+        directed_mask = torch.zeros((num_edges, 1), dtype=torch.bool)
+        directed_mask[::2] = True
+
+        # Reciprocal edge: forward i <-> i+1
+        reciprocal_edge = torch.arange(num_edges).view(-1, 2)
+        reciprocal_edge = reciprocal_edge[:, [1, 0]].reshape(-1, 1)
+
+        obj.data = Data(
+            edge_index=edge_index,
+            coords=coords,
+            directed_mask=directed_mask,
+            reciprocal_edge=reciprocal_edge,
+        )
+        obj.data.num_nodes = coords.size(0)
+
+        return obj
 
     def __getattr__(self, name):
         """Redirect attribute getter to `self.data`"""
@@ -641,6 +687,17 @@ class StructData:
 
     def to_networkx(self, **kwargs):
         return pyg.utils.to_networkx(self.data, **kwargs)
+    
+    def to_rhino(self):
+        import Rhino.Geometry as rg
+        
+        xyz = self.data.coords.detach().cpu().numpy()
+        src, dst = self.data.edge_index[:, self.data.directed_mask.view(-1)].detach().cpu().numpy()
+
+        points = [rg.Point3d(float(x), float(y), float(z)) for x, y, z in xyz]
+        lines = [rg.Line(points[int(s)], points[int(d)]) for s, d in zip(src, dst)]
+
+        return points, lines
 
     def copy(self):
         new_obj = type(self).__new__(type(self))
