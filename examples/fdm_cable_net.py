@@ -26,8 +26,8 @@ input_params = {
 # ----------------------------------
 # 2. Generate the cable net geometry
 # ----------------------------------
-cable_net = ts.generators.CableNet(**input_params)
-data = cable_net.graph  # Main data object of TorchStructure we'll work with
+cable_net_generator = ts.generators.CableNetGenerator(**input_params)
+data = cable_net_generator()  # Main data object of TorchStructure we'll work with
 
 # ----------------------------------
 # 3. Assign force densities to edges
