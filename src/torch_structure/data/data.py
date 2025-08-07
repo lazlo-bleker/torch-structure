@@ -96,7 +96,7 @@ class StructData:
             setattr(obj, key, value)
 
         return obj
-    
+
     @classmethod
     def from_rhino(cls, points, lines, tolerance=1e-6):
         obj = cls()
@@ -104,14 +104,22 @@ class StructData:
         coords_list = []
         index_map = {}
         for pt in points:
-            key = (round(pt.X / tolerance), round(pt.Y / tolerance), round(pt.Z / tolerance))
+            key = (
+                round(pt.X / tolerance),
+                round(pt.Y / tolerance),
+                round(pt.Z / tolerance),
+            )
             if key not in index_map:
                 index_map[key] = len(coords_list)
                 coords_list.append([pt.X, pt.Y, pt.Z])
 
         def point_key(pt):
-            return (round(pt.X / tolerance), round(pt.Y / tolerance), round(pt.Z / tolerance))
-        
+            return (
+                round(pt.X / tolerance),
+                round(pt.Y / tolerance),
+                round(pt.Z / tolerance),
+            )
+
         edges = []
 
         for ln in lines:
@@ -125,7 +133,7 @@ class StructData:
         coords = torch.tensor(coords_list, dtype=torch.float)
 
         num_edges = edge_index.size(1)
-    
+
         directed_mask = torch.zeros((num_edges, 1), dtype=torch.bool)
         directed_mask[::2] = True
 
@@ -687,12 +695,17 @@ class StructData:
 
     def to_networkx(self, **kwargs):
         return pyg.utils.to_networkx(self.data, **kwargs)
-    
+
     def to_rhino(self):
         import Rhino.Geometry as rg
-        
+
         xyz = self.data.coords.detach().cpu().numpy()
-        src, dst = self.data.edge_index[:, self.data.directed_mask.view(-1)].detach().cpu().numpy()
+        src, dst = (
+            self.data.edge_index[:, self.data.directed_mask.view(-1)]
+            .detach()
+            .cpu()
+            .numpy()
+        )
 
         points = [rg.Point3d(float(x), float(y), float(z)) for x, y, z in xyz]
         lines = [rg.Line(points[int(s)], points[int(d)]) for s, d in zip(src, dst)]

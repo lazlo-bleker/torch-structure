@@ -8,7 +8,7 @@ import random
 def dome_data():
     torch.manual_seed(42)
     random.seed(42)
-    
+
     generator = DomeGenerator()
     dome = generator()
     return dome
