@@ -23,6 +23,8 @@ bridge_params = {
     "deck_load": torch.tensor([0.0, 0.0, -1.0]),  # Downward gravity load on the deck
     "tower_height": 5.0,  # Height of each tower
     "tower_offset": 1.0,  # Horizontal distance from peak of towers to the deck
+    "back_stay_distance": 5.0,  # Distance of back stays from the deck
+    "back_stay_force": torch.tensor(10.0),  # Force in back stays
 }
 
 # Generate bridge structure
@@ -57,6 +59,8 @@ deck_mask[deck_node_indices] = True
 # -------------------------------
 @ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
 def deck_flatness(optim_forces, data, force_mask, reciprocal_force_mask, deck_mask):
+    optim_forces = optim_forces.float()  # Cast to 32-bit float (ToDo: add easy 64-bit support)
+
     # Update the force vector with optimization variables
     full_force = data.force.clone()
     full_force[force_mask] = optim_forces
