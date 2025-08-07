@@ -7,6 +7,7 @@ from .cablenet import CableNetGenerator
 from .cable_stayed_bridge import CableStayedBridge
 from .network_arch_bridge import NetworkArchBridge
 from .dome import DomeGenerator
+from .mixed_dome import MixedDomeGenerator
 
 __all__ = [
     "BaseGenerator",
@@ -18,4 +19,5 @@ __all__ = [
     "CableStayedBridge",
     "NerviDome",
     "NetworkArchBridge",
+    "MixedDomeGenerator",
 ]
