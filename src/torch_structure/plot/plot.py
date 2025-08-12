@@ -3,6 +3,7 @@ import numpy as np
 
 from torch_structure.message_passing import ResidualForce
 
+elev_default, azim_default, roll_default = (0.0, 90.0, 0.0)
 
 def plot_data(
     coords,
@@ -87,6 +88,7 @@ def plot_data(
     if ax is None:
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection="3d")
+        ax.view_init(elev=elev_default, azim=azim_default, roll=roll_default)
 
     # Plot edges
     for i, (src, dst) in enumerate(edge_index.t().cpu().numpy()):

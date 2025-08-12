@@ -7,7 +7,7 @@ def scipy_jacobian(func):
     func_grad_and_value = torch.func.grad_and_value(func)
 
     def func_scipy(x_np, *args):
-        x = torch.tensor(x_np, dtype=torch.float64)
+        x = torch.tensor(x_np, dtype=torch.float)
         grad_val, loss_val = func_grad_and_value(x, *args)
         loss, grad = loss_val.item(), grad_val.detach().numpy()
         func_scipy.best_loss = min(loss, func_scipy.best_loss)

@@ -2,6 +2,7 @@ from .base_generator import BaseGenerator
 from .structure import Structure
 from .bridge import Bridge
 from .gridshell import GridShellGenerator
+from .uv_grid import UVGridGenerator
 from .nervi_dome import NerviDome
 from .cablenet import CableNetGenerator
 from .cable_stayed_bridge import CableStayedBridge
@@ -14,6 +15,7 @@ __all__ = [
     "Structure",
     "Bridge",
     "GridShellGenerator",
+    "UVGridGenerator"
     "DomeGenerator",
     "CableNetGenerator",
     "CableStayedBridge",
