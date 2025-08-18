@@ -9,7 +9,7 @@ from torch_structure.generators.base_generator import BaseGenerator
 class MixedDomeGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)
-
+        self.max_attempts = 100
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
@@ -55,7 +55,7 @@ class MixedDomeGenerator(BaseGenerator):
         n_rings=None,
         trail_length=0.1,
         center_deviation_force=None,
-        opening=True,
+        opening=None,
         sign_flip_indices=None,
         center_trail_sign=None,
     ):
@@ -75,6 +75,8 @@ class MixedDomeGenerator(BaseGenerator):
             center_deviation_force = np.random.uniform(1.0, 4.0)
             if center_trail_sign == "compression":
                 center_deviation_force *= -1
+        if opening is None:
+            opening = np.random.choice([True, False], p=[0.5, 0.5])
 
         return {
             "n_trails": n_trails,
@@ -140,7 +142,7 @@ class MixedDomeGenerator(BaseGenerator):
         # Add ring deviations
         for i in range(1, n_rings):
             force_sign = torch.randint(2, (1,)) * 2 - 1
-            force_magnitude = torch.rand(1) * 2 + 1
+            force_magnitude = torch.rand(1) * 3 + 3
             force = force_sign * force_magnitude
             if i in sign_flip_indices:
                 force = force_signs[i] * np.random.uniform(20.0, 40.0)
@@ -178,6 +180,19 @@ class MixedDomeGenerator(BaseGenerator):
 
         # Set support
         data.is_support = data.is_support
+
+        # Check for radial symmetry in coords
+        radial_distance = torch.norm(data.coords[:, 0:2], dim=1)
+        for i in range(n_rings):
+            ring_radial_distance = radial_distance[i:-1:n_rings + int(opening)]
+            ring_height = data.coords[i:-1:n_rings + int(opening), 2]
+            symmetric = True
+            if not torch.allclose(ring_radial_distance, ring_radial_distance[0], atol=1e-4):
+                symmetric = False
+            if not torch.allclose(ring_height, ring_height[0], atol=1e-4):
+                symmetric = False
+            if not symmetric:
+                raise ValueError("Form-found structure is not radially symmetric.")
 
         return data
 
