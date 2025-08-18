@@ -26,6 +26,7 @@ def plot_data(
     ax=None,
     path=None,
     show=False,
+    out=True
 ):
     """
     Plot a structure in 3D.
@@ -214,6 +215,9 @@ def plot_data(
     # Show plot
     if show:
         plt.show()
+
+    if out:
+        return ax
 
 
 def plot_data_xz(

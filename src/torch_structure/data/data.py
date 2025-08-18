@@ -780,4 +780,5 @@ class StructData:
         if "force" not in kwargs:
             if "force" in self.edge_attr_list:
                 kwargs["force"] = self.force
-        plot_data(**kwargs)
+        out = plot_data(**kwargs)
+        return out

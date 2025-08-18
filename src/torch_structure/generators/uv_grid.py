@@ -11,44 +11,51 @@ class UVGridGenerator(BaseGenerator):
         super().__init__(**overrides)
         self.max_attempts = 1
         self.node_attrs = {
-            "coords": torch.empty((0, 3), dtype=torch.float),
-            "uv_coords": torch.empty((0, 2), dtype=torch.float),
-            "load": torch.empty((0, 3), dtype=torch.float),
+            "coords": torch.empty((0, 3), dtype=torch.float64),
+            "uv_coords": torch.empty((0, 2), dtype=torch.float64),
+            "load": torch.empty((0, 3), dtype=torch.float64),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
+            "active_ndof" : torch.empty((0, 1), dtype=torch.bool),
         }
         self.edge_attrs = {
-            "force": torch.empty((0, 1), dtype=torch.float),
-            "length": torch.empty((0, 1), dtype=torch.float),
+            "force": torch.empty((0, 1), dtype=torch.float64),
+            "length": torch.empty((0, 1), dtype=torch.float64),
             "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
-            "force_sign": torch.empty((0, 1), dtype=torch.float),
-            "active_dof" : torch.empty((0, 1), dtype=torch.bool),
+            "force_sign": torch.empty((0, 1), dtype=torch.float64),
+            "active_edof" : torch.empty((0, 1), dtype=torch.bool),
         }
         self.default_attrs = {
             "force": torch.tensor([torch.nan]),
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
-            "load": torch.zeros(3, dtype=torch.float),
+            "load": torch.zeros(3, dtype=torch.float64),
             "support_condition": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
-            "active_dof" : torch.tensor(1, dtype=torch.bool),
+            "active_edof" : torch.tensor(1, dtype=torch.bool),
+            "active_ndof" : torch.tensor(0, dtype=torch.bool),
         }
 
     def sample_input(
         self,
         nu : int = 10,
         nv : int = 10,
-    ):
-    
-        default_length : float = 1.0 / (nv-1),
+        default_length : float = 1.0,
         default_magnitude : float = -.0,
+        nw_point : torch.tensor = torch.tensor([0.0, 0.0, 1.0]),
+        ne_point : torch.tensor = torch.tensor([1.0, 0.0, 1.0]),
+        default_load : torch.tensor = torch.tensor([0.0, 0.0, -1.0])
+    ):
 
         input = {
             "nu": nu,
             "nv": nv,
             "default_length": default_length,
             "default_magnitude": default_magnitude,
+            "nw_point" : nw_point,
+            "ne_point" : ne_point,
+            "default_load" : default_load
         }
 
         return input
@@ -59,18 +66,15 @@ class UVGridGenerator(BaseGenerator):
         nv, 
         default_length,
         default_magnitude,
+        nw_point,
+        ne_point,
+        default_load
     ) -> StructData:
         graph = StructData(
             node_attrs=self.node_attrs,
             edge_attrs=self.edge_attrs,
             default_attrs=self.default_attrs,
         )
-
-        # Grid variables
-        nw_point = torch.tensor([0.0, 0.0, 1.0])
-        ne_point = torch.tensor([1.0, 0.0, 1.0])
-        default_load = torch.tensor([0.0, 0.0, -1.0])
-        
         # Generate origin nodes
         _v = 0
         for _u in range(nu):
@@ -82,7 +86,7 @@ class UVGridGenerator(BaseGenerator):
                 load = default_load,
                 is_origin_node = torch.tensor(True), 
                 sequence = torch.tensor(_v),
-                uv_coords = torch.tensor([_u, _v])
+                uv_coords = torch.tensor([_u, _v]),
             )
 
         # Generate inner nodes
@@ -90,7 +94,8 @@ class UVGridGenerator(BaseGenerator):
             for _u in range(nu):
                 graph.add_node(
                     f"u_{_u}_v_{_v}",
-                    load = default_load,
+                    # No self-weight, only load on top
+                    # load = default_load,
                     support_condition = torch.tensor([False, False, False]), 
                     is_origin_node = torch.tensor(False), 
                     sequence = torch.tensor(_v),
@@ -103,29 +108,26 @@ class UVGridGenerator(BaseGenerator):
             graph.add_node(
                 f"u_{_u}_v_{_v}",
                 load = default_load,
-                support_condition = torch.tensor([True, True, True]), 
+                support_condition = torch.tensor([False, True, False]), 
                 is_origin_node = torch.tensor(False), 
                 sequence = torch.tensor(_v),
                 uv_coords = torch.tensor([_u, _v])
             )
 
+        # Generate top deviation edges (zero force and not dof)
+        _v = 0
+        for _u in range(nu-1):
+                graph.add_edge(
+                f"u_{_u}_v_{_v}",
+                f"u_{_u+1}_v_{_v}",
+                is_trail_edge=torch.tensor(False),
+                # Init deviation edge to default of zero and keep like that
+                active_edof=torch.tensor(False),
+                force=torch.tensor(0.0),
+            )
         # Generate deviation edges
-        for _v in range(nv):
-            graph.add_edge(
-                f"u_{0}_v_{_v}",
-                f"u_{1}_v_{_v}",
-                is_trail_edge=torch.tensor(False),
-                force=default_magnitude,
-                # active_dof=torch.tensor(False)
-            )
-            graph.add_edge(
-                f"u_{nu-2}_v_{_v}",
-                f"u_{nu-1}_v_{_v}",
-                is_trail_edge=torch.tensor(False),
-                force=default_magnitude,
-                # active_dof=torch.tensor(False)
-            )
-            for _u in range(1,nu-2):
+        for _v in range(1,nv):
+            for _u in range(nu-1):
                 # Generate deviation edge (u,v) --> (u+1,v)
                 graph.add_edge(
                     f"u_{_u}_v_{_v}",

@@ -89,7 +89,7 @@ def mpcem_algorithm(
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((coords.shape[0], 3), float("nan")).to(coords.device)
+    reaction_force = torch.full((coords.shape[0], 3), float("nan"), dtype=torch.float64).to(coords.device)
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
