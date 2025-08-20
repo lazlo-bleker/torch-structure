@@ -1,17 +1,23 @@
 import torch
-
-nu = 10
-nv = 10
-move = 0.5
+# Grid parameters
+## Resolution
+nu = 15
+nv = 15
+## Dimenisons
 wall_height = 4.0
+s = 4.0 
+
+## Default element loads and magnitudes
 default_magnitude = -0.0
-omega_orthogonal = .1
-nw_point = torch.tensor([0.0, 0.0, wall_height])
-ne_point = torch.tensor([1.0, 0.0, wall_height])
-sw_point = torch.tensor([0.0-move, 0.0, 0.0])
-se_point = torch.tensor([1.0+move, 0.0, 0.0])
 default_load = torch.tensor([0.0, 0.0, -1.0])
 
+## Reference points
+nw_point = torch.tensor([0.0, 0.0, wall_height])
+ne_point = torch.tensor([1.0, 0.0, wall_height])
+sw_point = torch.tensor([0.0-(s - 1.)/2, 0.0, 0.0])
+se_point = torch.tensor([1.0+(s  -1.)/2, 0.0, 0.0])
+
+## Pack dict for generator
 uv_input_params = {
     "nu": nu, 
     "nv": nv, 
@@ -22,8 +28,7 @@ uv_input_params = {
     "default_load" : default_load
 }
 
-verbose = False
-test_solve_flag = False
-max_iters_opt = 200
-max_iters_cem = 100
-ftol = 1e-8
+## Optimizaiton parameters
+omega_orthogonal = 1e0
+max_iters_opt = 1000
+n_shots = 50

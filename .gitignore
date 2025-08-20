@@ -175,3 +175,9 @@ cython_debug/
 
 # WandB
 /wandb
+
+# Plots
+**.png
+**.gif
+# Optimization logs
+**events.out.tfevents**
