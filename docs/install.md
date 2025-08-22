@@ -35,12 +35,12 @@ uv venv --python 3.12
 
 ### 2. Install PyTorch
 
-Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/previous-versions/#v251) to find the correct command for your system. We recommend **PyTorch 2.5.1**.
+Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/previous-versions/#v251) to find the correct command for your system. We recommend installing the latest stable version.
 
-For example, if using CUDA 12.4:
+For example, if using CUDA 12.8:
 
 ```bash
-pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu129
 ```
 
 ### 3. Install PyTorch Geometric
@@ -49,7 +49,7 @@ Visit the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readt
 
 ```bash
 pip install torch_geometric
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.5.0+cu124.html    
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.8.0+cu128.html 
 ```
 
 ### 4. Install `torch_structure`
