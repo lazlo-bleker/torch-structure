@@ -93,7 +93,8 @@ def mpcem_algorithm(
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
-        print(f"MP-CEM finished in {i + 1}, {n_steps} steps. Converged: {converged}.")
+        print(f"MP-CEM finished in {n_steps} steps. Converged: {converged}.")
+        # i + 1
 
     if track_history:
         return coords_history, force_history, reaction_force
@@ -140,7 +141,7 @@ def cem_algorithm(
         prev_coords = coords.clone()
         for k in range(max_k):
             if n_steps >= max_iter:
-                print(f"Maximum iterations {max_iter} reached without convergence.")
+                print(f"Maximum steps {max_iter} reached without convergence.")
                 break
             # only consider edges with a coordinate (estimate) for both nodes and pointing to a node in the current sequence
             valid_nodes = ~torch.isnan(coords).any(dim=1)
@@ -218,8 +219,9 @@ def cem_algorithm(
 
     if verbose:
         print(
-            f"CEM finished in {(i + 1) * max_k}, {n_steps} iterations. Converged: {converged}."
+            f"CEM finished in {n_steps} steps. Converged: {converged}."
         )
+        # (i + 1) * max_k
 
     if track_history:
         return coords_history, force_history, reaction_force
@@ -243,11 +245,6 @@ def seq_cem_algorithm(
     damping_factor=0.0,
     enhanced_first_iteration=False,
     verbose=False,
-    plot=False,
-    ax=None,
-    ax_list=None,
-    first_frame_id=None,
-    last_frame_id=None,
     track_history=False,
 ):
     """Combinatorial Equilibrium Modelling"""
@@ -279,7 +276,7 @@ def seq_cem_algorithm(
             k_node_indices = torch.where(k_mask & ~is_support)[0]
             for j, node_idx in enumerate(k_node_indices):
                 if n_steps >= max_iter:
-                    print(f"Maximum iterations {max_iter} reached without convergence.")
+                    print(f"Maximum steps {max_iter} reached without convergence.")
                     break
                 seq_mask = torch.zeros_like(k_mask, dtype=torch.bool)
                 seq_mask[node_idx] = True
@@ -359,8 +356,9 @@ def seq_cem_algorithm(
 
     if verbose:
         print(
-            f"CEM (sequential) finished in {(i + 1) * max_k * len(k_node_indices)}, {n_steps} iterations. Converged: {converged}."
+            f"CEM (sequential) finished in {n_steps} steps. Converged: {converged}."
         )
+        # (i + 1) * max_k * len(k_node_indices)
 
     if track_history:
         return coords_history, force_history, reaction_force
