@@ -176,7 +176,7 @@ class MixedDomeGenerator(BaseGenerator):
         data.coords /= radius
 
         # Translate to positive coordinates
-        data.coords[:, 2] -= data.coords[:, 2].min()
+        data.coords[:, 2] -= data.coords[data.is_support.view(-1), 2].min()
 
         # Set support
         data.is_support = data.is_support
