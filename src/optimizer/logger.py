@@ -2,6 +2,12 @@ import os
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
+from .utils import export_graph_to_vtp
+from .config import (
+    export_plt, 
+    export_paraview,
+    export_tensorboard
+)
 
 class Logger():
     def __init__(self, optimizer):
@@ -13,6 +19,13 @@ class Logger():
         self.optimizer = optimizer
         # Initialize tensorboard writer
         self.writer = SummaryWriter()
+        if export_plt:
+            # Find folder to save plot it
+            folder_path = f"{self.writer.log_dir}/img"
+            os.makedirs(folder_path, exist_ok=True)
+        if export_paraview:
+            folder_path = f"{self.writer.log_dir}/paraview"
+            os.makedirs(folder_path, exist_ok=True)
         # Option to add additional scatter plots
         self.additional_scatter_plots = []
     
@@ -20,18 +33,19 @@ class Logger():
         """
         When called, logs data to tensorboard and prints the optimizer status to terminal
         """
-        # Collect scalar values in objective_function_handler
-        # NOTE: Partial losses are directly stores in an attribute
-        for loss_name, loss_value in self.optimizer.objective_function_handler.loss_dict.items():
-            self.writer.add_scalar(loss_name, loss_value, self.iteration)
-        
-        # Collect scalar values in constraint_function_handler
-        for constr_name, constr_object in self.optimizer.constraint_function_handler.constraint_objects.items():
-            # Get log data from constraint
-            constr_log_dict = constr_object.get_log_dict()
-            for name, value in constr_log_dict.items():
-                full_name = f"{constr_name}/{name}"
-                self.writer.add_scalar(full_name, value, self.iteration)
+        if export_tensorboard:
+            # Collect scalar values in objective_function_handler
+            # NOTE: Partial losses are directly stores in an attribute
+            for loss_name, loss_value in self.optimizer.objective_function_handler.loss_dict.items():
+                self.writer.add_scalar(loss_name, loss_value, self.iteration)
+            
+            # Collect scalar values in constraint_function_handler
+            for constr_name, constr_object in self.optimizer.constraint_function_handler.constraint_objects.items():
+                # Get log data from constraint
+                constr_log_dict = constr_object.get_log_dict()
+                for name, value in constr_log_dict.items():
+                    full_name = f"{constr_name}/{name}"
+                    self.writer.add_scalar(full_name, value, self.iteration)
 
         # Get value of total loss
         total_loss = self.optimizer.objective_function_handler.loss_dict["Loss/Total"]
@@ -46,32 +60,37 @@ class Logger():
         """
         Handles the plot of the instance of StrucData
         """
-        # Plot the optimized structure    
-        data_plot = solved_graph.plot(title="Optimized Structure", legend=False, force_scale = 6.0)
-        # Add additional (optional) scatters
-        for additional_scatter_plot in self.additional_scatter_plots:
-            data_plot.scatter(**additional_scatter_plot)
-        # Find folder to save plot it
-        folder_path = f"{self.writer.log_dir}/shots"
-        os.makedirs(folder_path, exist_ok=True)
-        # Save plot and close afterwards
-        plt.savefig(f"{folder_path}/{shot:05d}.png", dpi=400)
-        plt.close()
+        if export_plt:
+            # Plot the optimized structure    
+            data_plot = solved_graph.plot(title="Optimized Structure", legend=False, force_scale = 15.0)
+            # Add additional (optional) scatters
+            for additional_scatter_plot in self.additional_scatter_plots:
+                data_plot.scatter(**additional_scatter_plot)
+            # Save plot and close afterwards
+            plt.savefig(f"{self.writer.log_dir}/img/shot_{shot:05d}.png", dpi=200)
+            plt.close()
 
+        if export_paraview:  
+            solved_graph.length = solved_graph.length_from_coords
+            graph = solved_graph.to_networkx(node_attrs=["coords"], edge_attrs=["force","length"])
+            filepath = f"{self.writer.log_dir}/paraview/shot_{shot}.vtp"
+            export_graph_to_vtp(graph, filepath, True)
+    
     def generate_gif(self):
         """
         Collects all the snapshot saved plots and creates a GIF out of them
         """
-        # Folder containing your images
-        folder_path = f"{self.writer.log_dir}/shots"
-        output_gif = f"{self.writer.log_dir}/shots.gif"
+        if export_plt:
+            # Folder containing your images
+            folder_path = f"{self.writer.log_dir}/img"
+            output_gif = f"{self.writer.log_dir}/shots.gif"
 
-        # Collect all image files (sorted)
-        images = []
-        for filename in sorted(os.listdir(folder_path)):
-            if filename.endswith((".png", ".jpg", ".jpeg")):
-                image_path = os.path.join(folder_path, filename)
-                images.append(imageio.imread(image_path))
+            # Collect all image files (sorted)
+            images = []
+            for filename in sorted(os.listdir(folder_path)):
+                if filename.endswith((".png", ".jpg", ".jpeg")):
+                    image_path = os.path.join(folder_path, filename)
+                    images.append(imageio.imread(image_path))
 
-        # Save as GIF
-        imageio.mimsave(output_gif, images, duration=10.0)
+            # Save as GIF
+            imageio.mimsave(output_gif, images, duration=10.0)

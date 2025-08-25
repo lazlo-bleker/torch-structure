@@ -10,3 +10,8 @@ ftol = 1e-8
 
 # CEM iterations when solving graph
 max_iters_cem = 100
+
+# Export flags
+export_plt = False
+export_paraview = True
+export_tensorboard = True

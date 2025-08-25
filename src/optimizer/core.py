@@ -34,7 +34,7 @@ class Optimizer():
         """
         self.objective_function_handler.add_function(name, weight, func, kwargs)
 
-    def add_constr_function(self, name, fun, lb, ub, kwargs):
+    def add_constr_function(self, name : str, fun, lb, ub, kwargs):
         """
         Pass task to child instance of Constraint_Function_Handler
         """
@@ -67,6 +67,10 @@ class Optimizer():
 
         # For each snapshot to capture
         for n_shot in range(n_shots):
+            # Plot structure (capture snapshot)
+            solved_graph = self.graph.cem(max_iter=max_iters_cem, verbose=True)
+            self.logger.plot(solved_graph, n_shot)
+
             # Run scipy with gradients from torch_structure
             result = minimize(
                 fun = obj_func,
@@ -81,9 +85,6 @@ class Optimizer():
 
             # Update design variable values
             x0 = result.x
-
-            # Plot structure (capture snapshot)
-            self.logger.plot(self.graph.cem(max_iter=max_iters_cem, verbose=True), n_shot)
 
         # Generate GIF from snapshots
         self.logger.generate_gif()

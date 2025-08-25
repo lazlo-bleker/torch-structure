@@ -39,22 +39,20 @@ class UVGridGenerator(BaseGenerator):
 
     def sample_input(
         self,
+        origin_nodes : torch.tensor = torch.tensor([]),
         nu : int = 10,
         nv : int = 10,
         default_length : float = 1.0,
         default_magnitude : float = -.0,
-        nw_point : torch.tensor = torch.tensor([0.0, 0.0, 1.0]),
-        ne_point : torch.tensor = torch.tensor([1.0, 0.0, 1.0]),
         default_load : torch.tensor = torch.tensor([0.0, 0.0, -1.0])
     ):
 
         input = {
+            "origin_nodes" : origin_nodes,
             "nu": nu,
             "nv": nv,
             "default_length": default_length,
             "default_magnitude": default_magnitude,
-            "nw_point" : nw_point,
-            "ne_point" : ne_point,
             "default_load" : default_load
         }
 
@@ -62,12 +60,11 @@ class UVGridGenerator(BaseGenerator):
 
     def generate(
         self,
+        origin_nodes,
         nu, 
         nv, 
         default_length,
         default_magnitude,
-        nw_point,
-        ne_point,
         default_load
     ) -> StructData:
         graph = StructData(
@@ -78,8 +75,7 @@ class UVGridGenerator(BaseGenerator):
         # Generate origin nodes
         _v = 0
         for _u in range(nu):
-            omega_u = _u/(nu-1)
-            xyz_coords = nw_point * (1-omega_u) + ne_point * omega_u
+            xyz_coords = origin_nodes[_u]
             graph.add_node(
                 f"u_{_u}_v_{_v}",
                 coords = xyz_coords,
