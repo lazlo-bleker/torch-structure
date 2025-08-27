@@ -184,10 +184,12 @@ class MixedDomeGenerator(BaseGenerator):
         # Check for radial symmetry in coords
         radial_distance = torch.norm(data.coords[:, 0:2], dim=1)
         for i in range(n_rings):
-            ring_radial_distance = radial_distance[i:-1:n_rings + int(opening)]
-            ring_height = data.coords[i:-1:n_rings + int(opening), 2]
+            ring_radial_distance = radial_distance[i : -1 : n_rings + int(opening)]
+            ring_height = data.coords[i : -1 : n_rings + int(opening), 2]
             symmetric = True
-            if not torch.allclose(ring_radial_distance, ring_radial_distance[0], atol=1e-4):
+            if not torch.allclose(
+                ring_radial_distance, ring_radial_distance[0], atol=1e-4
+            ):
                 symmetric = False
             if not torch.allclose(ring_height, ring_height[0], atol=1e-4):
                 symmetric = False
