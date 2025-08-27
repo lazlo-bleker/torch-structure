@@ -30,8 +30,6 @@ data.load = load
 
 q = torch.full((data.num_edges,), 40.0)
 
-q[data.is_boundary_edge.view(-1)] = 250.0
-
 data.force_density = q.unsqueeze(1)
 
 

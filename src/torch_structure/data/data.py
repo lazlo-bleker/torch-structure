@@ -89,6 +89,7 @@ class Data:
             length = torch.norm(
                 self.coords[src] - self.coords[dst], dim=1, keepdim=True
             )
+
             return length
 
         else:
@@ -266,6 +267,67 @@ class Data:
                 torch.cat([getattr(self.data, attr), value.unsqueeze(0)], dim=0),
             )
 
+    def add_node2(self, name: str, **kwargs):
+        """
+        Adds a new node.
+        """
+        # Check for unexpected attributes
+        unexpected_attrs = set(kwargs.keys()) - set(self.node_attr_list)
+        if unexpected_attrs:
+            raise ValueError(
+                f"Unexpected node attributes: {unexpected_attrs}. Expected: {list(self.node_attr_list)}"
+            )
+
+        # Check if node already exists
+        if name in self.node_name_to_index:
+            raise ValueError(f"Node '{name}' already exists!")
+
+        self.node_name_to_index[name] = self.num_nodes  # Add node to node_name_to_index
+        self._num_nodes += 1  # Increment number of nodes
+
+        # Add node attributes
+        for attr in self.node_attr_list:
+            if attr in kwargs:
+                value = kwargs[attr]
+
+                # Cast non-tensor attributes to tensor
+                if not isinstance(value, torch.Tensor):
+                    value = torch.tensor(value, dtype=getattr(self.data, attr).dtype)
+                    # warnings.warn(f"Node '{name}' attribute '{attr}' was automatically cast to a torch tensor.", UserWarning)
+
+            # If attribute is not provided, set it to default value
+            elif attr in self.default_attrs:
+                value = self.default_attrs[attr]
+
+            # If attribute has no default value, set it to zero
+            else:
+                attr_shape = getattr(self.data, attr).shape[1:]
+                value = getattr(self.data, attr).new_zeros(attr_shape)
+                # warnings.warn(f"Node '{name}' attribute '{attr}' initialized to zeros (no default value provided).", UserWarning)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            existing = getattr(self.data, attr)
+            value = torch.as_tensor(value, dtype=existing.dtype, device=existing.device)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            if value.dim() < existing.dim():
+                while value.dim() < existing.dim():
+                    value = value.unsqueeze(0)
+
+            elif value.dim() > existing.dim():
+                while value.dim() > existing.dim():
+                    value = value.squeeze(0)
+
+            setattr(
+                self.data,
+                attr,
+                torch.cat([getattr(self.data, attr)], dim=0),
+            )
+
     # def remove_edge(self, node_1: str, node_2: str):
     #     """
     #     Removes the edge between `node_1` to `node_2`.
@@ -361,6 +423,96 @@ class Data:
                     dim=0,
                 ),
             )
+
+
+    
+    def add_edge2(self, src: str, dst: str, name=None, **kwargs):
+        """
+        Adds a new edge from `src` to `dst`.
+        """
+        # Check for unexpected attributes
+        unexpected_attrs = set(kwargs.keys()) - set(self.edge_attr_list)
+        if unexpected_attrs:
+            raise ValueError(
+                f"Unexpected edge attributes: {unexpected_attrs}. Expected: {list(self.edge_attr_list)}"
+            )
+
+        # Add nodes if they do not exist
+        if src not in self.node_name_to_index:
+            self.add_node(src)
+        if dst not in self.node_name_to_index:
+            self.add_node(dst)
+
+        # Add edge to edge_name_to_index
+        main_name = f"{src}-{dst}" if name is None else name
+        self.edge_name_to_index[main_name] = self.num_edges
+        reciprocal_name = f"{dst}-{src}" if name is None else f"{name}_reciprocal"
+        self.edge_name_to_index[reciprocal_name] = self.num_edges + 1
+
+        # Update directed mask and reciprocal edge
+        self.data.directed_mask = torch.cat(
+            [self.directed_mask, torch.tensor([[True], [False]])], dim=0
+        )
+        self.data.reciprocal_edge = torch.cat(
+            [
+                self.reciprocal_edge,
+                torch.tensor([[self.num_edges + 1], [self.num_edges]]),
+            ],
+            dim=0,
+        )
+
+        # Add edge to edge_index
+        src_index, dst_index = (
+            self.node_name_to_index[src],
+            self.node_name_to_index[dst],
+        )
+        new_edge = torch.tensor([[src_index, dst_index], [dst_index, src_index]])
+        self.data.edge_index = torch.cat([self.edge_index, new_edge], dim=1)
+
+        # Add edge attributes
+        for attr in self.edge_attr_list:
+            if attr in kwargs:
+                value = kwargs[attr]
+
+                # Cast non-tensor attributes to tensor
+                if not isinstance(value, torch.Tensor):
+                    value = torch.tensor(value, dtype=getattr(self.data, attr).dtype)
+                    # warnings.warn(f"Edge '({src}, {dst})' attribute '{attr}' was automatically cast to a tensor.", UserWarning)
+
+            # If attribute is not provided, set it to default value
+            elif attr in self.default_attrs:
+                value = self.default_attrs[attr]
+
+            # If attribute has no default value, set it to zero
+            else:
+                attr_shape = getattr(self.data, attr).shape[1:]
+                value = getattr(self.data, attr).new_zeros(attr_shape)
+                # warnings.warn(f"Edge '({src}, {dst})' attribute '{attr}' initialized to zeros (no default value provided).", UserWarning)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            existing = getattr(self.data, attr)
+            value = torch.as_tensor(value, dtype=existing.dtype, device=existing.device)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            while value.dim() < existing.dim() - 1:
+                value = value.unsqueeze(0)
+
+            while value.dim() > existing.dim() - 1:
+                value = value.squeeze(0)
+
+            setattr(
+                self.data,
+                attr,
+                torch.cat(
+                    [getattr(self.data, attr), value.unsqueeze(0), value.unsqueeze(0)],
+                    dim=0,
+                ),
+            )
+
 
     def succesors(self, node_name):
         # Todo: implement networkx-style successors
@@ -502,6 +654,7 @@ class Data:
                 value = getattr(self, arg)
 
                 # Apply edge mask
+
                 if edge_mask is not None:
                     if arg in self.edge_attr_list:
                         value = value[edge_mask]
@@ -509,6 +662,7 @@ class Data:
                         value = value[:, edge_mask]
 
                 kwargs[arg] = value
+
 
         return kwargs
 

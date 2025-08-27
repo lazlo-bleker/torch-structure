@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 
-parallel_lines = 10
+parallel_lines = 5
 meridians = 10
 radius = 5
 input_params = {
@@ -34,7 +34,6 @@ for j in range(meridians):
 
 
 
-print(data.directed_mask)
 #rest of edges
 for i in range(parallel_lines):
     for j in range(meridians):
@@ -42,11 +41,11 @@ for i in range(parallel_lines):
         if i  > 0:
             
             #q[k] = 10 - i
-            q[k] = 0
+            #q[k] = 0
             k += 2
         
         
-        q[k] = 40 - 2 * i
+        #q[k] = 40 - 2 * i
 
         k += 2
 
@@ -59,11 +58,23 @@ max_its = 100
 
 norm_steps = []
 
+
+load = pneu_dome.calculate_loads(data, parallel_lines, meridians, 15)
+data.load = load
+
+data.plot(title="Pneu Dome", legend=False, show_load=False, load=data.load, force_scale = 0.05, lw_scale = 0.09)
+plt.show()
+data.plot(title="Pneu Dome", legend=False, show_load=True, load=data.load, force_scale = 0.05, lw_scale = 0.09)
+plt.show()
+
 for i in range(max_its):
 
-    load = pneu_dome.calculate_loads(data, parallel_lines, meridians, 2)
+
+
+    load = pneu_dome.calculate_loads(data, parallel_lines, meridians, 15)
 
     data.load = load
+
 
 
     old_coords = data.coords
@@ -80,14 +91,17 @@ for i in range(max_its):
 
     #print(i)
     #print(norm_step.item())
+
+    #data.plot(title="Pneu Dome", legend=False, show_load=True, load=data.load, force_scale = 0.05, lw_scale = 0.09)
+    #plt.show()
     
+
     if norm_step < eps:
         break
 
     
-data.plot(title="Pneu Dome", legend=False, show_load=True, load=data.load, force_scale = 0.2)
     
-#data.plot()
+data.plot(title="Pneu Dome", legend=False, show_load=False, load=data.load, force_scale = 0.02, lw_scale = 0.09)
 plt.show()
 
 iterations = range(len(norm_steps))

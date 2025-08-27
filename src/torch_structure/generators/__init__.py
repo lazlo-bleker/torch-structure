@@ -4,6 +4,9 @@ from .gridshell import GridShell
 from .nervi_dome import NerviDome
 from .cablenet import CableNet
 from .pneudome import PneuDome
+from .pneudomehetero import PneuDomeHetero
+from .pneustructure import PneuStructure
+from .pneutube import PneuTube
 from .cable_stayed_bridge import CableStayedBridge
 from .network_arch_bridge import NetwokrkArchBridge
 from .dome import Dome
@@ -17,5 +20,8 @@ __all__ = [
     "CableStayedBridge",
     "NerviDome",
     "NetwokrkArchBridge",
-    "PneuDome"
+    "PneuDome",
+    "PneuDomeHetero",
+    "PneuStructure",
+    "PneuTube"
 ]

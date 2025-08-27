@@ -1,19 +1,25 @@
 import torch
 import math
-import numpy as np
 
 from torch_structure.data import Data
 
+import torch_geometric as pyg
 
-class PneuDome:
+from torch_geometric.typing import torch_scatter
+
+from torch_scatter import scatter_add, scatter_mean
+
+class PneuDomeHetero:
     def __init__(
         self,
         num_parallel_lines: int,
         num_meridians: int,
-        radius: float,
+        radius: float
     ):
-
-        self.graph = self.generate_graph(
+        
+        self.face_node_table = torch.empty((0, 3), dtype=torch.int)
+        
+        self.graph, self.hetero_graph = self.generate_graph(
             num_parallel_lines,
             num_meridians,
             radius
@@ -26,7 +32,7 @@ class PneuDome:
         radius
     ):
         
-    
+
         node_attrs = {
             "pattern_coords": torch.empty((0, 2), dtype=torch.float),
             "is_support": torch.empty((0, 1), dtype=torch.bool),
@@ -42,6 +48,10 @@ class PneuDome:
         graph = Data(
             node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
         )
+        
+        hetero_graph = pyg.data.HeteroData()
+
+
         #rest of nodes
         for i in range(num_parallel_lines):
             for j in range(num_meridians):
@@ -60,6 +70,7 @@ class PneuDome:
                     is_boundary = bound
                 )
 
+        
         #add centroid
         graph.add_node(
                     "centroid",
@@ -67,7 +78,8 @@ class PneuDome:
                     is_support = False,
                     is_boundary = False
                 )
-        #edges to centroid   
+
+        #edges to centroid                
         for j in range(num_meridians):
             
             graph.add_edge(str(num_parallel_lines-1) + str(j), "centroid", is_meridian = torch.tensor(True))
@@ -79,20 +91,114 @@ class PneuDome:
                 if i > 0:
 
                     graph.add_edge(str(i) + str(j), str(i) + str((j+1) % num_meridians), is_meridian = torch.tensor(False))
-
+                
                 if i < num_parallel_lines - 1:
-
                     graph.add_edge(str(i) + str(j), str(i+1) + str(j), is_meridian = torch.tensor(True))
+                
+        
+
 
         graph.coords = torch.cat(
             [graph.pattern_coords, graph.z_coord],
             dim=1,
         )
 
-        return graph
+        #hetero_graph['face_node'].x = torch.empty((3, num_faces)) 
+
+        hetero_graph['node'].coords = graph.coords
+
+        hetero_graph['node', 'connected_to', 'node'].edge_index = graph.edge_index
+
+        index = 0
+
+        for i in range(num_parallel_lines-1):
+            for j in range(num_meridians):
+                
+
+                self.add_face(hetero_graph, [index, i * num_meridians + (j + 1) % num_meridians, (i + 1) * num_meridians + (j + 1) % num_meridians, index + num_meridians])
+
+                index += 1
+
+
+        for j in range(num_meridians):
+
+
+            self.add_face(hetero_graph, [index, (num_parallel_lines - 2) * num_meridians + (j + 1) % num_meridians, num_parallel_lines * num_meridians])
+
+            index += 1
+
+
+        return graph, hetero_graph
     
 
+
+    def add_face(self, graph, node_indices):
+
+        coords = torch.empty((1, 3))  
+
+        if 'coords' in graph['face_node']:
+            graph['face_node'].coords = torch.cat([graph['face_node'].coords, coords], dim=0)
+        else:
+            graph['face_node'].coords = coords
+
+        face_index = graph['face_node'].coords.size(0)-1
+
+        rows = []
+
+        for i in range(len(node_indices)):
+            rows.append(torch.tensor([
+                node_indices[i],
+                node_indices[(i + 1) % len(node_indices)],
+                face_index
+            ], dtype=torch.long))
+
+        # Stack all new rows
+        new_rows = torch.stack(rows)  # shape: [n, 3]
+
+        # Append to face_node_table
+        self.face_node_table = torch.cat([self.face_node_table, new_rows], dim=0)
+
+        
     def calculate_loads(
+        self,
+        pressure
+
+    ):
+        
+        nodes1_indices = self.face_node_table[:, 0]
+        nodes2_indices = self.face_node_table[:, 1]
+        face_node_indices = self.face_node_table[:, 2]
+
+        nodes = self.hetero_graph['node'].coords
+        
+        self.hetero_graph['face_node'].coords = scatter_mean(nodes[nodes1_indices], face_node_indices, dim = 0)
+
+        face_nodes = self.hetero_graph['face_node'].coords
+
+        vec1 = nodes[nodes2_indices] - nodes[nodes1_indices]
+        vec2 = face_nodes[face_node_indices] - nodes[nodes1_indices]
+
+        normals = torch.cross(vec1, vec2) 
+        
+        return (scatter_add(normals, nodes1_indices, dim = 0) + scatter_add(normals, nodes2_indices, dim = 0)) / 4 * pressure
+        
+
+    @staticmethod
+    def area_trapezoid(A, B, C, D):
+        
+        AB = B - A
+        AC = C - A
+        area = 0.5 * torch.norm(torch.cross(AB, AC))
+
+        AD = D - A
+
+        return area + 0.5 * torch.norm(torch.cross(AD, AC))
+    
+
+
+
+
+    def calculate_loads_old(
         self, 
         graph,
         num_parallel_lines,
@@ -297,16 +403,6 @@ class PneuDome:
         return load
     
     
-    @staticmethod
-    def area_trapezoid(A, B, C, D):
-        
-        AB = B - A
-        AC = C - A
-        area = 0.5 * torch.norm(torch.cross(AB, AC))
-
-        AD = D - A
-
-        return area + 0.5 * torch.norm(torch.cross(AD, AC))
 
 
         
