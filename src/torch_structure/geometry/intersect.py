@@ -2,7 +2,7 @@ import torch
 from torch_structure.geometry import point_normal_to_plane
 
 
-def line_plane_intersect(plane, point, vector, eps=1e-12):
+def line_plane_intersect(plane, point, vector, eps=1e-12, return_t=False):
     """
     Vectorized intersection of multiple lines-plane pairs.
 
@@ -54,4 +54,7 @@ def line_plane_intersect(plane, point, vector, eps=1e-12):
     no_intersect = is_parallel & (~is_in_plane)
     intersection[no_intersect] = torch.nan
 
-    return intersection
+    if return_t:
+        return intersection, t
+    else:
+        return intersection
