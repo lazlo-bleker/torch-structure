@@ -1,5 +1,6 @@
 import torch
 from torch_structure.message_passing import ResidualForce
+from torch_structure.geometry import line_plane_intersect, point_normal_to_plane
 
 
 def mpcem_algorithm(
@@ -12,6 +13,7 @@ def mpcem_algorithm(
     length,
     force_sign,
     force,
+    constraint_plane=None,
     max_iter=100,
     tolerance=1e-5,
     damping_factor=0.5,
@@ -30,6 +32,25 @@ def mpcem_algorithm(
 
     residual_force_update = ResidualForce()
     trail_src, trail_dst = edge_index[:, is_trail_edge]
+
+    if constraint_plane is not None:
+        if constraint_plane.size(-1) == 6:
+            constraint_plane = point_normal_to_plane(constraint_plane)
+        constraint_plane_mask = ~torch.isnan(constraint_plane).any(dim=1)
+        trail_edge_constraint_plane_mask = constraint_plane_mask[trail_dst]
+    else:
+        trail_edge_constraint_plane_mask = torch.zeros_like(
+            length[is_trail_edge], dtype=torch.bool
+        )
+    edge_constraint_plane_mask = torch.zeros_like(length, dtype=torch.bool)
+    edge_constraint_plane_mask[is_trail_edge] = trail_edge_constraint_plane_mask
+
+    if not torch.all(
+        trail_edge_constraint_plane_mask | ~torch.isnan(length[is_trail_edge])
+    ):
+        raise ValueError(
+            "All trail edges must have a specified length or associated constraint plane."
+        )
 
     converged = False
     n_steps = 0
@@ -52,20 +73,42 @@ def mpcem_algorithm(
         #     converged = True
         #     break
         trail_force = residual_force[trail_src]
-
-        # Update force of trail edges
         trail_force_mag = torch.norm(trail_force, dim=1)
-        force[is_trail_edge] = force_sign[is_trail_edge] * trail_force_mag
 
         # Update coordinates
         clamped_trail_force_mag = trail_force_mag.clamp(min=1e-8).unsqueeze(1)
         unit_trail_force = trail_force / clamped_trail_force_mag
-        coords_update = (
-            unit_trail_force
-            * length[is_trail_edge].unsqueeze(1)
-            * -force_sign[is_trail_edge].unsqueeze(1)
+
+        # Coordinates defined by trail lengths
+        length_coords_update = (
+            unit_trail_force[~trail_edge_constraint_plane_mask]
+            * length[is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
+            * -force_sign[is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
         )
-        new_coords = coords[trail_src] + coords_update
+        new_coords_length = (
+            coords[trail_src][~trail_edge_constraint_plane_mask] + length_coords_update
+        )
+
+        # Coordinates defined by constraint planes
+        if constraint_plane is not None:
+            new_coords_plane, t = line_plane_intersect(
+                plane=constraint_plane[constraint_plane_mask],
+                point=coords[trail_src][trail_edge_constraint_plane_mask],
+                vector=unit_trail_force[trail_edge_constraint_plane_mask],
+                return_t=True,
+            )
+            force_sign[edge_constraint_plane_mask] = -torch.sign(t)
+        else:
+            new_coords_plane = coords[trail_dst][trail_edge_constraint_plane_mask]
+
+        new_coords = torch.empty_like(coords[trail_dst])
+        new_coords[~trail_edge_constraint_plane_mask] = new_coords_length
+        new_coords[trail_edge_constraint_plane_mask] = new_coords_plane
+
+        # Update force of trail edges
+        force[is_trail_edge] = force_sign[is_trail_edge] * trail_force_mag
+
+        # Apply damping to new coordinates
         if coords[trail_dst].isnan().any():
             coords[trail_dst] = new_coords
         else:
@@ -218,9 +261,7 @@ def cem_algorithm(
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
-        print(
-            f"CEM finished in {n_steps} steps. Converged: {converged}."
-        )
+        print(f"CEM finished in {n_steps} steps. Converged: {converged}.")
         # (i + 1) * max_k
 
     if track_history:
@@ -355,9 +396,7 @@ def seq_cem_algorithm(
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
-        print(
-            f"CEM (sequential) finished in {n_steps} steps. Converged: {converged}."
-        )
+        print(f"CEM (sequential) finished in {n_steps} steps. Converged: {converged}.")
         # (i + 1) * max_k * len(k_node_indices)
 
     if track_history:

@@ -537,6 +537,11 @@ class StructData:
         # Create semi-directed graph
         edge_mask = ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
 
+        if (
+            "constraint_plane" not in kwargs
+            and "constraint_plane" in self.node_attr_list
+        ):
+            kwargs["constraint_plane"] = self.data.constraint_plane
         kwargs = self._prepare_kwargs(mpcem_algorithm, edge_mask=edge_mask, **kwargs)
 
         coords, semi_directed_force, reaction_force = mpcem_algorithm(**kwargs)
