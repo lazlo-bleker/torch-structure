@@ -2,21 +2,34 @@ import torch
 from torch_structure.geometry import point_normal_to_plane
 
 
-def line_plane_intersect(plane, point, vector, eps=1e-12, return_t=False):
+def line_plane_intersect(
+    plane: torch.Tensor,
+    point: torch.Tensor,
+    vector: torch.Tensor,
+    eps: float = 1e-12,
+    return_t: bool = False,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     """
-    Vectorized intersection of multiple lines-plane pairs.
+    Vectorized intersection of multiple line-plane pairs.
 
     Args:
-        plane: Tensor of shape [N, 4] representing the plane coefficients (a, b, c, d)
-            in the form ax + by + cz + d = 0. Alternatively, a tensor of shape [N, 6]
-            representing the plane in point-normal where the first three columns are the point coordinates (x, y, z)
-            and the last three columns are the normal vector components (nx, ny, nz).
-            eps:   float, small value to avoid division by zero
-        point: Tensor of shape [N, 3] representing the points (x, y, z) of the lines.
-        vector: Tensor of shape [N, 3] representing the direction vectors (dx, dy, dz) of the lines.
+        plane (torch.Tensor): shape [N, 4] plane coefficients (a, b, c, d) in the form
+            ax + by + cz + d = 0. Alternatively, shape [N, 6] representing the plane in
+            point-normal where the first three columns are the point coordinates
+            (x, y, z) and the last three columns are the normal vector components
+            (nx, ny, nz).
+        point (torch.Tensor): shape [N, 3] representing the points (x, y, z) of the
+            lines.
+        vector (torch.Tensor): shape [N, 3] representing the direction vectors
+            (dx, dy, dz) of the lines.
+        eps (float, optional): tolerance to avoid division by zero. Defaults to 1e-12.
+        return_t (bool, optional): If True, also return line parameters ``t``. Defaults
+            to False.
 
     Returns:
-        intersection point
+        (torch.Tensor | tuple[torch.Tensor, torch.Tensor]): If ``return_t`` is False:
+            intersection points of shape [N, 3]. If ``return_t`` is True: intersection
+            points of shape [N, 3], line parameters of shape [N].
     """
     if plane.size(-1) == 6:
         plane = point_normal_to_plane(plane)
@@ -53,7 +66,6 @@ def line_plane_intersect(plane, point, vector, eps=1e-12, return_t=False):
     # Set parallel but not in plane to NaN
     no_intersect = is_parallel & (~is_in_plane)
     intersection[no_intersect] = torch.nan
-
     if return_t:
         return intersection, t
     else:
