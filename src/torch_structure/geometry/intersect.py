@@ -34,11 +34,11 @@ def line_plane_intersect(
     if plane.size(-1) == 6:
         plane = point_normal_to_plane(plane)
     if plane.dim() != 2 or plane.size(-1) != 4:
-        raise ValueError("Invalid plane representation. Expected [N,4] or [N,6].")
+        raise ValueError("Invalid plane representation. Expected [N, 4] or [N, 6].")
     if point.ndim != 2 or point.size(-1) != 3:
-        raise ValueError("r0 must have shape [N,3].")
+        raise ValueError("point must have shape [N, 3].")
     if vector.ndim != 2 or vector.size(-1) != 3:
-        raise ValueError("v must have shape [N,3].")
+        raise ValueError("vector must have shape [N, 3].")
     if plane.size(0) != point.size(0) or point.size(0) != vector.size(0):
         raise ValueError("Batch dimension N must match for plane, point, and vector.")
 
