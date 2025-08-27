@@ -4,8 +4,8 @@ import torch
 nu = 15
 nv = 15
 ## Dimenisons
-wall_height = 4.0
-s = 4.0 
+wall_height = 2.0
+s = 2.0 
 
 ## Default element loads and magnitudes
 default_magnitude = -0.0
@@ -31,11 +31,11 @@ uv_input_params = {
 }
 
 ## Optimizaiton parameters
-omega_orthogonal = 1e0
-omega_load_path  = 0e-1
-omega_bottom     = 1e-2
-max_iters_opt = 1500
-n_shots = 50
+omega_orthogonal = 1e2
+omega_load_path  = 0e0
+omega_bottom     = 0e0
+max_iters_opt = 200
+n_shots = 25
 
 # Runtime profiler
 enable_profiler = False

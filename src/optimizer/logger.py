@@ -1,4 +1,4 @@
-import os
+import os,shutil
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
@@ -8,7 +8,7 @@ from .config import (
     export_paraview,
     export_tensorboard
 )
-
+same_dir = True
 class Logger():
     def __init__(self, optimizer):
         """
@@ -19,12 +19,23 @@ class Logger():
         self.optimizer = optimizer
         # Initialize tensorboard writer
         self.writer = SummaryWriter()
+        if same_dir :
+            self.base_dir = f"{os.getcwd()}/result"
+        else:
+            self.base_dir = self.writer.log_dir
+        
         if export_plt:
             # Find folder to save plot it
-            folder_path = f"{self.writer.log_dir}/img"
+            folder_path = f"{self.base_dir}/img"
             os.makedirs(folder_path, exist_ok=True)
         if export_paraview:
-            folder_path = f"{self.writer.log_dir}/paraview"
+            folder_path = os.path.join(self.base_dir, "paraview")
+
+            # If the folder exists, delete it completely
+            if os.path.exists(folder_path):
+                shutil.rmtree(folder_path)
+
+            # Recreate the empty folder
             os.makedirs(folder_path, exist_ok=True)
         # Option to add additional scatter plots
         self.additional_scatter_plots = []
@@ -67,13 +78,17 @@ class Logger():
             for additional_scatter_plot in self.additional_scatter_plots:
                 data_plot.scatter(**additional_scatter_plot)
             # Save plot and close afterwards
-            plt.savefig(f"{self.writer.log_dir}/img/shot_{shot:05d}.png", dpi=200)
+            plt.savefig(f"{self.base_dir}/img/shot_{shot:05d}.png", dpi=200)
             plt.close()
 
-        if export_paraview:  
+        if export_paraview: 
+            if same_dir:
+                filepath = f"{self.base_dir}/paraview/shot_{shot}.vtp"
+            else:
+                filepath = f"{self.base_dir}/paraview/shot_{shot}.vtp"
+            
             solved_graph.length = solved_graph.length_from_coords
             graph = solved_graph.to_networkx(node_attrs=["coords"], edge_attrs=["force","length"])
-            filepath = f"{self.writer.log_dir}/paraview/shot_{shot}.vtp"
             export_graph_to_vtp(graph, filepath, True)
     
     def generate_gif(self):
@@ -82,8 +97,8 @@ class Logger():
         """
         if export_plt:
             # Folder containing your images
-            folder_path = f"{self.writer.log_dir}/img"
-            output_gif = f"{self.writer.log_dir}/shots.gif"
+            folder_path = f"{self.base_dir}/img"
+            output_gif = f"{self.base_dir}/shots.gif"
 
             # Collect all image files (sorted)
             images = []
