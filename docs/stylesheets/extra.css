@@ -66,3 +66,22 @@ a:hover, .md-nav__link:hover {
   background-color: #ffffff;
   color: black; /* Set the search text color to black in light mode */
 }
+
+/* Force the search text color to black in light mode */
+[data-md-color-scheme="default"] .md-search__input::placeholder {
+  color: black !important;
+}
+[data-md-color-scheme="slate"] .md-search__input::placeholder {
+  color: white !important;
+}
+
+/* Ensure module names in the sidebar are displayed in lowercase */
+.md-sidebar__nav .md-nav__link {
+  text-transform: lowercase;
+}
+
+/* Force module names in the sidebar to display in lowercase with higher specificity */
+.md-sidebar__nav .md-nav__item .md-nav__link {
+  text-transform: none !important;
+}
+
