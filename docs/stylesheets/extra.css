@@ -10,7 +10,7 @@
 
 /* Target the header element directly */
 [data-md-color-scheme="default"] header {
-  background-color: #d7d7d7;
+  background-color: #f6f6f6;
 }
 [data-md-color-scheme="slate"] header {
   background-color: #232832;
@@ -59,4 +59,10 @@ a:hover, .md-nav__link:hover {
 /* Set header text and icons to black by default in light mode */
 [data-md-color-scheme="default"] header, [data-md-color-scheme="default"] header .md-header__title, [data-md-color-scheme="default"] header .md-icon {
   color: black;
+}
+
+/* Change the search box background color in light mode */
+[data-md-color-scheme="default"] .md-search__input {
+  background-color: #ffffff;
+  color: black; /* Set the search text color to black in light mode */
 }
