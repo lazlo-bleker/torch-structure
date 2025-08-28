@@ -78,7 +78,7 @@ pip install torch_structure
 To verify the installation, open Python and run the following:
 
 ```python
-import torch_structure
+import torch_structure as ts
 ```
 
 If no errors occur you have succesfully installed `torch_structure`.

@@ -1,0 +1,62 @@
+/* Define colors for light/dark mode */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #E7461E;
+  --md-accent-fg-color: #E7461E;
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #F05F42;
+  --md-accent-fg-color: #F05F42;
+}
+
+/* Target the header element directly */
+[data-md-color-scheme="default"] header {
+  background-color: #d7d7d7;
+}
+[data-md-color-scheme="slate"] header {
+  background-color: #232832;
+}
+
+/* Explicitly set font-family and font-weight for all headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit !important;
+  font-weight: bold !important;
+}
+
+/* Set main header color */
+[data-md-color-scheme="default"] h1 {
+  color: #E7461E;
+}
+[data-md-color-scheme="slate"] h1 {
+  color: #F05F42;
+}
+
+/* Ensure links are only underlined */
+a:hover, .md-nav__link:hover {
+  text-decoration: underline;
+}
+
+/* Style "TorchStructure" with different colors for "Torch" and "Structure" */
+[data-md-color-scheme="default"] .torchstructure {
+  color: black;
+}
+[data-md-color-scheme="default"] .torchstructure .structure {
+  color: #E7461E;
+}
+[data-md-color-scheme="slate"] .torchstructure {
+  color: white;
+}
+[data-md-color-scheme="slate"] .torchstructure .structure {
+  color: #F05F42;
+}
+
+.md-header__button.md-logo {
+  display: none;
+}
+
+/* Hide the "Made with Material for MkDocs" footer bar */
+.md-footer-meta { display: none; }
+
+/* Set header text and icons to black by default in light mode */
+[data-md-color-scheme="default"] header, [data-md-color-scheme="default"] header .md-header__title, [data-md-color-scheme="default"] header .md-icon {
+  color: black;
+}
