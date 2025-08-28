@@ -1,8 +1,8 @@
 import torch
 # Grid parameters
 ## Resolution
-nu = 15
-nv = 15
+nu = 40
+nv = 40
 ## Dimenisons
 wall_height = 2.0
 s = 2.0 
@@ -31,7 +31,7 @@ uv_input_params = {
 }
 
 ## Optimizaiton parameters
-omega_orthogonal = 1e2
+omega_orthogonal = 1e3
 omega_load_path  = 0e0
 omega_bottom     = 0e0
 max_iters_opt = 200

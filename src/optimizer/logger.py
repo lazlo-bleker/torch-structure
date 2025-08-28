@@ -88,7 +88,7 @@ class Logger():
                 filepath = f"{self.base_dir}/paraview/shot_{shot}.vtp"
             
             solved_graph.length = solved_graph.length_from_coords
-            graph = solved_graph.to_networkx(node_attrs=["coords"], edge_attrs=["force","length"])
+            graph = solved_graph.to_networkx(node_attrs=["coords","loss_u","loss_v"], edge_attrs=["force","length"])
             export_graph_to_vtp(graph, filepath, True)
     
     def generate_gif(self):

@@ -47,7 +47,8 @@ class Optimizer():
         # Apply design variables
         self.design_variable_handler.apply(x)
         # Solve CEM
-        return self.graph.cem(max_iter=max_iters_cem)
+        self.graph.cem(max_iter=max_iters_cem, inplace=True)
+        return self.graph
     
     def run(self, max_iters_opt : int, n_shots : int):
         """
@@ -68,8 +69,8 @@ class Optimizer():
         # For each snapshot to capture
         for n_shot in range(n_shots):
             # Plot structure (capture snapshot)
-            solved_graph = self.graph.cem(max_iter=max_iters_cem, verbose=True)
-            self.logger.plot(solved_graph, n_shot)
+            self.graph.cem(max_iter=max_iters_cem, verbose=True, inplace=True)
+            self.logger.plot(self.graph, n_shot)
 
             # Run scipy with gradients from torch_structure
             result = minimize(

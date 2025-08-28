@@ -18,6 +18,8 @@ class UVGridGenerator(BaseGenerator):
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
             "active_ndof" : torch.empty((0, 1), dtype=torch.bool),
+            "loss_u" : torch.empty((0, 1), dtype=torch.float64),
+            "loss_v" : torch.empty((0, 1), dtype=torch.float64),
         }
         self.edge_attrs = {
             "force": torch.empty((0, 1), dtype=torch.float64),
@@ -35,6 +37,8 @@ class UVGridGenerator(BaseGenerator):
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
             "active_edof" : torch.tensor(1, dtype=torch.bool),
             "active_ndof" : torch.tensor(0, dtype=torch.bool),
+            "loss_u" : torch.tensor(0., dtype=torch.float64),
+            "loss_v" : torch.tensor(0., dtype=torch.float64),
         }
 
     def sample_input(
@@ -118,8 +122,7 @@ class UVGridGenerator(BaseGenerator):
                 f"u_{_u+1}_v_{_v}",
                 is_trail_edge=torch.tensor(False),
                 # Init deviation edge to default of zero and keep like that
-                active_edof=torch.tensor(False),
-                force=torch.tensor(0.0),
+                force=default_magnitude,
             )
         # Generate deviation edges
         for _v in range(1,nv):

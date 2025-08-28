@@ -20,7 +20,8 @@ from function_library import (
         evaluate_center_coords_target,
         center_coords_constr_func,
         load_path,
-        fe_orthogonal,
+        laplacian,
+        cache_laplacian,
     )
 
 from optimizer import Optimizer
@@ -71,7 +72,8 @@ optimizer = Optimizer(
 # Add objective functions
 edge_pairs = evaluate_edge_pairs(uv_grid_graph)
 # optimizer.add_obj_function("Loss/Orthogonal", omega_orthogonal, orthogonal_intersections_normed, kwargs={"edge_pairs":edge_pairs})
-optimizer.add_obj_function("Loss/Orthogonal", omega_orthogonal, fe_orthogonal)
+laplacian_kwargs = cache_laplacian(uv_grid_graph)
+optimizer.add_obj_function("Loss/Orthogonal", omega_orthogonal, laplacian, kwargs=laplacian_kwargs)
 # optimizer.add_obj_function("Loss/LoadPath", omega_load_path, load_path)
 
 # Add bottom coords constraint
