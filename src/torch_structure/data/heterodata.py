@@ -38,6 +38,7 @@ class HeteroData:
         self.face_node_table = torch.cat([self.face_node_table, new_rows], dim=0)
 
 
+    #these normals are not scaled to unit length because they encode the area information as well!
     def calculate_normals(
         self,
 
@@ -48,7 +49,6 @@ class HeteroData:
 
         nodes = self.hetero_graph['node'].coords
         
-
         self.hetero_graph['face_node'].coords = scatter_mean(nodes[nodes1_indices], face_node_indices, dim = 0)
 
         face_nodes = self.hetero_graph['face_node'].coords
@@ -56,9 +56,11 @@ class HeteroData:
         vec1 = nodes[nodes2_indices] - nodes[nodes1_indices]
         vec2 = face_nodes[face_node_indices] - nodes[nodes1_indices]
 
-        normals = torch.cross(vec1, vec2) 
-        
-        return normals
+        triangle_normals = torch.cross(vec1, vec2) 
+
+        node_normals = (scatter_add(triangle_normals, nodes1_indices, dim = 0) + scatter_add(triangle_normals, nodes2_indices, dim = 0)) / 4
+
+        return node_normals
         
 
     @staticmethod

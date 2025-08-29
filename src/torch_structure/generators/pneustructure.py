@@ -164,12 +164,11 @@ class PneuStructure:
         heterograph
 
     ):
-        
-        nodes1_indices = heterograph.face_node_table[:, 0]
-        nodes2_indices = heterograph.face_node_table[:, 1]
+
+        #these normals are not scaled to unit length because they encode the area information as well!
         normals = heterograph.calculate_normals()
         
-        return (scatter_add(normals, nodes1_indices, dim = 0) + scatter_add(normals, nodes2_indices, dim = 0)) / 4 * pressure
+        return normals * pressure
         
 
     @staticmethod
