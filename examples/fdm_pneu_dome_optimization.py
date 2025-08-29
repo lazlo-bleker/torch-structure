@@ -1,6 +1,4 @@
-"""
-Example: Form-find a Cable Net with the Force Density Method (FDM)
-"""
+
 
 import torch
 import torch_structure as ts
@@ -20,8 +18,6 @@ input_params = {
 pneu_dome = ts.generators.PneuDome(**input_params)
 
 data = pneu_dome.graph  
-#print(data.coords)
-#print(data.coords.shape)
 force_densities = torch.full((data.num_edges,), 40.0, dtype=torch.float64)
 
 eps = 1e-5
@@ -43,7 +39,6 @@ def iterative_fdm(data, eps, max_its, parallel_lines, meridians, C):
 
         data.fdm(inplace=True, C=C)
 
-        #print(data.verify_equilibrium(verbose = True))
         data.pattern_coords = data.coords[:, :2]
         data.z_coord = data.coords[:, 2]
 
@@ -99,12 +94,7 @@ data.force_density = optimized_forces
 
 print(result)
 
-print(optimized_forces)
-
 data = iterative_fdm(data, eps, max_its, parallel_lines, meridians, C)
-
-#data.plot()
-#data.plot(title="Pneu Dome", legend=False, show_load=True, load=data.load, force_scale = 0.05)
 
 data.plot(title="Pneu Dome", legend=False, show_load=False, load=data.load, force_scale = 0.05, lw_scale = 0.09)
 

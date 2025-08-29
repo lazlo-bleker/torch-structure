@@ -104,9 +104,7 @@ class PneuDome:
         load = torch.zeros((graph.num_nodes, 3), dtype=torch.float)
 
         #we assume pressure to be evenly distributed from surface to node
-
-        #scrappy for now for trial purposes
-
+        
         #nodes with four trapezoids around them
         k = 0
 

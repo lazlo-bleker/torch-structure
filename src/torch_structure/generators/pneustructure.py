@@ -7,6 +7,8 @@ import torch_geometric as pyg
 import numpy as np
 from torch_scatter import scatter_add, scatter_mean
 
+from torch_structure.data.heterodata import HeteroData
+
 class PneuStructure:
     def __init__(
         self,
@@ -17,7 +19,7 @@ class PneuStructure:
         
         self.face_node_table = torch.empty((0, 3), dtype=torch.int)
         
-        self.graph, self.hetero_graph = self.generate_graph(path, x_res, y_res)
+        self.hetero_graph = self.generate_graph(path, x_res, y_res)
 
 
     def generate_graph(
@@ -43,7 +45,7 @@ class PneuStructure:
             node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
         )
         
-        hetero_graph = pyg.data.HeteroData()
+        hetero_data = HeteroData(data = graph)        
 
         grid, boundary = self.grid_From_Curve_Points(path, x_res, y_res)
 
@@ -54,7 +56,7 @@ class PneuStructure:
 
                 if grid[i][j] is not None:
                     k += 1
-                    graph.add_node(
+                    hetero_data.data.add_node(
                     str(i) + "-" + str(j),
                     pattern_coords = torch.tensor(grid[i][j], dtype = torch.float32),
                     is_support = boundary[i][j],
@@ -69,22 +71,22 @@ class PneuStructure:
                 if j+1 < len(grid[0]):
                     if grid[i][j] is not None and grid[i][j+1] is not None:
 
-                        graph.add_edge(str(i) + "-" + str(j), str(i) + "-" + str(j+1)) 
+                        hetero_data.data.add_edge(str(i) + "-" + str(j), str(i) + "-" + str(j+1)) 
 
                 if i+1 < len(grid):
 
                     if grid[i][j] is not None and grid[i+1][j] is not None:
 
-                        graph.add_edge(str(i) + "-" + str(j), str(i+1) + "-" + str(j))
+                        hetero_data.data.add_edge(str(i) + "-" + str(j), str(i+1) + "-" + str(j))
 
-        graph.coords = torch.cat(
-            [graph.pattern_coords, graph.z_coord],
+        hetero_data.data.coords = torch.cat(
+            [hetero_data.data.pattern_coords, hetero_data.data.z_coord],
             dim=1,
         )
 
-        hetero_graph['node'].coords = graph.coords
+        hetero_data.hetero_graph['node'].coords = hetero_data.data.coords
 
-        hetero_graph['node', 'connected_to', 'node'].edge_index = graph.edge_index
+        hetero_data.hetero_graph['node', 'connected_to', 'node'].edge_index = hetero_data.data.edge_index
 
 
         for i in range(len(grid)-1):  
@@ -107,12 +109,10 @@ class PneuStructure:
                 
                 if len(indices) > 2:
 
-                    self.add_face(hetero_graph, indices)
+                    hetero_data.add_face(indices)
                 
-        return graph, hetero_graph
+        return hetero_data
     
-
-    # make this function more efficient later
 
     def find_Index(self, grid, m, n):
         
@@ -160,24 +160,14 @@ class PneuStructure:
         
     def calculate_loads(
         self,
-        pressure
+        pressure,
+        heterograph
 
     ):
         
-        nodes1_indices = self.face_node_table[:, 0]
-        nodes2_indices = self.face_node_table[:, 1]
-        face_node_indices = self.face_node_table[:, 2]
-
-        nodes = self.hetero_graph['node'].coords
-        
-        self.hetero_graph['face_node'].coords = scatter_mean(nodes[nodes1_indices], face_node_indices, dim = 0)
-
-        face_nodes = self.hetero_graph['face_node'].coords
-
-        vec1 = nodes[nodes2_indices] - nodes[nodes1_indices]
-        vec2 = face_nodes[face_node_indices] - nodes[nodes1_indices]
-
-        normals = torch.cross(vec1, vec2) 
+        nodes1_indices = heterograph.face_node_table[:, 0]
+        nodes2_indices = heterograph.face_node_table[:, 1]
+        normals = heterograph.calculate_normals()
         
         return (scatter_add(normals, nodes1_indices, dim = 0) + scatter_add(normals, nodes2_indices, dim = 0)) / 4 * pressure
         
@@ -220,10 +210,7 @@ class PneuStructure:
                     min_dist = np.min(distances)
                     
                     if min_dist < eps:
-                        #closest_index = np.argmin(distances)
-                        #projected_pt = vertices[closest_index]
-                        #grid[j][i] = projected_pt
-                        #boundary[i][j] = True
+               
                         grid[i][j] = pt[0]
 
                     else:
