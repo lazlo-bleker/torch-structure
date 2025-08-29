@@ -69,7 +69,7 @@ class Optimizer():
         # For each snapshot to capture
         for n_shot in range(n_shots):
             # Plot structure (capture snapshot)
-            self.graph.cem(max_iter=max_iters_cem, verbose=True, inplace=True)
+            obj_func(x0)
             self.logger.plot(self.graph, n_shot)
 
             # Run scipy with gradients from torch_structure

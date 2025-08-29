@@ -10,7 +10,7 @@ def evaluate_top_coords_target():
     # Linearly interpolate southwest point and southeast point
     ts = torch.linspace(0.0, 1.0, nu).unsqueeze(dim=1)
     coords_target = nw_point * (1-ts) + ne_point * ts
-    coords_target = coords_target + torch.tensor([0.0, 0.0, 0.2]) * torch.sin(k * ts)
+    coords_target = coords_target + torch.tensor([0.0, 0.0, 0.0]) * torch.sin(k * ts)
     return coords_target
 
 def evaluate_center_coords_target():
@@ -24,7 +24,7 @@ def evaluate_bottom_coords_target():
     # Linearly interpolate southwest point and southeast point
     ts = torch.linspace(0.0, 1.0, nu).unsqueeze(dim=1)
     coords_target = sw_point * (1-ts) + se_point * ts
-    coords_target = coords_target - torch.tensor([0.0, 0.0, 0.2]) * torch.sin(k * ts)
+    coords_target = coords_target - torch.tensor([0.0, 0.0, 0.0]) * torch.sin(k * ts)
     return coords_target
 
 def center_coords_constr_func(graph_solved : StructData, target_coords):
@@ -129,6 +129,7 @@ def cache_laplacian(graph_solved : StructData):
             weight = weight_xi * weight_eta
             gauss_points.append((weight, coord_xi, coord_eta))
     kwargs["gauss_points"] = gauss_points
+
     # Pre compute element indices
     nodes_uv = graph_solved.uv_coords
     nu = int(max(nodes_uv[:,0])+1)
@@ -143,90 +144,80 @@ def cache_laplacian(graph_solved : StructData):
             quad_indices[k,2] = int(  (v) * (nu) + (u+1))
             quad_indices[k,3] = int(  (v) * (nu) + (u))
     kwargs["quad_indices"] = quad_indices
-    # Pre compute matrix rows and columns
-    rows = []
-    cols = []
-    for e in range(n_elements):
-        _quad_indices = quad_indices[e]
-        for _quad_index_1 in _quad_indices:
-            for _quad_index_2 in _quad_indices:
-                rows.append(_quad_index_1.item())
-                cols.append(_quad_index_2.item())
-    n_nodes = nodes_uv.shape[0]
-    rows = torch.tensor(rows)
-    cols = torch.tensor(cols)
-    flat_index = rows * n_nodes + cols
-    unique, inverse = torch.unique(flat_index, return_inverse=True)
-    coal_rows = unique // n_nodes
-    coal_cols = unique % n_nodes
-    coal_indices = torch.stack([coal_rows, coal_cols])
-    kwargs["coal_indices"] = coal_indices
-    kwargs["unique"] = unique
-    kwargs["inverse"] = inverse
-    # Pre-compute inner node mask
-    u_coords = graph_solved.uv_coords[:,0]
-    v_coords = graph_solved.uv_coords[:,1]
-    kwargs["east_mask"] = (u_coords == max(u_coords))
-    kwargs["west_mask"] = (u_coords == 0) 
-    kwargs["south_mask"] = (v_coords == max(v_coords))
-    kwargs["north_mask"] = (v_coords == 0)
 
     return kwargs
 
-def laplacian(graph_solved : StructData, gauss_points, quad_indices, unique, inverse, coal_indices, east_mask, west_mask, north_mask, south_mask):
-    nodes_uv = graph_solved.uv_coords
-    coords = graph_solved.coords
+def laplacian(graph_solved: "StructData", gauss_points, quad_indices):
+    nodes_uv = graph_solved.uv_coords   # (N,2)
+    coords   = graph_solved.coords      # (N,3) surface in R^3
 
-    dtype = coords.dtype
-    n_entries = len(inverse)
-    n_nodes = coords.shape[0]
-    values = torch.zeros(n_entries, dtype=dtype)
+    device = coords.device
+    dtype  = coords.dtype
+
+    loss  = torch.zeros((), dtype=dtype, device=device)
+    _loss = torch.zeros(coords.shape[0], dtype=dtype, device=device)
+
     for k in range(quad_indices.shape[0]):
-            node_keys = quad_indices[k]
-            _x_ni = coords[node_keys]
-            _K_mn_e = torch.zeros([4,4])
-            for _gp_w, _gp_xi, _gp_eta in gauss_points:
-                _dN_dxi = dN_dxi(_gp_xi, _gp_eta, dtype=dtype)
-                _jac_ij = _x_ni.T @ _dN_dxi
+        node_keys = quad_indices[k]
+        x_ni = coords[node_keys]          # (4,3)
+        u_n  = nodes_uv[node_keys, 0]     # (4,)
+        v_n  = nodes_uv[node_keys, 1]     # (4,)
 
-                _jac_inv = jac_inv(_jac_ij)
-                _B_ni = _dN_dxi @ _jac_inv
-                _weight = _gp_w 
-                _K_mn_e += _weight * _B_ni @ _B_ni.T
+        for gp_w, gp_xi, gp_eta in gauss_points:
+            dN = dN_dxi(gp_xi, gp_eta, dtype=dtype, device=device)  # (4,2)
 
-            values[16*k:16*(k+1)] = _K_mn_e.reshape(-1)
+            # 3x2 surface Jacobian J = [x_ξ x_η]
+            J = x_ni.T @ dN                         # (3,2)
 
-    bound_mask = east_mask + west_mask + north_mask + south_mask
-    coal_vals = torch.zeros_like(unique, dtype=values.dtype).scatter_add(0, inverse, values)
-    L_mn = torch.sparse_coo_tensor(coal_indices, coal_vals, (n_nodes,n_nodes))
-    loss_u = L_mn @ nodes_uv[:,0]
-    loss_v = L_mn @ nodes_uv[:,1]
-    # loss_u = L_mn @ loss_u
-    # loss_v = L_mn @ loss_v
-    loss_u[bound_mask] = 0.0
-    loss_v[bound_mask] = 0.0
-    graph_solved.loss_u = torch.abs(loss_u.detach().clone())
-    graph_solved.loss_v = torch.abs(loss_v.detach().clone())
-    return torch.linalg.norm(loss_v) + torch.linalg.norm(loss_u) 
+            # metric G = JᵀJ (2x2), its det and inverse
+            G     = J.T @ J                          # (2,2)
+            detG  = G[0,0]*G[1,1] - G[0,1]*G[1,0]    # scalar
+            Ginv  = inv2x2(G, detG)                  # (2,2)
 
-def dN_dxi(xi, eta, dtype):
+            # Moore–Penrose on a 3x2 full-rank J: J⁺ = (JᵀJ)⁻¹ Jᵀ
+            J_pinv = Ginv @ J.T                      # (2,3)
+
+            # surface area element (|∂x/∂ξ × ∂x/∂η|) = √det(G)
+            dA = torch.sqrt(detG)
+
+            # surface gradients of u,v in R^3 (tangent vectors)
+            grad_u = (u_n @ dN) @ J_pinv             # (3,)
+            grad_v = (v_n @ dN) @ J_pinv             # (3,)
+
+            U = torch.stack([grad_u, grad_v])
+            s = torch.linalg.svdvals(U)
+            lscm = (s[0]-s[1]) ** 2
+
+            w = torch.as_tensor(gp_w, dtype=dtype, device=device)
+            contrib = dA * w * lscm
+
+            loss = loss + contrib
+            _loss[node_keys] += contrib
+
+    graph_solved.loss = _loss
+    return loss
+
+
+def dN_dxi(xi, eta, dtype, device):
+    # rows: nodes (N1..N4), cols: [∂N/∂ξ, ∂N/∂η]
     return 0.25 * torch.tensor([
-        [-(1-eta),-(1-xi)],
-        [+(1-eta),-(1+xi)],
-        [+(1+eta),+(1+xi)],
-        [-(1+eta),+(1-xi)],
-    ], dtype=dtype)
+        [-(1-eta), -(1-xi)],
+        [+(1-eta), -(1+xi)],
+        [+(1+eta), +(1+xi)],
+        [-(1+eta), +(1-xi)],
+    ], dtype=dtype, device=device)
 
-def jac_inv(jac_ij):
-    _jac_cov = jac_ij.T @ jac_ij
-    _jac_inv_sub = torch.tensor([
-        [_jac_cov[1,1], -_jac_cov[1,0]],
-        [-_jac_cov[0,1], _jac_cov[0,0]],
-    ])
-    res = _jac_inv_sub @ jac_ij.T
-    # res = 1 / jac_det(jac_ij) * _jac_inv_sub @ jac_ij.T
-    return res
 
-def jac_det(jac_ij):
-    _jac_cov = jac_ij.T @ jac_ij
-    return torch.sqrt(_jac_cov[0,0]*_jac_cov[1,1]-_jac_cov[0,1]*_jac_cov[1,0])
+def inv2x2(G, detG):
+    # avoid torch.tensor([...]) with tensor entries (breaks grad & device)
+    a, b = G[0,0], G[0,1]
+    c, d = G[1,0], G[1,1]
+    # adj(G) = [[ d, -b], [-c,  a]]
+    adj11 =  d
+    adj12 = -b
+    adj21 = -c
+    adj22 =  a
+    return torch.stack([
+        torch.stack([adj11, adj12]),
+        torch.stack([adj21, adj22]),
+    ]) / detG
