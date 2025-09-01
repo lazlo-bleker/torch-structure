@@ -88,17 +88,6 @@ def plot_data(
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection="3d")
 
-    # Plot edges
-    for i, (src, dst) in enumerate(edge_index.t().cpu().numpy()):
-        ax.plot(
-            [x[src], x[dst]],
-            [y[src], y[dst]],
-            [z[src], z[dst]],
-            color=edge_color[i],
-            lw=lw[i],
-            label=edge_label[i],
-        )
-
     # Plot supports
     if show_supports:
         if is_support is None:
@@ -116,6 +105,17 @@ def plot_data(
                         color="black",
                         linestyle="None",
                     )
+
+    # Plot edges
+    for i, (src, dst) in enumerate(edge_index.t().cpu().numpy()):
+        ax.plot(
+            [x[src], x[dst]],
+            [y[src], y[dst]],
+            [z[src], z[dst]],
+            color=edge_color[i],
+            lw=lw[i],
+            label=edge_label[i],
+        )
 
     # Plot external load
     if show_load:
