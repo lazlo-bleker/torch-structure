@@ -30,9 +30,17 @@ h1, h2, h3, h4, h5, h6 {
   color: #F05F42;
 }
 
-/* Ensure links are only underlined */
-a:hover, .md-nav__link:hover {
+/* Underline text links in page content and in the sidebar only */
+.md-typeset a:hover,
+.md-nav__link:hover {
   text-decoration: underline;
+}
+
+/* Never underline icon-only buttons in the header (e.g., GitHub) */
+.md-header__button,
+.md-header__button:hover,
+.md-header__button:focus {
+  text-decoration: none !important;
 }
 
 /* Style "TorchStructure" with different colors for "Torch" and "Structure" */

@@ -1,4 +1,5 @@
 site_name: '<span class="torchstructure">Torch<span class="structure">Structure</span></span>'
+repo_url: https://github.com/lazlo-bleker/torch-structure
 theme:
   name: material
   language: en
@@ -19,6 +20,8 @@ theme:
         name: Switch to light mode
   font:
     text: Lato
+  icon:
+    repo: fontawesome/brands/github
 markdown_extensions:
   - admonition
   - pymdownx.details
