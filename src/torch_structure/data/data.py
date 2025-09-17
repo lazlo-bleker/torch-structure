@@ -547,7 +547,7 @@ class StructData:
             kwargs["constraint_plane"] = self.data.constraint_plane
         kwargs = self._prepare_kwargs(mpcem_algorithm, edge_mask=edge_mask, **kwargs)
 
-        coords, semi_directed_force, reaction_force = mpcem_algorithm(**kwargs)
+        coords, semi_directed_force, reaction_force, load = mpcem_algorithm(**kwargs)
         track_history = kwargs.get("track_history", False)
         force = self.edge_attr_to_undirected(
             semi_directed_force, edge_mask, batched=track_history
@@ -562,6 +562,7 @@ class StructData:
         return_data.__setattr__(
             "force", force, attr_type="edge", track_history=track_history
         )
+        return_data.__setattr__("load", load, attr_type="node")
 
         if not inplace:
             return return_data
@@ -647,6 +648,32 @@ class StructData:
 
         if not inplace:
             return return_data
+        
+    @property
+    def edge_cem_to_undir(self) -> torch.Tensor:
+        """
+        Index map to expand a CEM-aligned edge attribute [E_cem, ...]
+        into the full *undirected representation* in PyG terms,
+        i.e. both directions stored explicitly [E, ...].
+
+        Usage:
+            # attr_cem: [E_cem, ...] aligned with self.cem_edge_index
+            attr_undir = attr_cem[self.edge_cem_to_undirected]   # -> [E, ...]
+        """
+        dm  = self.directed_mask.view(-1)                # [E] bool
+        rec = self.reciprocal_edge.view(-1)              # [E] long
+        cem_mask = ~(self.is_trail_edge.view(-1) & ~dm)  # [E] bool
+
+        E = cem_mask.numel()
+        idx_undir2cem = torch.empty(E, dtype=torch.long, device=self.edge_index.device)
+
+        # edges kept by CEM get their own index
+        idx_undir2cem[cem_mask] = torch.arange(int(cem_mask.sum().item()), 
+                                            device=idx_undir2cem.device)
+        # edges not kept → map to reciprocal's CEM index
+        idx_undir2cem[~cem_mask] = idx_undir2cem[rec[~cem_mask]]
+
+        return idx_undir2cem
 
     def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
         mask = mask.view(-1)

@@ -1,14 +1,23 @@
 import torch
+from torch_scatter import scatter
 from torch_structure.message_passing import ResidualForce
-from torch_structure.geometry import line_plane_intersect, point_normal_to_plane
+from torch_structure.geometry import line_plane_intersect, point_normal_to_plane, graph_edge_lengths
 
+ALLOWED_UPDATE_KEYS = {
+    "coords", 
+    "load", 
+    "length", 
+    "force_sign", 
+    "force", 
+    "constraint_plane",
+}
 
 def mpcem_algorithm(
     coords,
     load,
     is_support,
     is_origin_node,
-    edge_index,
+    cem_edge_index,
     is_trail_edge,
     length,
     force_sign,
@@ -19,10 +28,11 @@ def mpcem_algorithm(
     damping_factor=0.5,
     verbose=False,
     track_history=False,
+    callback=None,
 ):
     """Message Passing-based Combinatorial Equilibrium Modelling"""
 
-    coords = torch.clone(coords)
+    # Enforce expected input shapes
     is_support = is_support.view(-1)
     is_origin_node = is_origin_node.view(-1)
     is_trail_edge = is_trail_edge.view(-1)
@@ -30,23 +40,33 @@ def mpcem_algorithm(
     force_sign = force_sign.view(-1)
     force = force.view(-1)
 
-    residual_force_update = ResidualForce()
-    trail_src, trail_dst = edge_index[:, is_trail_edge]
+    # Assemble state and clone inputs that might be modified
+    state = {
+        "coords": coords.clone(),
+        "load": load.clone(),
+        "length": length.clone(),
+        "force_sign": force_sign.clone(),
+        "force": force.clone(),
+        "constraint_plane": constraint_plane.clone() if constraint_plane is not None else None,
+    }
 
-    if constraint_plane is not None:
-        if constraint_plane.size(-1) == 6:
-            constraint_plane = point_normal_to_plane(constraint_plane)
-        constraint_plane_mask = ~torch.isnan(constraint_plane).any(dim=1)
+    residual_force_update = ResidualForce()
+    trail_src, trail_dst = cem_edge_index[:, is_trail_edge]
+
+    if state["constraint_plane"] is not None:
+        if state["constraint_plane"].size(-1) == 6:
+            state["constraint_plane"] = point_normal_to_plane(state["constraint_plane"])
+        constraint_plane_mask = ~torch.isnan(state["constraint_plane"]).any(dim=1)
         trail_edge_constraint_plane_mask = constraint_plane_mask[trail_dst]
     else:
         trail_edge_constraint_plane_mask = torch.zeros_like(
-            length[is_trail_edge], dtype=torch.bool
+            state["length"][is_trail_edge], dtype=torch.bool
         )
-    edge_constraint_plane_mask = torch.zeros_like(length, dtype=torch.bool)
+    edge_constraint_plane_mask = torch.zeros_like(state["length"], dtype=torch.bool)
     edge_constraint_plane_mask[is_trail_edge] = trail_edge_constraint_plane_mask
 
     if not torch.all(
-        trail_edge_constraint_plane_mask | ~torch.isnan(length[is_trail_edge])
+        trail_edge_constraint_plane_mask | ~torch.isnan(state["length"][is_trail_edge])
     ):
         raise ValueError(
             "All trail edges must have a specified length or associated constraint plane."
@@ -55,19 +75,32 @@ def mpcem_algorithm(
     converged = False
     n_steps = 0
     for i in range(max_iter):
-        prev_coords = coords.clone()
+        # Allow user to modify state via callback
+        if callback is not None:
+            updates = callback(dict(state))
+            if updates:
+                illegal = set(updates) - ALLOWED_UPDATE_KEYS
+                if illegal:
+                    raise KeyError(
+                        f"Callback returned updates to non-whitelisted keys: {illegal}. "
+                        f"Allowed keys are {sorted(ALLOWED_UPDATE_KEYS)}"
+                    )
+                for key in updates:
+                    state[key] = updates[key]
+
+        prev_coords = state["coords"].clone()
 
         # only consider edges with a coordinate (estimate) for both nodes
-        valid_nodes = ~torch.isnan(coords).any(dim=1)
+        valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
         valid_edges = (
-            valid_nodes[edge_index[0]]
-            & valid_nodes[edge_index[1]]
-            & ~is_support[edge_index[1]]
+            valid_nodes[cem_edge_index[0]]
+            & valid_nodes[cem_edge_index[1]]
+            & ~is_support[cem_edge_index[1]]
         )
 
         # Calculate outgoing trail force
         residual_force = residual_force_update(
-            coords, force[valid_edges], edge_index[:, valid_edges], load
+            state["coords"], state["force"][valid_edges], cem_edge_index[:, valid_edges], state["load"]
         )
         # if i > 0 and torch.norm(residual_force[trail_src] - trail_force, dim=1).max() < tolerance:
         #     converged = True
@@ -82,57 +115,57 @@ def mpcem_algorithm(
         # Coordinates defined by trail lengths
         length_coords_update = (
             unit_trail_force[~trail_edge_constraint_plane_mask]
-            * length[is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
-            * -force_sign[is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
+            * state["length"][is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
+            * -state["force_sign"][is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
         )
         new_coords_length = (
-            coords[trail_src][~trail_edge_constraint_plane_mask] + length_coords_update
+            state["coords"][trail_src][~trail_edge_constraint_plane_mask] + length_coords_update
         )
 
         # Coordinates defined by constraint planes
-        if constraint_plane is not None:
+        if state["constraint_plane"] is not None:
             new_coords_plane, t = line_plane_intersect(
-                plane=constraint_plane[constraint_plane_mask],
-                point=coords[trail_src][trail_edge_constraint_plane_mask],
+                plane=state["constraint_plane"][constraint_plane_mask],
+                point=state["coords"][trail_src][trail_edge_constraint_plane_mask],
                 vector=unit_trail_force[trail_edge_constraint_plane_mask],
                 return_t=True,
             )
-            force_sign[edge_constraint_plane_mask] = -torch.sign(t)
+            state["force_sign"][edge_constraint_plane_mask] = -torch.sign(t)
         else:
-            new_coords_plane = coords[trail_dst][trail_edge_constraint_plane_mask]
+            new_coords_plane = state["coords"][trail_dst][trail_edge_constraint_plane_mask]
 
-        new_coords = torch.empty_like(coords[trail_dst])
+        new_coords = torch.empty_like(state["coords"][trail_dst])
         new_coords[~trail_edge_constraint_plane_mask] = new_coords_length
         new_coords[trail_edge_constraint_plane_mask] = new_coords_plane
 
         # Update force of trail edges
-        force[is_trail_edge] = force_sign[is_trail_edge] * trail_force_mag
+        state["force"][is_trail_edge] = state["force_sign"][is_trail_edge] * trail_force_mag
 
         # Apply damping to new coordinates
-        if coords[trail_dst].isnan().any():
-            coords[trail_dst] = new_coords
+        if state["coords"][trail_dst].isnan().any():
+            state["coords"][trail_dst] = new_coords
         else:
-            coords[trail_dst] = coords[trail_dst] + (1 - damping_factor) * (
-                new_coords - coords[trail_dst]
+            state["coords"][trail_dst] = state["coords"][trail_dst] + (1 - damping_factor) * (
+                new_coords - state["coords"][trail_dst]
             )
 
         if track_history:
             if i == 0:
-                coords_history = coords.unsqueeze(0).clone()
-                force_history = force.unsqueeze(0).clone()
+                coords_history = state["coords"].unsqueeze(0).clone()
+                force_history = state["force"].unsqueeze(0).clone()
             else:
-                coords_history = torch.cat((coords_history, coords.unsqueeze(0)), dim=0)
-                force_history = torch.cat((force_history, force.unsqueeze(0)), dim=0)
+                coords_history = torch.cat((coords_history, state["coords"].unsqueeze(0)), dim=0)
+                force_history = torch.cat((force_history, state["force"].unsqueeze(0)), dim=0)
 
         n_steps += 1
 
-        # print(f"MPCEM Iteration {i}, delta coords = {torch.norm(coords - prev_coords)}")
-        if torch.norm(coords - prev_coords) < tolerance:
+        # print(f"MPCEM Iteration {i}, delta coords = {torch.norm(state["coords"] - prev_coords)}")
+        if torch.norm(state["coords"] - prev_coords) < tolerance:
             converged = True
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((coords.shape[0], 3), float("nan")).to(coords.device)
+    reaction_force = torch.full((state["coords"].shape[0], 3), float("nan")).to(state["coords"].device)
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
@@ -142,7 +175,28 @@ def mpcem_algorithm(
     if track_history:
         return coords_history, force_history, reaction_force
     else:
-        return coords, force.unsqueeze(1), reaction_force
+        return state["coords"], state["force"].unsqueeze(1), reaction_force, state["load"]
+
+def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
+    # only consider edges with a coordinate (estimate) for both nodes
+    valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
+    valid_edges = (valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]])
+
+    # Calculate edge loads due to self-weight
+    length = graph_edge_lengths(state["coords"], edge_index[:, valid_edges]).view(-1)
+    force = state["force"][edge_cem_to_undir][valid_edges]
+    valid_edge_load = -load_factor * 0.5 * length * force.abs()  # load_factor = density / yield_strength
+    edge_load = torch.zeros_like(state["force"][edge_cem_to_undir])
+    edge_load[valid_edges] = valid_edge_load
+
+    # Aggregate to node loads
+    node_load = torch.zeros_like(state["load"])
+    node_load[:, 2] = scatter(edge_load, edge_index[1], dim=0, dim_size=state["coords"].shape[0], reduce="sum")
+
+    state_updates = {
+        "load": node_load
+    }
+    return state_updates
 
 
 def cem_algorithm(
