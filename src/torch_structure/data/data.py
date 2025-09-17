@@ -16,6 +16,7 @@ from torch_structure.formfinding import (
     fdm,
 )
 from torch_structure.loss import ResidualForceLoss
+from torch_structure.geometry import graph_edge_lengths
 
 
 class Data(pyg.data.Data):
@@ -202,17 +203,11 @@ class StructData:
 
     @property
     def length_from_coords(self):
-        # derive from 'coords' if available
         if "coords" in self.node_attr_list:
-            src, dst = self.edge_index
-            length = torch.norm(
-                self.coords[src] - self.coords[dst], dim=1, keepdim=True
-            )
-            return length
-
+            return graph_edge_lengths(self.coords, self.edge_index)
         else:
             raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute or 'coords'"
+                f"'{self.__class__.__name__}' object has no attribute 'coords'"
             )
 
     @property
@@ -228,6 +223,14 @@ class StructData:
     @property
     def directed_edge_index(self):
         return self.edge_index[:, self.directed_mask.view(-1)]
+    
+    @property
+    def cem_edge_index(self):
+        return self.edge_index[:, self.cem_edge_mask]
+    
+    @property
+    def cem_edge_mask(self):
+        return ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
 
     def __setattr__(self, name, value, attr_type=None, track_history=False):
         """Redirect attribute setter to `self.data`"""
