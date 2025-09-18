@@ -1,7 +1,7 @@
 import torch
 from torch_scatter import scatter
 from torch_structure.message_passing import ResidualForce
-from torch_structure.geometry import line_plane_intersect, point_normal_to_plane, graph_edge_lengths
+from torch_structure.geometry import line_plane_intersect, point_normal_to_plane, graph_edge_lengths, line_direction
 
 ALLOWED_UPDATE_KEYS = {
     "coords", 
@@ -90,7 +90,7 @@ def mpcem_algorithm(
 
         prev_coords = state["coords"].clone()
 
-        # only consider edges with a coordinate (estimate) for both nodes
+        # Only consider edges with a coordinate (estimate) for both nodes
         valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
         valid_edges = (
             valid_nodes[cem_edge_index[0]]
@@ -178,7 +178,7 @@ def mpcem_algorithm(
         return state["coords"], state["force"].unsqueeze(1), reaction_force, state["load"]
 
 def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
-    # only consider edges with a coordinate (estimate) for both nodes
+    # Only consider edges with a coordinate (estimate) for both nodes
     valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
     valid_edges = (valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]])
 
@@ -198,6 +198,54 @@ def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
     }
     return state_updates
 
+def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_mod_h):  # TODO: Simplify
+    # Enforce expected input shapes
+    is_deck_trail_edge = is_deck_trail_edge.view(-1)
+    is_mod_v = is_mod_v.view(-1)
+    is_mod_h = is_mod_h.view(-1)
+
+    # Only consider edges with a coordinate (estimate) for both nodes
+    valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
+    valid_edges = (valid_nodes[cem_edge_index[0]] & valid_nodes[cem_edge_index[1]])
+    valid_to_deck_edges = (valid_edges & torch.isin(cem_edge_index[1, :], cem_edge_index[0, is_deck_trail_edge]))
+    valid_from_deck_edges = (valid_edges & torch.isin(cem_edge_index[0, :], cem_edge_index[0, is_deck_trail_edge]))
+    valid_to_deck_is_mod_v = valid_to_deck_edges & is_mod_v
+    valid_from_deck_is_mod_v = valid_from_deck_edges & is_mod_v
+    positive_direction = line_direction(state["coords"][cem_edge_index[0]], state["coords"][cem_edge_index[1]])[:, 1] > 0
+    valid_is_mod_h_pos = valid_edges & is_mod_h & positive_direction
+    valid_is_mod_h_neg = valid_edges & is_mod_h & ~positive_direction
+
+    # Calculate residual force
+    residual_force_mp = ResidualForce()
+    residual_force = residual_force_mp(state["coords"], state["force"][valid_to_deck_edges],
+                                       cem_edge_index[:, valid_to_deck_edges], state["load"])
+
+    # Update forces of vertical modification edges
+    mod_v_src, mod_v_dst = cem_edge_index[:, valid_to_deck_is_mod_v]
+    mod_v_direction = line_direction(state["coords"][mod_v_src], state["coords"][mod_v_dst])
+    state["force"][valid_to_deck_is_mod_v] += residual_force[mod_v_dst, 2] / mod_v_direction[:, 2]
+
+    mod_v_dst, mod_v_src = cem_edge_index[:, valid_from_deck_is_mod_v]
+    mod_v_direction = line_direction(state["coords"][mod_v_src], state["coords"][mod_v_dst])
+    state["force"][valid_from_deck_is_mod_v] += residual_force[mod_v_dst, 2] / mod_v_direction[:, 2]
+    
+    # Update forces of horizontal modification edges
+    residual_force = residual_force_mp(state["coords"], state["force"][valid_to_deck_edges],
+                                       cem_edge_index[:, valid_to_deck_edges], state["load"])
+    mod_h_src, mod_h_dst = cem_edge_index[:, valid_is_mod_h_pos]
+    x_src, y_src, _ = residual_force[mod_h_src].unbind(dim=1)
+    x_dst, y_dst, _ = residual_force[mod_h_dst].unbind(dim=1)
+    state["force"][valid_is_mod_h_pos] += -(y_src * x_dst - x_src * y_dst) / (x_src + x_dst)
+
+    mod_h_src, mod_h_dst = cem_edge_index[:, valid_is_mod_h_neg]
+    x_src, y_src, _ = residual_force[mod_h_src].unbind(dim=1)
+    x_dst, y_dst, _ = residual_force[mod_h_dst].unbind(dim=1)
+    state["force"][valid_is_mod_h_neg] += (y_src * x_dst - x_src * y_dst) / (x_src + x_dst)
+
+    state_updates = {
+        "force": state["force"]
+    }
+    return state_updates
 
 def cem_algorithm(
     coords,
