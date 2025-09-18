@@ -1,3 +1,4 @@
+from .arch_suspension_bridge import ArchSuspensionBridgeGenerator
 from .base_generator import BaseGenerator
 from .structure import Structure
 from .bridge import Bridge
@@ -10,6 +11,7 @@ from .dome import DomeGenerator
 from .mixed_dome import MixedDomeGenerator
 
 __all__ = [
+    "ArchSuspensionBridgeGenerator",
     "BaseGenerator",
     "Structure",
     "Bridge",
