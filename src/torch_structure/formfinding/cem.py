@@ -198,11 +198,13 @@ def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
     }
     return state_updates
 
-def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_mod_h):  # TODO: Simplify
+def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_mod_h, sequence, deck_slope):  # TODO: Simplify
     # Enforce expected input shapes
     is_deck_trail_edge = is_deck_trail_edge.view(-1)
     is_mod_v = is_mod_v.view(-1)
     is_mod_h = is_mod_h.view(-1)
+    sequence = sequence.view(-1)
+    deck_slope = deck_slope.view(-1)
 
     # Only consider edges with a coordinate (estimate) for both nodes
     valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
@@ -223,12 +225,14 @@ def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_
     # Update forces of vertical modification edges
     mod_v_src, mod_v_dst = cem_edge_index[:, valid_to_deck_is_mod_v]
     mod_v_direction = line_direction(state["coords"][mod_v_src], state["coords"][mod_v_dst])
-    state["force"][valid_to_deck_is_mod_v] += residual_force[mod_v_dst, 2] / mod_v_direction[:, 2]
+    x_res, _, z_res = residual_force[mod_v_dst].unbind(dim=1)
+    state["force"][valid_to_deck_is_mod_v] += (z_res + deck_slope[mod_v_dst] / x_res) / mod_v_direction[:, 2]
 
     mod_v_dst, mod_v_src = cem_edge_index[:, valid_from_deck_is_mod_v]
     mod_v_direction = line_direction(state["coords"][mod_v_src], state["coords"][mod_v_dst])
-    state["force"][valid_from_deck_is_mod_v] += residual_force[mod_v_dst, 2] / mod_v_direction[:, 2]
-    
+    x_res, _, z_res = residual_force[mod_v_dst].unbind(dim=1)
+    state["force"][valid_from_deck_is_mod_v] += (z_res + deck_slope[mod_v_dst] / x_res) / mod_v_direction[:, 2]
+
     # Update forces of horizontal modification edges
     residual_force = residual_force_mp(state["coords"], state["force"][valid_to_deck_edges],
                                        cem_edge_index[:, valid_to_deck_edges], state["load"])

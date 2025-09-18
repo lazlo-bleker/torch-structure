@@ -11,12 +11,16 @@ from torch_structure.formfinding.cem import constrained_deck_cb
 class ArchSuspensionBridgeGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)
+        self.max_attempts = 100
+
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "constraint_plane": torch.empty((0, 6), dtype=torch.float),
+            "sequence": torch.empty((0, 1), dtype=torch.long),
+            "deck_slope": torch.empty((0, 1), dtype=torch.float),
         }
         self.edge_attrs = {
             "force": torch.empty((0, 1), dtype=torch.float),
@@ -52,6 +56,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_force,
         cable_force,
         inter_cable_force,
+        deck_rise,
     ):
         if n_cables not in [1,  2]:
             raise ValueError("Number of cables must be either 1 or 2.")
@@ -68,6 +73,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_force=None,
         cable_force=None,
         inter_cable_force=None,
+        deck_rise=None,
     ):
         if cable_force is None:
             cable_force_sign = np.random.choice([-1, 1])
@@ -91,6 +97,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             deck_force = np.random.uniform(-3.0, -1.5)
         if inter_cable_force is None:
             inter_cable_force = np.random.uniform(-1.0, 1.0)
+        if deck_rise is None:
+            deck_rise = np.random.choice([0.0, np.random.uniform(2.0, 12.0)])
 
         return {
             "span": span,
@@ -103,6 +111,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "deck_force": deck_force,
             "cable_force": cable_force,
             "inter_cable_force": inter_cable_force,
+            "deck_rise": deck_rise,
         }
 
     def generate(
@@ -117,6 +126,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_force,
         cable_force,
         inter_cable_force,
+        deck_rise,
     ):
         # Initialize data object
         data = StructData(
@@ -126,10 +136,12 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         )
 
         # Global parameters
-        bay_size = 0.5 * span / n_bays
+        bay_size = 0.5 * span / (n_bays + 0.5)
         line_load = 0.5
         load_mag = line_load * span / (2 * (2 * n_bays + 1))
         load = torch.tensor([0.0, 0.0, -load_mag], dtype=torch.float)
+        twist_rad = math.radians(twist)
+        twist_offset = 0.5 * bay_size * math.tan(twist_rad)
 
         # Origin nodes
         deck_origin_coords = torch.tensor([
@@ -141,15 +153,15 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
 
         if n_cables == 1:
             cable_origin_coords = torch.tensor([
-                [0.5*bay_size, 0.0, midspan_height],
-                [-0.5*bay_size, 0.0, midspan_height],
+                [0.5*bay_size, twist_offset, midspan_height],
+                [-0.5*bay_size, -twist_offset, midspan_height],
             ], dtype=torch.float)
         elif n_cables == 2:
             cable_origin_coords = torch.tensor([
-                [0.5*bay_size, 0.5*inter_cable_distance, midspan_height],
-                [0.5*bay_size, -0.5*inter_cable_distance, midspan_height],
-                [-0.5*bay_size, 0.5*inter_cable_distance, midspan_height],
-                [-0.5*bay_size, -0.5*inter_cable_distance, midspan_height],
+                [0.5*bay_size, 0.5*inter_cable_distance + twist_offset, midspan_height],
+                [0.5*bay_size, -0.5*inter_cable_distance + twist_offset, midspan_height],
+                [-0.5*bay_size, 0.5*inter_cable_distance - twist_offset, midspan_height],
+                [-0.5*bay_size, -0.5*inter_cable_distance - twist_offset, midspan_height],
             ], dtype=torch.float)
     
         origin_coords = torch.cat([deck_origin_coords, cable_origin_coords], dim=0)
@@ -162,13 +174,17 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 coords=origin_coord,
                 is_origin_node=torch.tensor(True),
                 load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
+                sequence=torch.tensor([0], dtype=torch.long),
+                deck_slope=torch.tensor(side*8*deck_rise/span * 1 / (n_bays + 0.5))
             )
             for j in range(n_bays):
                 data.add_node(
                     f"trail_{i}_node_{j+1}",
                     load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
                     support_condition=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
-                    constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0])
+                    constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
+                    sequence=torch.tensor([j + 1], dtype=torch.long),
+                    deck_slope=torch.tensor(side*8*deck_rise/span * (j + 2) / (n_bays + 0.5))
                 )
                 # Trail edges
                 data.add_edge(
@@ -244,10 +260,18 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                            cem_edge_index=data.cem_edge_index,
                            is_mod_v=data.is_mod_v[data.cem_edge_mask],
                            is_mod_h=data.is_mod_h[data.cem_edge_mask],
-                           is_deck_trail_edge=data.is_deck_trail_edge[data.cem_edge_mask])
-        data = data.mpcem(callback=callback, max_iter=10)
+                           is_deck_trail_edge=data.is_deck_trail_edge[data.cem_edge_mask],
+                           sequence=data.sequence,
+                           deck_slope=data.deck_slope)
+        data = data.mpcem(callback=callback, verbose=True)
 
-        # Set support
-        data.is_support = data.is_support
+        # bbox filter
+        _, y_extent, z_extent = (data.bbox[1] - data.bbox[0]).unbind(dim=0)
+        y_factor = 0.8
+        z_factor = 0.5
+        if y_extent > span * y_factor:
+            raise ValueError(f"Bridge geometry is too wide ({y_extent.item()} > {span * y_factor}).")
+        if z_extent > span * z_factor:
+            raise ValueError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
 
         return data
