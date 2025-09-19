@@ -1,11 +1,13 @@
 import torch
 import math
 import numpy as np
+from torch_scatter import scatter
 from functools import partial
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 from torch_structure.formfinding.cem import constrained_deck_cb
+from torch_structure.geometry.utils import line_direction
 
 
 class ArchSuspensionBridgeGenerator(BaseGenerator):
@@ -30,6 +32,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "is_mod_v": torch.empty((0, 1), dtype=torch.bool),
             "is_mod_h": torch.empty((0, 1), dtype=torch.bool),
             "is_deck_trail_edge": torch.empty((0, 1), dtype=torch.bool),
+            "is_center_deviation_edge": torch.empty((0, 1), dtype=torch.bool),
         }
         self.default_attrs = {
             "force": torch.tensor([torch.nan]),
@@ -42,6 +45,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "is_mod_v": torch.tensor(0, dtype=torch.bool),
             "is_mod_h": torch.tensor(0, dtype=torch.bool),
             "is_deck_trail_edge": torch.tensor(0, dtype=torch.bool),
+            "is_center_deviation_edge": torch.tensor(0, dtype=torch.bool),
         }
 
     def validate_input(
@@ -213,6 +217,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 f"trail_{pair[1]}_node_0",
                 is_trail_edge=torch.tensor(False),
                 force=deck_force,
+                is_center_deviation_edge=torch.tensor(True),
             )
 
         # Center cable edges
@@ -222,6 +227,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 f"trail_{pair[1]}_node_0",
                 is_trail_edge=torch.tensor(False),
                 force=cable_force,
+                is_center_deviation_edge=torch.tensor(True),
             )
 
         temp_force = 0.0
@@ -270,8 +276,38 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         y_factor = 0.8
         z_factor = 0.5
         if y_extent > span * y_factor:
+            # print("bbox (wide)")
             raise ValueError(f"Bridge geometry is too wide ({y_extent.item()} > {span * y_factor}).")
         if z_extent > span * z_factor:
+            # print("bbox (tall)")
             raise ValueError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
+        
+        ## smoothness filter
+        max_angle = 45  # degrees
+
+        edge_mask = (data.is_trail_edge.view(-1) | data.is_center_deviation_edge.view(-1))
+        src, dst = data.edge_index[:, edge_mask]
+        unit_vector = line_direction(data.coords[src], data.coords[dst])
+        vector_sum = scatter(unit_vector, src, dim=0, reduce="sum", dim_size=data.num_nodes)
+        degree = scatter(torch.ones_like(src), src, dim=0, reduce="sum", dim_size=data.num_nodes)
+        degree_2_mask = degree == 2
+
+        R2 = vector_sum[degree_2_mask].pow(2).sum(dim=1)
+        cos_theta = R2 * 0.5 - 1
+        cos_theta = cos_theta.clamp(-1.0, 1.0)
+        cos_min = torch.cos(torch.deg2rad(torch.tensor(180 - max_angle, dtype=torch.float)))
+        is_invalid = cos_theta > cos_min
+        if is_invalid.any():
+            # print("Invalid nodes:", is_invalid.sum())
+            # print("vector sums:", vector_sum[degree_2_mask][is_invalid])
+            # print("smoothness")
+            raise ValueError(f"Trails have too sharp angles (>{max_angle}°).")
+
+        ## force density filter
+        data.force_density = data.force / data.length_from_coords
+        abs_force_density = data.force_density.abs()
+        if abs_force_density[~edge_mask].max() > abs_force_density[edge_mask].min():
+            # print("force density")
+            raise ValueError("Some secondary edges have higher force density magnitude than deck/main cable edges.")
 
         return data
