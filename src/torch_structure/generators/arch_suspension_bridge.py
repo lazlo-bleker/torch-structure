@@ -13,7 +13,7 @@ from torch_structure.geometry.utils import line_direction
 class ArchSuspensionBridgeGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)
-        self.max_attempts = 100
+        self.max_attempts = 1000
 
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
@@ -269,7 +269,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                            is_deck_trail_edge=data.is_deck_trail_edge[data.cem_edge_mask],
                            sequence=data.sequence,
                            deck_slope=data.deck_slope)
-        data = data.mpcem(callback=callback, verbose=True)
+        data = data.mpcem(callback=callback, verbose=False)
 
         # bbox filter
         _, y_extent, z_extent = (data.bbox[1] - data.bbox[0]).unbind(dim=0)
