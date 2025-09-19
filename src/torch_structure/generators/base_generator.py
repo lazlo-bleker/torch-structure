@@ -8,6 +8,8 @@ class BaseGenerator(ABC):
     def __init__(self, **overrides):
         self.overrides = overrides
         self.max_attempts = 1
+        self.attempt_count = 0
+        self.success_count = 0
 
     def __call__(self):
         return self._build()
@@ -19,10 +21,13 @@ class BaseGenerator(ABC):
             return self.generate(**self.input)
         else:
             for _ in range(self.max_attempts):
+                self.attempt_count += 1
                 self.input = self.sample_input(**self.overrides)
                 self.validate_input(**self.input)
                 try:
-                    return self.generate(**self.input)
+                    result = self.generate(**self.input)
+                    self.success_count += 1
+                    return result
                 except Exception:
                     continue
 
