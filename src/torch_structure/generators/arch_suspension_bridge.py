@@ -282,7 +282,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             # print("bbox (tall)")
             raise ValueError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
         
-        # smoothness filter
+        # # smoothness filter
         max_angle = 45  # degrees
 
         edge_mask = (data.is_trail_edge.view(-1) | data.is_center_deviation_edge.view(-1))
@@ -303,14 +303,14 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             # print("smoothness")
             raise ValueError(f"Trails have too sharp angles (>{max_angle}°).")
 
-        # force density filter
+        # # force density filter
         data.force_density = data.force / data.length_from_coords
         abs_force_density = data.force_density.abs()
-        if abs_force_density[~edge_mask].max() > abs_force_density[edge_mask].min():
-            # print("force density")
-            raise ValueError("Some secondary edges have higher force density magnitude than deck/main cable edges.")
+        # if abs_force_density[~edge_mask].max() > abs_force_density[edge_mask].min():
+        #     # print("force density")
+        #     raise ValueError("Some secondary edges have higher force density magnitude than deck/main cable edges.")
         
-        # force density magnitude filter
+        # # force density magnitude filter
         mag_threshold = 30
         if abs_force_density.max() > mag_threshold:
             raise ValueError(f"Some edges have too high force density magnitude (>{mag_threshold}).")
