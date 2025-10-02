@@ -9,6 +9,7 @@ from .cable_stayed_bridge import CableStayedBridge
 from .network_arch_bridge import NetworkArchBridge
 from .dome import DomeGenerator
 from .mixed_dome import MixedDomeGenerator
+from .truss_bridge import TrussBridgeGenerator
 
 __all__ = [
     "ArchSuspensionBridgeGenerator",
@@ -22,4 +23,5 @@ __all__ = [
     "NerviDome",
     "NetworkArchBridge",
     "MixedDomeGenerator",
+    "TrussBridgeGenerator",
 ]
