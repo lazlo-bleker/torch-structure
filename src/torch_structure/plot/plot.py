@@ -25,6 +25,7 @@ def plot_data(
     ax=None,
     path=None,
     show=False,
+    show_edge_indices=False,
 ):
     """
     Plot a structure in 3D.
@@ -116,6 +117,11 @@ def plot_data(
             lw=lw[i],
             label=edge_label[i],
         )
+        if show_edge_indices:
+            mid_x = (x[src] + x[dst]) / 2
+            mid_y = (y[src] + y[dst]) / 2
+            mid_z = (z[src] + z[dst]) / 2
+            ax.text(mid_x, mid_y, mid_z, str(i), color="black", fontsize=8)
 
     # Plot external load
     if show_load:
