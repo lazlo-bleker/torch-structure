@@ -23,6 +23,10 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "constraint_plane": torch.empty((0, 6), dtype=torch.float),
             "sequence": torch.empty((0, 1), dtype=torch.long),
             "deck_slope": torch.empty((0, 1), dtype=torch.float),
+            "is_deck_node": torch.empty((0, 1), dtype=torch.bool),
+            "is_left_side_node": torch.empty((0, 1), dtype=torch.bool),
+            "is_right_side_node": torch.empty((0, 1), dtype=torch.bool),
+            "is_center_node": torch.empty((0, 1), dtype=torch.bool),
         }
         self.edge_attrs = {
             "force": torch.empty((0, 1), dtype=torch.float),
@@ -46,6 +50,10 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "is_mod_h": torch.tensor(0, dtype=torch.bool),
             "is_deck_trail_edge": torch.tensor(0, dtype=torch.bool),
             "is_center_deviation_edge": torch.tensor(0, dtype=torch.bool),
+            "is_deck_node": torch.tensor(0, dtype=torch.bool),
+            "is_left_side_node": torch.tensor(0, dtype=torch.bool),
+            "is_right_side_node": torch.tensor(0, dtype=torch.bool),
+            "is_center_node": torch.tensor(0, dtype=torch.bool),
         }
 
     def validate_input(
@@ -154,12 +162,14 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             [-0.5*bay_size, 0.5*deck_width, 0.0],
             [-0.5*bay_size, -0.5*deck_width, 0.0],
         ], dtype=torch.float)
+        profile_side = ["right", "left", "right", "left"]
 
         if n_cables == 1:
             cable_origin_coords = torch.tensor([
                 [0.5*bay_size, twist_offset, midspan_height],
                 [-0.5*bay_size, -twist_offset, midspan_height],
             ], dtype=torch.float)
+            profile_side += ["center", "center"]
         elif n_cables == 2:
             cable_origin_coords = torch.tensor([
                 [0.5*bay_size, 0.5*inter_cable_distance + twist_offset, midspan_height],
@@ -167,6 +177,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 [-0.5*bay_size, 0.5*inter_cable_distance - twist_offset, midspan_height],
                 [-0.5*bay_size, -0.5*inter_cable_distance - twist_offset, midspan_height],
             ], dtype=torch.float)
+            profile_side += ["right", "left", "right", "left"]
     
         origin_coords = torch.cat([deck_origin_coords, cable_origin_coords], dim=0)
 
@@ -179,7 +190,11 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 is_origin_node=torch.tensor(True),
                 load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
                 sequence=torch.tensor([0], dtype=torch.long),
-                deck_slope=torch.tensor(side*8*deck_rise/span * 1 / (n_bays + 0.5))
+                deck_slope=torch.tensor(side*8*deck_rise/span * 1 / (n_bays + 0.5)),
+                is_deck_node=torch.tensor(is_deck),
+                is_left_side_node=torch.tensor(profile_side[i] == "left"),
+                is_right_side_node=torch.tensor(profile_side[i] == "right"),
+                is_center_node=torch.tensor(profile_side[i] == "center"),
             )
             for j in range(n_bays):
                 data.add_node(
@@ -188,7 +203,11 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                     support_condition=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
                     constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
                     sequence=torch.tensor([j + 1], dtype=torch.long),
-                    deck_slope=torch.tensor(side*8*deck_rise/span * (j + 2) / (n_bays + 0.5))
+                    deck_slope=torch.tensor(side*8*deck_rise/span * (j + 2) / (n_bays + 0.5)),
+                    is_deck_node=torch.tensor(is_deck),
+                    is_left_side_node=torch.tensor(profile_side[i] == "left"),
+                    is_right_side_node=torch.tensor(profile_side[i] == "right"),
+                    is_center_node=torch.tensor(profile_side[i] == "center"),
                 )
                 # Trail edges
                 data.add_edge(
