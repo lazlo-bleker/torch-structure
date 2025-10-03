@@ -1,23 +1,21 @@
 import torch
 import math
 import numpy as np
-from torch_scatter import scatter
-from functools import partial
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
-from torch_structure.formfinding.cem import constrained_deck_cb
-from torch_structure.geometry.utils import line_direction
+from torch_structure.formfinding import create_branch_node_matrix
 
 
 class TrussBridgeGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)
+        self.max_attempts = 100
 
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_condition": torch.empty((0, 3), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
             "is_deck_node": torch.empty((0, 1), dtype=torch.bool),
             "is_left_side_node": torch.empty((0, 1), dtype=torch.bool),
@@ -42,11 +40,12 @@ class TrussBridgeGenerator(BaseGenerator):
         n_bays,
         truss_height,
         deck_width,
+        inclined_truss,
         truss_inclination,
         truss_type,
     ):
-        if truss_type not in ["pratt", "howe", "warren", "parker"]:
-            raise ValueError("Truss type must be either 'pratt', 'howe', 'warren', or 'parker'.")
+        if truss_type not in ["pratt", "howe", "parker"]:
+            raise ValueError("Truss type must be either 'pratt', 'howe', or 'parker'.")
 
     def sample_input(
         self,
@@ -56,6 +55,7 @@ class TrussBridgeGenerator(BaseGenerator):
         n_bays=None,
         truss_height=None,
         deck_width=None,
+        inclined_truss=None,
         truss_inclination=None,
         truss_type=None,
     ):
@@ -68,19 +68,21 @@ class TrussBridgeGenerator(BaseGenerator):
                 triangle = np.random.choice([True, False], p=[0.3, 0.7])
             else:
                 triangle = False
-        if truss_height is None:
-            truss_height = np.random.uniform(0.15, 0.25) * span
-        if n_bays is None:
-            n_bays = np.random.randint(int(span / truss_height + 0.5) - 1, int(span / truss_height + 0.5) + 2)
         if deck_width is None:
             deck_width = np.random.uniform(2.0, 5.0)
-        if truss_inclination is None:
+        if truss_height is None:
+            truss_height = np.random.uniform(0.1, 0.2) * span * (deck_width/5)
+        if n_bays is None:
+            n_bays = np.random.randint(int(span / truss_height + 0.5) - 1, int(span / truss_height + 0.5) + 5) // 2
+        if inclined_truss is None:
             if triangle:
-                truss_inclination = None
+                inclined_truss = False
             else:
-                truss_inclination = np.random.choice([np.random.uniform(-5.0, 5.0), np.random.uniform(5.0, 45.0)], p=[0.6, 0.4])
+                inclined_truss = np.random.choice([True, False], p=[0.7, 0.3])
+        if truss_inclination is None:
+            truss_inclination = np.random.uniform(-5.0, 30.0) if inclined_truss else 0.0
         if truss_type is None:
-            truss_type = np.random.choice(["pratt", "howe", "warren", "parker"], p=[0.25, 0.25, 0.25, 0.25])
+            truss_type = np.random.choice(["pratt", "howe", "parker"], p=[1/3, 1/3, 1/3])
 
         return {
             "span": span,
@@ -89,6 +91,7 @@ class TrussBridgeGenerator(BaseGenerator):
             "n_bays": n_bays,
             "truss_height": truss_height,
             "deck_width": deck_width,
+            "inclined_truss": inclined_truss,
             "truss_inclination": truss_inclination,
             "truss_type": truss_type,
         }
@@ -101,6 +104,7 @@ class TrussBridgeGenerator(BaseGenerator):
         n_bays,
         truss_height,
         deck_width,
+        inclined_truss,
         truss_inclination,
         truss_type,
     ):
@@ -119,9 +123,10 @@ class TrussBridgeGenerator(BaseGenerator):
             chord_z = -truss_height
         else:
             chord_z = truss_height
-        if truss_inclination is not None:
+        if inclined_truss:
             chord_y_offset = truss_height * math.tan(math.radians(truss_inclination))
-
+        else:
+            chord_y_offset = 0.0
         # center nodes
         deck_center_coords = torch.tensor([
             [0.0, 0.5*deck_width, 0.0],
@@ -158,12 +163,37 @@ class TrussBridgeGenerator(BaseGenerator):
             )
             for side in [-1, 1]:
                 for j in range(n_bays):
+                    if not is_deck and j == n_bays - 1:
+                        if truss_type == "parker":
+                            continue
+                        elif truss_type == "pratt" and deck_truss:
+                            continue
+                        elif truss_type == "howe" and not deck_truss:
+                            continue
+                    coord = center_coord + torch.tensor([side*(j + 1)*bay_size, 0.0, 0.0])
+                    if truss_type == "parker" and not is_deck:
+                        z_shift = math.copysign(3 * truss_height / span**2 * coord[0]**2, chord_z)
+                        coord[2] -= z_shift
+                        if inclined_truss and not triangle:
+                            factor = 1 if profile_side[i] == "right" else -1
+                            coord[1] -= factor * z_shift * math.tan(math.radians(truss_inclination))
+
+                    if j == n_bays - 1 and is_deck:
+                        y_fixed = (profile_side[i] == "left" and side == 1)
+                        y_fixed = True
+                        support_condition = torch.tensor([True, y_fixed, True]) if side == -1 else torch.tensor([False, y_fixed, True])
+                    else:
+                        support_condition = torch.tensor([False, False, False])
                     data.add_node(
                         f"trail_{i}_node_{j+1}_side_{side}",
                         load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
-                        support_condition=torch.tensor([True, True, True]) if j == n_bays - 1 and is_deck else torch.tensor([False, False, False]),
-                        coords=center_coord + torch.tensor([side*(j + 1)*bay_size, 0.0, 0.0]),
+                        support_condition=support_condition,
+                        coords=coord,
                         sequence=torch.tensor([j + 1], dtype=torch.long),
+                        is_deck_node=torch.tensor(is_deck),
+                        is_left_side_node=torch.tensor(profile_side[i] == "left"),
+                        is_right_side_node=torch.tensor(profile_side[i] == "right"),
+                        is_center_node=torch.tensor(profile_side[i] == "center"),
                     )
                     # Trail edges
                     data.add_edge(
@@ -180,42 +210,87 @@ class TrussBridgeGenerator(BaseGenerator):
         for pair in chord_pairs:
             for side in [-1, 1]:
                 for j in range(n_bays):
-                    if truss_type in ["parker", "howe"] and j == n_bays - 1:
-                        continue
+                    index_0 = j
+                    index_1 = j + 1
+                    if deck_truss:
+                        index_0, index_1 = index_1, index_0
+                    if truss_type in ["pratt", "parker"]:
+                        if truss_type == "parker" and not deck_truss and j == n_bays - 1:
+                            data.add_edge(
+                                f"trail_{pair[0]}_node_{index_1}_side_{side}" if index_1 > 0 else f"trail_{pair[0]}_node_0",
+                                f"trail_{pair[1]}_node_{index_0}_side_{side}" if index_0 > 0 else f"trail_{pair[1]}_node_0",
+                            )
+                        else:
+                            data.add_edge(
+                                f"trail_{pair[0]}_node_{index_0}_side_{side}" if index_0 > 0 else f"trail_{pair[0]}_node_0",
+                                f"trail_{pair[1]}_node_{index_1}_side_{side}" if index_1 > 0 else f"trail_{pair[1]}_node_0",
+                            )
+                    if truss_type == "howe":
+                        data.add_edge(
+                            f"trail_{pair[0]}_node_{index_1}_side_{side}" if index_1 > 0 else f"trail_{pair[0]}_node_0",
+                            f"trail_{pair[1]}_node_{index_0}_side_{side}" if index_0 > 0 else f"trail_{pair[1]}_node_0",
+                        )
+                    if j == n_bays - 1:
+                        if truss_type == "parker":
+                            continue
+                        elif truss_type == "pratt" and deck_truss:
+                            continue
+                        elif truss_type == "howe" and not deck_truss:
+                            continue
                     data.add_edge(
                         f"trail_{pair[0]}_node_{j+1}_side_{side}",
                         f"trail_{pair[1]}_node_{j+1}_side_{side}",
                     )
-                    if truss_type in ["pratt", "parker"]:
-                        data.add_edge(
-                            f"trail_{pair[0]}_node_{j}_side_{side}" if j > 0 else f"trail_{pair[0]}_node_0",
-                            f"trail_{pair[1]}_node_{j+1}_side_{side}",
-                        )
-                    elif truss_type == "howe":
-                        data.add_edge(
-                            f"trail_{pair[0]}_node_{j+1}_side_{side}",
-                            f"trail_{pair[1]}_node_{j}_side_{side}" if j > 0 else f"trail_{pair[1]}_node_0",
-                        )
-                        print(data.edge_index.shape)
             data.add_edge(
                 f"trail_{pair[0]}_node_0",
                 f"trail_{pair[1]}_node_0",
             )
 
-        temp_force = 0.0
-        for side in [-1, 1]:
-            for i in range(n_bays):
-                # Inter-deck edges
+        if inclined_truss or triangle:
+            for side in [-1, 1]:
+                for i in range(n_bays - 1):
+                    # Inter-deck edges
+                    data.add_edge(
+                        f"trail_0_node_{i+1}_side_{side}",
+                        f"trail_1_node_{i+1}_side_{side}",
+                    )
                 data.add_edge(
-                    f"trail_0_node_{i+1}_side_{side}",
-                    f"trail_1_node_{i+1}_side_{side}",
+                    "trail_0_node_0",
+                    "trail_1_node_0",
                 )
-            data.add_edge(
-                f"trail_0_node_0",
-                f"trail_1_node_0",
-            )
 
         # Analysis
+        support = data.support_condition
+        load = data.load
+
+        coords = torch.clone(data.coords)  # check if this is necessary
+        C = create_branch_node_matrix(data.directed_edge_index)
+
+        CxT = C[:, ~support[:, 0]].T   # (n_free_x, E)
+        CyT = C[:, ~support[:, 1]].T   # (n_free_y, E)
+        CzT = C[:, ~support[:, 2]].T   # (n_free_z, E)
+
+        u = torch.mv(C, coords[:, 0])
+        v = torch.mv(C, coords[:, 1])
+        w = torch.mv(C, coords[:, 2])
+        U = torch.diag(u)
+        V = torch.diag(v)
+        W = torch.diag(w)
+
+        A = torch.vstack((
+            CxT @ U,
+            CyT @ V,
+            CzT @ W
+        ))
+
+        b = torch.hstack((load[~support[:, 0], 0], load[~support[:, 1], 1], load[~support[:, 2], 2]))
+
+        force_density = torch.linalg.lstsq(A, b).solution
+
+        data.force_density = data.edge_attr_to_undirected(force_density.view(-1, 1), mask=data.directed_mask)
+        data.force = data.force_density * data.length_from_coords
+        if not data.verify_equilibrium():
+            raise ValueError("Equilibrium not found.")
         
         
         return data
