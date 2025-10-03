@@ -190,7 +190,7 @@ class StructData:
 
         # If 'is_support' is missing, fall back to support_condition if available
         elif "support_condition" in self.node_attr_list:
-            return torch.all(self.data.support_condition, dim=1, keepdim=True)
+            return torch.any(self.data.support_condition, dim=1, keepdim=True)  # ToDO: check per dim
 
         else:
             raise AttributeError(
@@ -508,9 +508,9 @@ class StructData:
             if "is_support" in self.node_attr_list:
                 kwargs["is_support"] = self.is_support
             elif "support_condition" in self.node_attr_list:
-                kwargs["is_support"] = torch.all(
+                kwargs["is_support"] = torch.any(
                     self.support_condition, dim=1, keepdim=True
-                )
+                )  # ToDO: check per dim
         if "force" not in kwargs:
             kwargs["force"] = self.force
         if "edge_index" not in kwargs:
