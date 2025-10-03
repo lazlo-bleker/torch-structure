@@ -65,6 +65,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_width,
         inter_cable_distance,
         twist,
+        connected_cables,
+        inclined_cables,
         deck_force,
         cable_force,
         inter_cable_force,
@@ -82,6 +84,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_width=None,
         inter_cable_distance=None,
         twist=None,
+        connected_cables=None,
+        inclined_cables=None,
         deck_force=None,
         cable_force=None,
         inter_cable_force=None,
@@ -101,10 +105,17 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         if deck_width is None:
             deck_width = np.random.uniform(2.0, 5.0)
         if twist is None:
-            twisted = np.random.choice([0, 1], p=[0.7, 0.3])
+            twisted = np.random.choice([False, True], p=[0.7, 0.3])
             twist = twisted * np.random.uniform(5.0, 20.0)
+        if connected_cables is None:
+            connected_cables = np.random.choice([False, True], p=[0.3, 0.7]) if not twisted else 1
+        if inclined_cables is None:
+            if n_cables == 1:
+                inclined_cables = False
+            else:
+                inclined_cables = np.random.choice([False, True], p=[0.3, 0.7]) if not twisted and not connected_cables else 1
         if inter_cable_distance is None:
-            inter_cable_distance = np.random.uniform(3.0, 20.0)
+            inter_cable_distance = np.random.uniform(3.0, 20.0) if inclined_cables else deck_width
         if deck_force is None:
             deck_force = np.random.uniform(-3.0, -1.5)
         if inter_cable_force is None:
@@ -120,6 +131,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "deck_width": deck_width,
             "inter_cable_distance": inter_cable_distance,
             "twist": twist,
+            "connected_cables": connected_cables,
+            "inclined_cables": inclined_cables,
             "deck_force": deck_force,
             "cable_force": cable_force,
             "inter_cable_force": inter_cable_force,
@@ -135,6 +148,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_width,
         inter_cable_distance,
         twist,
+        connected_cables,
+        inclined_cables,
         deck_force,
         cable_force,
         inter_cable_force,
@@ -272,13 +287,14 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 )
 
             # Inter-cable edges
-            for pair in inter_cable_pairs:
-                data.add_edge(
-                    f"trail_{pair[0]}_node_{i}",
-                    f"trail_{pair[1]}_node_{i}",
-                    is_trail_edge=torch.tensor(False),
-                    force=inter_cable_force,
-                )
+            if connected_cables:
+                for pair in inter_cable_pairs:
+                    data.add_edge(
+                        f"trail_{pair[0]}_node_{i}",
+                        f"trail_{pair[1]}_node_{i}",
+                        is_trail_edge=torch.tensor(False),
+                        force=inter_cable_force,
+                    )
 
         # Formfinding
         callback = partial(constrained_deck_cb,
