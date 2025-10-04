@@ -115,7 +115,7 @@ class TrussBridgeGenerator(BaseGenerator):
         )
 
         # Global parameters
-        bay_size = 0.5 * span / (n_bays + 0.5)
+        bay_size = 0.5 * span / n_bays
         line_load = 0.5
         load_mag = line_load * span / (2 * (2 * n_bays + 1))
         load = torch.tensor([0.0, 0.0, -load_mag], dtype=torch.float)
@@ -292,5 +292,17 @@ class TrussBridgeGenerator(BaseGenerator):
         if not data.verify_equilibrium():
             raise ValueError("Equilibrium not found.")
         
+        # Text labels
+        typology = "deck_truss" if deck_truss else "through_truss"
+        text_label_dict = {
+            "typology": typology,
+            "truss_type": str(truss_type),
+            "triangle": bool(triangle),
+            "n_bays": 2*n_bays,
+            "inclined": bool(inclined_truss),
+            "inclination": truss_inclination,
+            "span": span,
+            "deck_width": deck_width,
+        }
         
-        return data
+        return data, text_label_dict

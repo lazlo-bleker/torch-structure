@@ -165,7 +165,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         # Global parameters
         bay_size = 0.5 * span / (n_bays + 0.5)
         line_load = 0.5
-        load_mag = line_load * span / (2 * (2 * n_bays + 1))
+        load_mag = line_load * span / (2 * (2 * n_bays + 2))
         load = torch.tensor([0.0, 0.0, -load_mag], dtype=torch.float)
         twist_rad = math.radians(twist)
         twist_offset = 0.5 * bay_size * math.tan(twist_rad)
@@ -349,5 +349,4 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         mag_threshold = 30
         if abs_force_density.max() > mag_threshold:
             raise ValueError(f"Some edges have too high force density magnitude (>{mag_threshold}).")
-
         return data
