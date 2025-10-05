@@ -31,6 +31,49 @@ class TrussBridgeGenerator(BaseGenerator):
             "is_right_side_node": torch.tensor(0, dtype=torch.bool),
             "is_center_node": torch.tensor(0, dtype=torch.bool),
         }
+        self.cat_dict = {
+            0: {"generator": {
+                0: "truss",
+                1: "arch_susp"
+            }},
+            # if truss
+            1: {"truss_type": {
+                0: "pratt",
+                1: "howe",
+                2: "parker"
+            }},
+            2: {"triangle": {
+                0: False,
+                1: True
+            }},
+            # if not triangle
+            3: {"deck_truss": {
+                0: False,
+                1: True
+            }},
+            4: {"inclined": {
+                0: False,
+                1: True
+            }},
+            # endif not triangle
+            5: {"n_bays_truss": {
+                i: i for i in range(30)
+            }},
+            # endif truss
+            # if arch_susp
+            6: {"n_cables": {
+                0: 1,
+                1: 2,
+            }},
+            7: {"n_bays_arch_susp": {
+                i: i for i in range(30)
+            }},
+            # if 2 cables
+            8: {"connected_cables": {
+                0: False,
+                1: True
+            }}
+        }
 
     def validate_input(
         self,
@@ -304,5 +347,16 @@ class TrussBridgeGenerator(BaseGenerator):
             "span": span,
             "deck_width": deck_width,
         }
+
+        data.topology_params = torch.tensor(
+            [0,
+             {"pratt": 0, "howe": 1, "parker": 2}[truss_type],
+             int(triangle),
+             int(deck_truss) if not triangle else -100,
+             int(inclined_truss) if not triangle else -100,
+             n_bays,
+             -100,
+             -100,
+             -100], dtype=torch.long).view(1, -1)
         
         return data, text_label_dict

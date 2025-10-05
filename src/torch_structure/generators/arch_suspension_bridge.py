@@ -379,4 +379,15 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "arched_deck": bool(deck_rise > 1e-3),
         }
 
+        data.topology_params = torch.tensor(
+            [1,
+             -100,
+             -100,
+             -100,
+             -100,
+             -100,
+             n_cables - 1,
+             n_bays,
+             int(connected_cables)], dtype=torch.long).view(1, -1)
+
         return data, text_label_dict
