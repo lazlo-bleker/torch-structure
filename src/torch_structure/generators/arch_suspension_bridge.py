@@ -349,4 +349,34 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         mag_threshold = 30
         if abs_force_density.max() > mag_threshold:
             raise ValueError(f"Some edges have too high force density magnitude (>{mag_threshold}).")
-        return data
+        
+        # Text labels
+        typology = "suspension_bridge" if cable_force > 0 else "arch_bridge"
+        if typology == "suspension_bridge" and data.coords[:, 2].max().item() < 0.05*span:
+            typology = "inverted_arch"
+        if typology == "suspension_bridge":
+            typology_extended = "underspanned" if midspan_height < 0 else None
+        elif typology == "arch_bridge":
+            typology_extended = "deck" if midspan_height < 0 else "through"
+        else:
+            typology_extended = None
+        arch_rise_or_cable_sag = data.coords[~data.is_deck_node.view(-1), 2].max().item() - data.coords[~data.is_deck_node.view(-1), 2].min().item()
+        if n_cables == 1:
+            connected_cables = None
+        else:
+            connected_cables = bool(connected_cables)
+        text_label_dict = {
+            "typology": typology,
+            "typology_extended": typology_extended,
+            "n_cables_or_arches": int(n_cables),
+            "inclined_cables_or_arches": bool(inclined_cables),
+            "cables_or_arches_connected": connected_cables,
+            "arch_rise_or_cable_sag": arch_rise_or_cable_sag,
+            "n_columns_or_hangers": 4*n_bays,
+            "span": span,
+            "deck_width": deck_width,
+            "twisted": bool(twist > 1e-3),
+            "arched_deck": bool(deck_rise > 1e-3),
+        }
+
+        return data, text_label_dict
