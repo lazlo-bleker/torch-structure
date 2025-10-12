@@ -105,7 +105,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         if deck_width is None:
             deck_width = np.random.uniform(2.0, 5.0)
         if twist is None:
-            twisted = np.random.choice([False, True], p=[0.7, 0.3])
+            twisted = np.random.choice([False, True], p=[0.6, 0.4])
             twist = twisted * np.random.uniform(5.0, 20.0)
         if connected_cables is None:
             connected_cables = np.random.choice([False, True], p=[0.3, 0.7]) if not twisted else 1
@@ -318,7 +318,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             raise ValueError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
         
         # # smoothness filter
-        max_angle = 45  # degrees
+        max_angle = 35  # degrees
 
         edge_mask = (data.is_trail_edge.view(-1) | data.is_center_deviation_edge.view(-1))
         src, dst = data.edge_index[:, edge_mask]
@@ -361,10 +361,6 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         else:
             typology_extended = None
         arch_rise_or_cable_sag = data.coords[~data.is_deck_node.view(-1), 2].max().item() - data.coords[~data.is_deck_node.view(-1), 2].min().item()
-        if n_cables == 1:
-            connected_cables = None
-        else:
-            connected_cables = bool(connected_cables)
         text_label_dict = {
             "typology": typology,
             "typology_extended": typology_extended,
@@ -388,6 +384,6 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
              -100,
              n_cables - 1,
              n_bays,
-             int(connected_cables)], dtype=torch.long).view(1, -1)
+             int(connected_cables) if n_cables > 1 else -100], dtype=torch.long).view(1, -1)
 
         return data, text_label_dict

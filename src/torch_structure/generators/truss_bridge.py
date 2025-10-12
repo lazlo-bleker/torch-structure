@@ -335,6 +335,15 @@ class TrussBridgeGenerator(BaseGenerator):
         if not data.verify_equilibrium():
             raise ValueError("Equilibrium not found.")
         
+        prev_coords = torch.clone(data.coords)
+        data = data.fdm()
+        if (data.coords - prev_coords).abs().max() > 1e-4:
+            # print("Inconsistent geometry detected.")
+            # data.plot()
+            # data.plot(show=True, force=None, coords=prev_coords)
+            raise ValueError("Inconsistent geometry.")
+
+        
         # Text labels
         typology = "deck_truss" if deck_truss else "through_truss"
         text_label_dict = {

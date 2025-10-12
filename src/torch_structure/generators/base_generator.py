@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from torch_structure.data import StructData
+import traceback
 
 
 class BaseGenerator(ABC):
@@ -20,7 +21,7 @@ class BaseGenerator(ABC):
             self.validate_input(**self.input)
             return self.generate(**self.input)
         else:
-            for _ in range(self.max_attempts):
+            for attempt in range(self.max_attempts):
                 self.attempt_count += 1
                 self.input = self.sample_input(**self.overrides)
                 self.validate_input(**self.input)
@@ -28,7 +29,10 @@ class BaseGenerator(ABC):
                     result = self.generate(**self.input)
                     self.success_count += 1
                     return result
-                except Exception:
+                except Exception as e:
+                    if self.verbose:
+                        print(f"[Attempt {attempt}/{self.max_attempts}] Failed: {e}")
+                        # traceback.print_exc()
                     continue
 
         raise RuntimeError(
