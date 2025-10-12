@@ -562,7 +562,7 @@ class StructData:
         return_data.__setattr__(
             "force", force, attr_type="edge", track_history=track_history
         )
-        return_data.__setattr__("load", load, attr_type="node")
+        return_data.__setattr__("load", load, attr_type="node", track_history=track_history)
 
         if not inplace:
             return return_data

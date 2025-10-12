@@ -153,9 +153,11 @@ def mpcem_algorithm(
             if i == 0:
                 coords_history = state["coords"].unsqueeze(0).clone()
                 force_history = state["force"].unsqueeze(0).clone()
+                load_history = state["load"].unsqueeze(0).clone()
             else:
                 coords_history = torch.cat((coords_history, state["coords"].unsqueeze(0)), dim=0)
                 force_history = torch.cat((force_history, state["force"].unsqueeze(0)), dim=0)
+                load_history = torch.cat((load_history, state["load"].unsqueeze(0)), dim=0)
 
         n_steps += 1
 
@@ -173,7 +175,7 @@ def mpcem_algorithm(
         # i + 1
 
     if track_history:
-        return coords_history, force_history, reaction_force
+        return coords_history, force_history, reaction_force, load_history
     else:
         return state["coords"], state["force"].unsqueeze(1), reaction_force, state["load"]
 
@@ -356,6 +358,9 @@ def cem_algorithm(
                     )
 
             n_steps += 1
+        if n_steps >= max_iter:
+            print(f"Maximum steps {max_iter} reached without convergence.")
+            break
 
         # print(f'CEM iteration {i}, delta coords: {torch.norm(coords - prev_coords)}')
         if torch.norm(coords - prev_coords) < tolerance:
@@ -491,7 +496,12 @@ def seq_cem_algorithm(
                         )
 
                 n_steps += 1
-
+            if n_steps >= max_iter:
+                print(f"Maximum steps {max_iter} reached without convergence.")
+                break
+        if n_steps >= max_iter:
+            print(f"Maximum steps {max_iter} reached without convergence.")
+            break
         # print(f'CEM (sequential) iteration {i}, delta coords: {torch.norm(coords - prev_coords)}')
         if torch.norm(coords - prev_coords) < tolerance:
             converged = True
