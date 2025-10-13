@@ -16,6 +16,7 @@ from torch_structure.formfinding import (
     fdm,
 )
 from torch_structure.loss import ResidualForceLoss
+from torch_structure.geometry import graph_edge_lengths
 
 
 class Data(pyg.data.Data):
@@ -189,7 +190,7 @@ class StructData:
 
         # If 'is_support' is missing, fall back to support_condition if available
         elif "support_condition" in self.node_attr_list:
-            return torch.all(self.data.support_condition, dim=1, keepdim=True)
+            return torch.any(self.data.support_condition, dim=1, keepdim=True)  # ToDO: check per dim
 
         else:
             raise AttributeError(
@@ -202,17 +203,11 @@ class StructData:
 
     @property
     def length_from_coords(self):
-        # derive from 'coords' if available
         if "coords" in self.node_attr_list:
-            src, dst = self.edge_index
-            length = torch.norm(
-                self.coords[src] - self.coords[dst], dim=1, keepdim=True
-            )
-            return length
-
+            return graph_edge_lengths(self.coords, self.edge_index)
         else:
             raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute or 'coords'"
+                f"'{self.__class__.__name__}' object has no attribute 'coords'"
             )
 
     @property
@@ -228,6 +223,14 @@ class StructData:
     @property
     def directed_edge_index(self):
         return self.edge_index[:, self.directed_mask.view(-1)]
+    
+    @property
+    def cem_edge_index(self):
+        return self.edge_index[:, self.cem_edge_mask]
+    
+    @property
+    def cem_edge_mask(self):
+        return ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
 
     def __setattr__(self, name, value, attr_type=None, track_history=False):
         """Redirect attribute setter to `self.data`"""
@@ -505,9 +508,9 @@ class StructData:
             if "is_support" in self.node_attr_list:
                 kwargs["is_support"] = self.is_support
             elif "support_condition" in self.node_attr_list:
-                kwargs["is_support"] = torch.all(
+                kwargs["is_support"] = torch.any(
                     self.support_condition, dim=1, keepdim=True
-                )
+                )  # ToDO: check per dim
         if "force" not in kwargs:
             kwargs["force"] = self.force
         if "edge_index" not in kwargs:
@@ -537,9 +540,14 @@ class StructData:
         # Create semi-directed graph
         edge_mask = ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
 
+        if (
+            "constraint_plane" not in kwargs
+            and "constraint_plane" in self.node_attr_list
+        ):
+            kwargs["constraint_plane"] = self.data.constraint_plane
         kwargs = self._prepare_kwargs(mpcem_algorithm, edge_mask=edge_mask, **kwargs)
 
-        coords, semi_directed_force, reaction_force = mpcem_algorithm(**kwargs)
+        coords, semi_directed_force, reaction_force, load = mpcem_algorithm(**kwargs)
         track_history = kwargs.get("track_history", False)
         force = self.edge_attr_to_undirected(
             semi_directed_force, edge_mask, batched=track_history
@@ -554,6 +562,7 @@ class StructData:
         return_data.__setattr__(
             "force", force, attr_type="edge", track_history=track_history
         )
+        return_data.__setattr__("load", load, attr_type="node", track_history=track_history)
 
         if not inplace:
             return return_data
@@ -639,6 +648,32 @@ class StructData:
 
         if not inplace:
             return return_data
+        
+    @property
+    def edge_cem_to_undir(self) -> torch.Tensor:
+        """
+        Index map to expand a CEM-aligned edge attribute [E_cem, ...]
+        into the full *undirected representation* in PyG terms,
+        i.e. both directions stored explicitly [E, ...].
+
+        Usage:
+            # attr_cem: [E_cem, ...] aligned with self.cem_edge_index
+            attr_undir = attr_cem[self.edge_cem_to_undirected]   # -> [E, ...]
+        """
+        dm  = self.directed_mask.view(-1)                # [E] bool
+        rec = self.reciprocal_edge.view(-1)              # [E] long
+        cem_mask = ~(self.is_trail_edge.view(-1) & ~dm)  # [E] bool
+
+        E = cem_mask.numel()
+        idx_undir2cem = torch.empty(E, dtype=torch.long, device=self.edge_index.device)
+
+        # edges kept by CEM get their own index
+        idx_undir2cem[cem_mask] = torch.arange(int(cem_mask.sum().item()), 
+                                            device=idx_undir2cem.device)
+        # edges not kept → map to reciprocal's CEM index
+        idx_undir2cem[~cem_mask] = idx_undir2cem[rec[~cem_mask]]
+
+        return idx_undir2cem
 
     def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
         mask = mask.view(-1)

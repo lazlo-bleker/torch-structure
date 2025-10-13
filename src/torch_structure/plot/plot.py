@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib.lines import Line2D
 import numpy as np
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from torch_structure.message_passing import ResidualForce
 
@@ -93,7 +94,54 @@ def plot_data(
             # scatter uses points^2 for size:
             ax.scatter(xs, ys, zs, marker="^", s=(support_marker_size**2), c="black", depthshade=False)
 
-    # --- external loads (one quiver call)
+    if show_deck:
+        if is_deck_node is None:
+            raise ValueError("For showing deck is_deck_node is a required input.")
+        deck_coords = coords[is_deck_node.view(-1)].detach().cpu().numpy()
+        # --- 1) sort by x
+        deck_coords = deck_coords[np.argsort(deck_coords[:, 0])]
+
+        # --- 2) enforce pairwise y ordering within each consecutive pair
+        if len(deck_coords) % 2 != 0:
+            raise ValueError("Expected an even number of deck coordinates (strict pairs).")
+        for i in range(0, len(deck_coords), 2):
+            if deck_coords[i, 1] > deck_coords[i+1, 1]:
+                deck_coords[[i, i+1]] = deck_coords[[i+1, i]]
+
+        # --- 3) group into pairs: shape -> (n_pairs, 2, 3)
+        pairs = deck_coords.reshape(-1, 2, 3)  # [ [low_y, high_y] per x ]
+
+        # --- 4) build quads between adjacent x-pairs
+        quads = []
+        for k in range(pairs.shape[0] - 1):
+            left_low,  left_high  = pairs[k, 0], pairs[k, 1]
+            right_low, right_high = pairs[k+1, 0], pairs[k+1, 1]
+
+            # Counter-clockwise ordering (as seen from +x toward origin) to make normals consistent
+            quad = [left_low, left_high, right_high, right_low]
+            quads.append(quad)
+
+        # --- 5) plot as a single Poly3DCollection
+        coll = Poly3DCollection(quads, facecolors='grey', edgecolors='k', linewidths=0.5, alpha=0.4)
+        ax.add_collection3d(coll)
+
+    # Plot edges
+    for i, (src, dst) in enumerate(edge_index.t().cpu().numpy()):
+        ax.plot(
+            [x[src], x[dst]],
+            [y[src], y[dst]],
+            [z[src], z[dst]],
+            color=edge_color[i],
+            lw=lw[i],
+            label=edge_label[i],
+        )
+        if show_edge_indices:
+            mid_x = (x[src] + x[dst]) / 2
+            mid_y = (y[src] + y[dst]) / 2
+            mid_z = (z[src] + z[dst]) / 2
+            ax.text(mid_x, mid_y, mid_z, str(i), color="black", fontsize=8)
+
+    # Plot external load
     if show_load:
         if load is None:
             raise ValueError("For showing external forces load is a required input.")

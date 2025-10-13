@@ -1,4 +1,5 @@
-site_name: TorchStructure
+site_name: '<span class="torchstructure">Torch<span class="structure">Structure</span></span>'
+repo_url: https://github.com/lazlo-bleker/torch-structure
 theme:
   name: material
   language: en
@@ -6,18 +7,21 @@ theme:
     - content.code.copy
   palette:
     - scheme: default
-      primary: deep purple
-      accent: deep orange
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
-      accent: deep orange
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-
+  font:
+    text: Lato
+  icon:
+    repo: fontawesome/brands/github
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -31,4 +35,7 @@ plugins:
         paths: [src]
 - gen-files:
     scripts:
-    - docs_scripts/gen_ref_pages.py 
+    - docs_scripts/gen_ref_pages.py
+
+extra_css:
+  - stylesheets/extra.css

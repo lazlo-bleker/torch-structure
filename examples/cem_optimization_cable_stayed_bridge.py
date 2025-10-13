@@ -59,7 +59,9 @@ deck_mask[deck_node_indices] = True
 # -------------------------------
 @ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
 def deck_flatness(optim_forces, data, force_mask, reciprocal_force_mask, deck_mask):
-    optim_forces = optim_forces.float()  # Cast to 32-bit float (ToDo: add easy 64-bit support)
+    optim_forces = (
+        optim_forces.float()
+    )  # Cast to 32-bit float (ToDo: add easy 64-bit support)
 
     # Update the force vector with optimization variables
     full_force = data.force.clone()

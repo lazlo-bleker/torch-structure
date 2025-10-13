@@ -1,6 +1,9 @@
 """
-TorchStructure is a python package for graph-based autodifferentiable structural design and engineering.
+TorchStructure is a python package for graph-based autodifferentiable structural design
+and engineering.
 """
+
+from importlib.metadata import version, PackageNotFoundError
 
 from . import data
 from . import formfinding
@@ -12,7 +15,10 @@ from . import plot
 from . import transforms
 from . import utils
 
-__version__ = "0.0.1"
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    __version__ = "0.0.0"
 
 __all__ = [
     "data",
