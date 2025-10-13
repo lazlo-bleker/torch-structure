@@ -213,6 +213,17 @@ def cem_algorithm(
             break
 
     # Calculate reaction force
+    k_mask = sequence == max_k
+    valid_edges = (
+        valid_nodes[edge_index[0]]
+        & k_mask[edge_index[1]]
+    )
+
+    # Calculate outgoing trail force
+    # print("CEM valid edges: ", torch.where(valid_edges)[0])
+    residual_force = residual_force_update(
+            coords, force[valid_edges], edge_index[:, valid_edges], load
+        )
     dtype = residual_force.dtype
     reaction_force = torch.full((coords.shape[0], 3), float("nan"), dtype=dtype).to(coords.device)
     reaction_force[is_support] = -residual_force[is_support]
@@ -223,9 +234,9 @@ def cem_algorithm(
         )
 
     if track_history:
-        return coords_history, force_history, reaction_force
+        return coords_history, force_history, residual_force
     else:
-        return coords, force.unsqueeze(1), reaction_force
+        return coords, force.unsqueeze(1), residual_force
 
 
 def seq_cem_algorithm(

@@ -1,4 +1,6 @@
 import os,shutil
+import numpy as np
+import meshio
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
@@ -64,6 +66,19 @@ class Logger():
         print(
             f"Iteration {self.iteration:3d} | Loss: {total_loss:.6f}"
         )
+
+        log_dict = self.optimizer.objective_function_handler.log()
+        sub_dict_name = "Loss/Orthogonal"
+        if sub_dict_name in log_dict.keys():
+            log_dict_export = log_dict[sub_dict_name]
+            export_gauss_to_vtp(log_dict_export, self.iteration)
+
+        solved_graph = self.optimizer.graph
+        filepath = f"{self.base_dir}/paraview/shot_{self.iteration:05d}.vtp"
+        solved_graph.length = solved_graph.length_from_coords
+        graph = solved_graph.to_networkx(node_attrs=["coords","loss","res"], edge_attrs=["force","length"])
+        export_graph_to_vtp(graph, filepath, True)
+        
         # Locally keep iteration count (assumes that the logger is called every iteration)
         self.iteration += 1
 
@@ -71,6 +86,10 @@ class Logger():
         """
         Handles the plot of the instance of StrucData
         """
+        # log_dict = self.optimizer.objective_function_handler.log()
+        # log_dict_export = log_dict["Loss/Orthogonal"]
+        # export_gauss_to_vtp(log_dict_export, shot)
+
         if export_plt:
             # Plot the optimized structure    
             data_plot = solved_graph.plot(title="Optimized Structure", legend=False, force_scale = 15.0)
@@ -81,15 +100,15 @@ class Logger():
             plt.savefig(f"{self.base_dir}/img/shot_{shot:05d}.png", dpi=200)
             plt.close()
 
-        if export_paraview: 
-            if same_dir:
-                filepath = f"{self.base_dir}/paraview/shot_{shot}.vtp"
-            else:
-                filepath = f"{self.base_dir}/paraview/shot_{shot}.vtp"
+        # if export_paraview: 
+        #     if same_dir:
+        #         filepath = f"{self.base_dir}/paraview/shot_{shot:05d}.vtp"
+        #     else:
+        #         filepath = f"{self.base_dir}/paraview/shot_{shot:05d}.vtp"
             
-            solved_graph.length = solved_graph.length_from_coords
-            graph = solved_graph.to_networkx(node_attrs=["coords","loss"], edge_attrs=["force","length"])
-            export_graph_to_vtp(graph, filepath, True)
+        #     solved_graph.length = solved_graph.length_from_coords
+        #     graph = solved_graph.to_networkx(node_attrs=["coords","loss","res"], edge_attrs=["force","length"])
+        #     export_graph_to_vtp(graph, filepath, True)
     
     def generate_gif(self):
         """
@@ -109,3 +128,35 @@ class Logger():
 
             # Save as GIF
             imageio.mimsave(output_gif, images, duration=10.0)
+
+def export_gauss_to_vtp(debug_dict,shot):
+    """
+    Export Gauss-point data to .vtp (VTK PolyData).
+
+    _gauss_points: (Q, G, 3)
+    _design_jacobian: (Q, G, 2, 3)
+    _target_jacobian: (Q, G, 2, 3)
+    """
+    # flatten quads × gps -> (M, ...)
+    pts = debug_dict["points"].reshape(-1,3).detach().numpy()
+    J = debug_dict["J"].reshape(-1,2,3).detach().numpy()
+    _J = debug_dict["_J"].reshape(-1,2,3).detach().numpy()
+    loss = debug_dict["loss"].reshape(-1).detach().numpy()
+
+    # split into column vectors, since ParaView treats 3-tuples as vectors
+    point_data = {
+        "Jd_col0": J[:,0,:],   # (M,3)
+        "Jd_col1": J[:,1,:],   # (M,3)
+        "Jt_col0": _J[:,0,:],   # (M,3)
+        "Jt_col1": _J[:,1,:],   # (M,3)
+        "loss" : loss
+    }
+
+    # connectivity: treat each Gauss point as a vertex
+    npoints = pts.shape[0]
+    cells = [("vertex", np.arange(npoints).reshape(-1,1))]
+
+    # write as VTK PolyData (.vtp)
+    mesh = meshio.Mesh(points=pts, cells=cells, point_data=point_data)
+    path = f"./result/paraview/rect_{shot:05d}.vtk"
+    mesh.write(path, file_format="vtk")

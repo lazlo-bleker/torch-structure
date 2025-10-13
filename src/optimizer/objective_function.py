@@ -8,12 +8,15 @@ class Function_Object():
         # NOTE: Having a function as an object allows to cache variables (a function can have a sate, store in kwargs)
         self.function = function
         self.kwargs = kwargs
+        self.log = None
     
     def __call__(self, graph):
         """
         Calls a function that acts on a solved graph resulting from StrucData.cem and optional stored variables
         """
-        return self.function(graph, **self.kwargs)
+        out, log = self.function(graph, **self.kwargs)
+        self.log = log
+        return out
 
 class Objective_Function_Handler():
     def __init__(self, solve_graph):
@@ -45,7 +48,7 @@ class Objective_Function_Handler():
         # Apply design variables & solve CEM
         graph_solved = self.solve_graph(x)
         # Compute total loss based on CEM solution
-        total_loss = 0
+        total_loss = torch.tensor(0.0)
         for name, obj_function in self.function_objects.items():
             # Add contribution of obj function from list
             partial_loss = obj_function(graph_solved)
@@ -67,3 +70,9 @@ class Objective_Function_Handler():
         grad, loss = func_grad_value(x)
         # Cast to numpy to use in scipy
         return loss.item(), grad.detach().numpy()
+    
+    def log(self):
+        log = {}
+        for name, obj_function in self.function_objects.items():
+            log[name] = obj_function.log
+        return log

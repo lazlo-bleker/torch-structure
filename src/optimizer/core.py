@@ -50,7 +50,7 @@ class Optimizer():
         self.graph.cem(max_iter=max_iters_cem, inplace=True)
         return self.graph
     
-    def run(self, max_iters_opt : int, n_shots : int):
+    def run(self, max_iters_opt : int, n_shots : int, log = True):
         """
         Run optimization using the gradients computed with pytorch and the SLSQP optimizer of scipy
         """
@@ -64,13 +64,19 @@ class Optimizer():
         # Use the constraints defined inside child Constraint_Function_Handler
         constr_list = self.constraint_function_handler.scipy_constraint_list
         # Use the logger as callback to log results to tensorboard
-        callback = self.logger
+        if log:
+            callback = self.logger
+        else:
+            callback = None
 
+        obj_func(x0)
+        for constr in constr_list:
+            constr.fun(x0)
         # For each snapshot to capture
         for n_shot in range(n_shots):
             # Plot structure (capture snapshot)
-            obj_func(x0)
-            self.logger.plot(self.graph, n_shot)
+            if log:
+                self.logger.plot(self.graph, n_shot)
 
             # Run scipy with gradients from torch_structure
             result = minimize(
@@ -88,5 +94,6 @@ class Optimizer():
             x0 = result.x
 
         # Generate GIF from snapshots
-        self.logger.generate_gif()
+        if log:
+            self.logger.generate_gif()
         return result

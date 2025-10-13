@@ -14,11 +14,12 @@ class UVGridGenerator(BaseGenerator):
             "coords": torch.empty((0, 3), dtype=torch.float64),
             "uv_coords": torch.empty((0, 2), dtype=torch.float64),
             "load": torch.empty((0, 3), dtype=torch.float64),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "is_support": torch.empty((0, 1), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
             "active_ndof" : torch.empty((0, 1), dtype=torch.bool),
             "loss" : torch.empty((0, 1), dtype=torch.float64),
+            "res": torch.empty((0, 3), dtype=torch.float64),
         }
         self.edge_attrs = {
             "force": torch.empty((0, 1), dtype=torch.float64),
@@ -32,7 +33,8 @@ class UVGridGenerator(BaseGenerator):
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float64),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "res": torch.zeros(3, dtype=torch.float64),
+            "is_support": torch.tensor(0, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
             "active_edof" : torch.tensor(1, dtype=torch.bool),
             "active_ndof" : torch.tensor(0, dtype=torch.bool),
@@ -83,6 +85,7 @@ class UVGridGenerator(BaseGenerator):
                 coords = xyz_coords,
                 load = default_load,
                 is_origin_node = torch.tensor(True), 
+                is_support = torch.tensor(False), 
                 sequence = torch.tensor(_v),
                 uv_coords = torch.tensor([_u, _v]),
             )
@@ -93,8 +96,8 @@ class UVGridGenerator(BaseGenerator):
                 graph.add_node(
                     f"u_{_u}_v_{_v}",
                     # No self-weight, only load on top
-                    # load = default_load,
-                    support_condition = torch.tensor([False, False, False]), 
+                    load = .0 * default_load,
+                    is_support = torch.tensor(False), 
                     is_origin_node = torch.tensor(False), 
                     sequence = torch.tensor(_v),
                     uv_coords = torch.tensor([_u, _v])
@@ -105,8 +108,7 @@ class UVGridGenerator(BaseGenerator):
         for _u in range(nu):
             graph.add_node(
                 f"u_{_u}_v_{_v}",
-                load = default_load,
-                support_condition = torch.tensor([False, True, False]), 
+                is_support = torch.tensor(True), 
                 is_origin_node = torch.tensor(False), 
                 sequence = torch.tensor(_v),
                 uv_coords = torch.tensor([_u, _v])
@@ -120,10 +122,11 @@ class UVGridGenerator(BaseGenerator):
                 f"u_{_u+1}_v_{_v}",
                 is_trail_edge=torch.tensor(False),
                 # Init deviation edge to default of zero and keep like that
-                force=default_magnitude,
+                force = torch.tensor(0.0),
+                active_edof = torch.tensor(False)
             )
         # Generate deviation edges
-        for _v in range(1,nv):
+        for _v in range(1,nv-1):
             for _u in range(nu-1):
                 # Generate deviation edge (u,v) --> (u+1,v)
                 graph.add_edge(
@@ -132,6 +135,17 @@ class UVGridGenerator(BaseGenerator):
                     is_trail_edge=torch.tensor(False),
                     force=default_magnitude,
                 )
+        # Generate bottom deviation edges
+        _v = nv-1
+        for _u in range(nu-1):
+            # Generate deviation edge (u,v) --> (u+1,v)
+            graph.add_edge(
+                f"u_{_u}_v_{_v}",
+                f"u_{_u+1}_v_{_v}",
+                is_trail_edge=torch.tensor(False),
+                force = torch.tensor(0.0),
+                active_edof = torch.tensor(False)
+            )
         
         # Generate trail edges
         for _v in range(nv-1):

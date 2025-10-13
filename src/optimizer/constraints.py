@@ -21,6 +21,8 @@ class Constraint_Object():
         # Create attributes to store the constrainted values and their Jacobian matrix
         self.y = None
         self.J = None
+        # Reserve dict for log
+        self.log = None
 
     def fun(self, x_torch):
         """
@@ -29,7 +31,9 @@ class Constraint_Object():
         # Apply design variables from x_torch and solve graph
         graph_solved = self.solve_graph_method(x_torch)
         # Evaluate external function using the solution
-        return self.ext_function(graph_solved, **self.kwargs)
+        out, log = self.ext_function(graph_solved, **self.kwargs)
+        self.log = log
+        return out
     
     def forward(self, x_np):
         """
@@ -91,6 +95,7 @@ class Constraint_Function_Handler():
         self.solve_graph_method = solve_graph_method
         # Initialize variables to store the constraints
         self.scipy_constraint_list = []
+        self.ids = {}
         self.constraint_objects = {}
 
     def add_constraint(self, name, fun, lb, ub, kwargs):
@@ -110,3 +115,14 @@ class Constraint_Function_Handler():
         )
         # Add scipy constraint to list
         self.scipy_constraint_list.append(non_linear_constraint)
+    
+    def clear(self):
+        self.scipy_constraint_list = []
+        self.ids = {}
+        self.constraint_objects = {}
+    
+    def log(self):
+        log = {}
+        for name, obj_function in self.constraint_objects.items():
+            log[name] = obj_function.log
+        return log

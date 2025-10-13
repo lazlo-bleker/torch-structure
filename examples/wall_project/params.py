@@ -1,14 +1,14 @@
 import torch
 # Grid parameters
 ## Resolution
-nu = 15
-nv = 15
+nu = 10
+nv = 10
 ## Dimenisons
-wall_height = 3.0
-s = 2.0
+wall_height = 4.0
+s = 3.0
 
 ## Default element loads and magnitudes
-default_magnitude = -0.0
+default_magnitude = -0.
 default_load = torch.tensor([0.0, 0.0, -1.0])
 
 ## Reference points
@@ -30,12 +30,12 @@ uv_input_params = {
     "default_load" : default_load
 }
 
-## Optimizaiton parameters
-omega_orthogonal = 1e-4
-omega_load_path  = 0e0
+# Optimizaiton parameters
+omega_orthogonal = 1e-1
+omega_load_path  = 0e-3
 omega_bottom     = 0e0
-max_iters_opt = 300
-n_shots = 20
+max_iters_opt = 100
+n_shots = 1
 
 # Runtime profiler
 enable_profiler = False

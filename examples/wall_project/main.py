@@ -12,16 +12,15 @@ from params import (
 )
 from function_library import (
         evaluate_top_coords_target,
-        orthogonal_intersections_normed, 
-        evaluate_edge_pairs,
-        bottom_coords_obj_func,
         evaluate_bottom_coords_target, 
-        bottom_coords_constr_func,
         evaluate_center_coords_target,
+        bottom_coords_obj_func,
+        bottom_coords_constr_func,
         center_coords_constr_func,
+        support_reaction_force_constr_func,
         load_path,
-        laplacian,
-        cache_laplacian,
+        cache_rectangular,
+        rectangular,
     )
 
 from optimizer import Optimizer
@@ -69,20 +68,14 @@ optimizer = Optimizer(
     dv_dicts = design_variables_dicts
     )
 
-# Add objective functions
-edge_pairs = evaluate_edge_pairs(uv_grid_graph)
-# optimizer.add_obj_function("Loss/Orthogonal", omega_orthogonal, orthogonal_intersections_normed, kwargs={"edge_pairs":edge_pairs})
-laplacian_kwargs = cache_laplacian(uv_grid_graph)
-optimizer.add_obj_function("Loss/Orthogonal", omega_orthogonal, laplacian, kwargs=laplacian_kwargs)
-# optimizer.add_obj_function("Loss/LoadPath", omega_load_path, load_path)
+# Load Path objective function
+optimizer.add_obj_function("Loss/LoadPath", omega_load_path, load_path)
 
-# Add bottom coords constraint
+# Bottom Coords condtraint
 bottom_coords_target = evaluate_bottom_coords_target()
-# Y component of bottom coords as objective function to prevent from incompatible constraints
-optimizer.add_obj_function("Loss/Bottom", omega_bottom, bottom_coords_obj_func, kwargs={"target_coords":bottom_coords_target})
-# X,Z components of bottom coords as constraints
 n_nodes = bottom_coords_target.shape[0]
 eps = 1e-5
+# X,Z components of bottom coords as constraints
 optimizer.add_constr_function(
     name = "Constr/BottomCoords", 
     fun = bottom_coords_constr_func, 
@@ -90,43 +83,23 @@ optimizer.add_constr_function(
     ub =  eps * np.ones(2 * n_nodes), 
     kwargs = {"target_coords" : bottom_coords_target}
     )
-# Add scatter plot of constraints
-optimizer.logger.additional_scatter_plots.append({
-    "xs" : bottom_coords_target[:,0].tolist(),
-    "ys" : bottom_coords_target[:,1].tolist(),
-    "zs" : bottom_coords_target[:,2].tolist(),
-    "c" : "#007F00",
-    "marker" : 'o'
-})
+## Y component of bottom coords as objective function to prevent from incompatible constraints
+# optimizer.add_obj_function("Loss/Bottom", omega_bottom, bottom_coords_obj_func, kwargs={"target_coords":bottom_coords_target})
 
-# # Add center coords constraint
-# center_coords_target = evaluate_center_coords_target()
-# n_nodes = center_coords_target.shape[0]
-# eps = 1e-5
-# optimizer.add_constr_function(
-#     name = "Constr/BottomCoords", 
-#     fun = center_coords_constr_func, 
-#     lb = -eps * np.ones(3*n_nodes), 
-#     ub = eps * np.ones(3*n_nodes), 
-#     kwargs = {"target_coords" : center_coords_target}
-#     )
-# # Add scatter plot of constraints
-# optimizer.logger.additional_scatter_plots.append({
-#     "xs" : center_coords_target[:,0].tolist(),
-#     "ys" : center_coords_target[:,1].tolist(),
-#     "zs" : center_coords_target[:,2].tolist(),
-#     "c" : "#007F00",
-#     "marker" : 2
-# })
+# Add reaction force constraint
+eps = 1e-5
+optimizer.add_constr_function(
+    name = "Constr/Reaction", 
+    fun = support_reaction_force_constr_func, 
+    lb = -eps * np.ones(2 * n_nodes), 
+    ub =  eps * np.ones(2 * n_nodes), 
+    kwargs = {}
+    )
 
-# Add scatter plot of origin nodes
-optimizer.logger.additional_scatter_plots.append({
-    "xs" : top_coords[:,0].tolist(),
-    "ys" : top_coords[:,1].tolist(),
-    "zs" : top_coords[:,2].tolist(),
-    "c" : "#007F00",
-    "marker" : 'o'
-})
+
+# Add orthogonal intersections objective function
+laplacian_kwargs = cache_rectangular(uv_grid_graph)
+optimizer.add_obj_function("Loss/Orthogonal", omega_orthogonal, rectangular, kwargs=laplacian_kwargs)
 
 # Run optimization
 optimizer.run(max_iters_opt, n_shots)
