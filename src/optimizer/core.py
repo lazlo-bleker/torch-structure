@@ -65,6 +65,7 @@ class Optimizer():
         constr_list = self.constraint_function_handler.scipy_constraint_list
         # Use the logger as callback to log results to tensorboard
         if log:
+            self.logger.shot_interval = n_iters
             callback = self.logger
         else:
             callback = None
@@ -73,11 +74,7 @@ class Optimizer():
         for constr in constr_list:
             constr.fun(x0)
         # For each snapshot to capture
-        for n_shot in range(n_shots):
-            # Plot structure (capture snapshot)
-            if log:
-                self.logger.plot(self.graph, n_shot)
-
+        for _ in range(n_shots):
             # Run scipy with gradients from torch_structure
             result = minimize(
                 fun = obj_func,
@@ -93,7 +90,4 @@ class Optimizer():
             # Update design variable values
             x0 = result.x
 
-        # Generate GIF from snapshots
-        if log:
-            self.logger.generate_gif()
         return result

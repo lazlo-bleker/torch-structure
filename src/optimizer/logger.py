@@ -1,135 +1,110 @@
-import os,shutil
-import numpy as np
-import meshio
-import imageio.v2 as imageio
-import matplotlib.pyplot as plt
+
+import os
+import shutil
+import wandb
 from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
+import imageio
+import meshio
+import numpy as np
+from datetime import datetime
+
 from .utils import export_graph_to_vtp
 from .config import (
-    export_plt, 
     export_paraview,
-    export_tensorboard
+    export_tensorboard,
+    export_wandb
 )
-same_dir = True
-class Logger():
-    def __init__(self, optimizer):
+
+class Logger:
+    def __init__(self, optimizer, shot_interval = 1, export_dir = None):
         """
-        Creates an object that logs optimization data to tensorboard, plots snapshots of the structure and prints the total loss to the terminal
+        Same interface as before, but logs to Weights & Biases instead of TensorBoard.
+        Keeps your directory layout and plotting/ParaView exports.
         """
         self.iteration = 0
-        # Link to parent optimizer to access its attributes
         self.optimizer = optimizer
-        # Initialize tensorboard writer
-        self.writer = SummaryWriter()
-        if same_dir :
-            self.base_dir = f"{os.getcwd()}/result"
+        self.shot_interval = shot_interval
+
+        # Determine directory to export data
+        if export_dir is not None:
+            self.base_dir = export_dir
         else:
-            self.base_dir = self.writer.log_dir
-        
-        if export_plt:
-            # Find folder to save plot it
-            folder_path = f"{self.base_dir}/img"
-            os.makedirs(folder_path, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
+            self.base_dir = f"{os.getcwd()}/results/{timestamp}"
+        # Check that base_dir exists
+        os.makedirs(self.base_dir, exist_ok=True)
+
         if export_paraview:
-            folder_path = os.path.join(self.base_dir, "paraview")
+            pv_dir = os.path.join(self.base_dir, "paraview")
+            if os.path.exists(pv_dir):
+                shutil.rmtree(pv_dir)
+            os.makedirs(pv_dir, exist_ok=True)
 
-            # If the folder exists, delete it completely
-            if os.path.exists(folder_path):
-                shutil.rmtree(folder_path)
+        if export_tensorboard:
+            self.writer = SummaryWriter(log_dir=self.base_dir)
+        
+        if export_wandb:
+            self.run = wandb.init(project=os.getenv("WANDB_PROJECT", "torch-structure"))
 
-            # Recreate the empty folder
-            os.makedirs(folder_path, exist_ok=True)
-        # Option to add additional scatter plots
-        self.additional_scatter_plots = []
-    
     def __call__(self, _):
         """
-        When called, logs data to tensorboard and prints the optimizer status to terminal
+        When called, logs data to W&B and prints the optimizer status to terminal.
+        Mirrors your TensorBoard scalar logging, but via wandb.log(..., step=...).
         """
-        if export_tensorboard:
-            # Collect scalar values in objective_function_handler
-            # NOTE: Partial losses are directly stores in an attribute
-            for loss_name, loss_value in self.optimizer.objective_function_handler.loss_dict.items():
-                self.writer.add_scalar(loss_name, loss_value, self.iteration)
-            
-            # Collect scalar values in constraint_function_handler
-            for constr_name, constr_object in self.optimizer.constraint_function_handler.constraint_objects.items():
-                # Get log data from constraint
-                constr_log_dict = constr_object.get_log_dict()
-                for name, value in constr_log_dict.items():
-                    full_name = f"{constr_name}/{name}"
-                    self.writer.add_scalar(full_name, value, self.iteration)
-
-        # Get value of total loss
-        total_loss = self.optimizer.objective_function_handler.loss_dict["Loss/Total"]
-        # Print status to terminal
-        print(
-            f"Iteration {self.iteration:3d} | Loss: {total_loss:.6f}"
-        )
-
-        log_dict = self.optimizer.objective_function_handler.log()
-        sub_dict_name = "Loss/Orthogonal"
-        if sub_dict_name in log_dict.keys():
-            log_dict_export = log_dict[sub_dict_name]
-            export_gauss_to_vtp(log_dict_export, self.iteration)
-
-        solved_graph = self.optimizer.graph
-        filepath = f"{self.base_dir}/paraview/shot_{self.iteration:05d}.vtp"
-        solved_graph.length = solved_graph.length_from_coords
-        graph = solved_graph.to_networkx(node_attrs=["coords","loss","res"], edge_attrs=["force","length"])
-        export_graph_to_vtp(graph, filepath, True)
+        if self.iteration % self.shot_interval == 0:
+            self.iteration += 1
+            return None
         
-        # Locally keep iteration count (assumes that the logger is called every iteration)
+        if export_tensorboard or export_wandb:
+            metrics = {}
+
+            # Scalars from objective_function_handler
+            for loss_name, loss_value in self.optimizer.objective_function_handler.loss_dict.items():
+                # Ensure plain floats for JSON serialization
+                metrics[loss_name] = float(loss_value)
+
+            # Scalars from constraint_function_handler
+            for constr_name, constr_object in self.optimizer.constraint_function_handler.constraint_objects.items():
+                log_dict = constr_object.get_log_dict()
+                for name, value in log_dict.items():
+                    metrics[f"{constr_name}/{name}"] = float(value)
+
+            if export_wandb:
+                # Single consolidated log call per iteration
+                wandb.log(metrics, step=self.iteration)
+            if export_tensorboard:
+                for metric_key, metric_value in metrics.items():
+                    self.writer.add_scalar(metric_key, metric_value, global_step=self.iteration)
+
+
+        # ParaView export
+        if export_paraview:
+            # Export vtp with Gauss points (specific to application)
+            log_dict = self.optimizer.objective_function_handler.log()
+            sub_dict_name = "Loss/Orthogonal"
+            if sub_dict_name in log_dict.keys():
+                filepath = f"{self.base_dir}/paraview/shot_{self.iteration:05d}.vtk"
+                export_gauss_to_vtp(log_dict[sub_dict_name], self.iteration, filepath)
+            
+            # Export cem result as graph in vtp
+            solved_graph = self.optimizer.graph
+            filepath = f"{self.base_dir}/paraview/shot_{self.iteration:05d}.vtp"
+            solved_graph.length = solved_graph.length_from_coords
+            graph = solved_graph.to_networkx(
+                node_attrs=["coords", "loss", "res"],
+                edge_attrs=["force", "length"]
+            )
+            export_graph_to_vtp(graph, filepath, True)
+
+        # Total loss printout
+        total_loss = self.optimizer.objective_function_handler.loss_dict["Loss/Total"]
+        print(f"Iteration {self.iteration:3d} | Loss: {float(total_loss.detach()):.6f}")
+
+        # Advance iteration counter
         self.iteration += 1
 
-    def plot(self, solved_graph, shot):
-        """
-        Handles the plot of the instance of StrucData
-        """
-        # log_dict = self.optimizer.objective_function_handler.log()
-        # log_dict_export = log_dict["Loss/Orthogonal"]
-        # export_gauss_to_vtp(log_dict_export, shot)
-
-        if export_plt:
-            # Plot the optimized structure    
-            data_plot = solved_graph.plot(title="Optimized Structure", legend=False, force_scale = 15.0)
-            # Add additional (optional) scatters
-            for additional_scatter_plot in self.additional_scatter_plots:
-                data_plot.scatter(**additional_scatter_plot)
-            # Save plot and close afterwards
-            plt.savefig(f"{self.base_dir}/img/shot_{shot:05d}.png", dpi=200)
-            plt.close()
-
-        # if export_paraview: 
-        #     if same_dir:
-        #         filepath = f"{self.base_dir}/paraview/shot_{shot:05d}.vtp"
-        #     else:
-        #         filepath = f"{self.base_dir}/paraview/shot_{shot:05d}.vtp"
-            
-        #     solved_graph.length = solved_graph.length_from_coords
-        #     graph = solved_graph.to_networkx(node_attrs=["coords","loss","res"], edge_attrs=["force","length"])
-        #     export_graph_to_vtp(graph, filepath, True)
-    
-    def generate_gif(self):
-        """
-        Collects all the snapshot saved plots and creates a GIF out of them
-        """
-        if export_plt:
-            # Folder containing your images
-            folder_path = f"{self.base_dir}/img"
-            output_gif = f"{self.base_dir}/shots.gif"
-
-            # Collect all image files (sorted)
-            images = []
-            for filename in sorted(os.listdir(folder_path)):
-                if filename.endswith((".png", ".jpg", ".jpeg")):
-                    image_path = os.path.join(folder_path, filename)
-                    images.append(imageio.imread(image_path))
-
-            # Save as GIF
-            imageio.mimsave(output_gif, images, duration=10.0)
-
-def export_gauss_to_vtp(debug_dict,shot):
+def export_gauss_to_vtp(debug_dict,shot, filepath):
     """
     Export Gauss-point data to .vtp (VTK PolyData).
 
@@ -158,5 +133,4 @@ def export_gauss_to_vtp(debug_dict,shot):
 
     # write as VTK PolyData (.vtp)
     mesh = meshio.Mesh(points=pts, cells=cells, point_data=point_data)
-    path = f"./result/paraview/rect_{shot:05d}.vtk"
-    mesh.write(path, file_format="vtk")
+    mesh.write(filepath, file_format="vtk")

@@ -12,6 +12,6 @@ ftol = 1e-8
 max_iters_cem = 100
 
 # Export flags
-export_plt = False
 export_paraview = True
 export_tensorboard = True
+export_wandb = False
