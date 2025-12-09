@@ -1,0 +1,123 @@
+import torch
+import torch_structure as ts
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+import time
+
+node_attrs = {
+    "coords": torch.empty((0, 3), dtype=torch.float),
+    "load": torch.empty((0, 3), dtype=torch.float),
+    "is_support": torch.empty((0, 1), dtype=torch.bool),
+    "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
+    "sequence": torch.empty((0, 1), dtype=torch.long),
+    "constraint_plane": torch.empty((0, 6), dtype=torch.float),
+}
+edge_attrs = {
+    "force": torch.empty((0, 1), dtype=torch.float),
+    "length": torch.empty((0, 1), dtype=torch.float),
+    "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
+    "force_sign": torch.empty((0, 1), dtype=torch.float),
+}
+default_attrs = {
+    "force": torch.tensor([torch.nan]),
+    "length": torch.tensor([torch.nan]),
+    "coords": torch.full((3,), torch.nan),
+    "constraint_plane": torch.full((6,), torch.nan),
+    "load": torch.zeros(3, dtype=torch.float),
+    "is_support": torch.tensor(False),
+    "is_origin_node": torch.tensor(False),
+}
+data = ts.data.StructData(
+    node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
+)
+
+trail_length = torch.tensor(3.0)
+force_sign = torch.tensor(1.0)
+deviation_force = torch.tensor(1.0)
+
+
+n_trails = 10
+n_rings = 8
+
+trails = []
+for i in range(n_trails):
+    trail = []
+    trails.append(trail)
+    for j in range(n_rings+1):
+        trl = i + j * n_trails
+        trail.append(trl)
+
+origin_radius = 2.0
+origin = torch.tensor([origin_radius, 0.0, 0.0])
+origin_coords = []
+thetas = torch.linspace(0, 2*torch.pi, n_trails+1)
+
+for theta in thetas[:-1]:
+    R = torch.tensor([
+        [torch.cos(theta), -torch.sin(theta), 0.0],
+        [torch.sin(theta), torch.cos(theta), 0.0], 
+        [0.0, 0.0, 1.0]
+        ])
+    origin_coords.append(R @ origin)
+
+load = torch.tensor([0.0, 0.0, 1.0])
+# add nodes
+for i in range(n_trails):
+    for j in range(n_rings):
+        if j == 0:
+            data.add_node(
+                trails[i][j], sequence=0, load=load, is_origin_node=True, coords=origin_coords[i]
+            )
+        elif j == n_rings-1:
+            data.add_node(trails[i][j], sequence=j, is_support=True)
+        else:
+            data.add_node(trails[i][j], sequence=j)
+        
+        # add trail edges
+        if j != 0:
+            data.add_edge(
+                trails[i][j-1],
+                trails[i][j],
+                is_trail_edge=True,
+                length=trail_length,
+                force_sign=force_sign,
+            )
+
+# direct deviadation edges
+direct_edges = []
+for j in range(n_rings):
+    for i in range(n_trails-1):
+        direct_edge = [trails[i][j], trails[i+1][j]]
+        direct_edges.append(direct_edge)
+    direct_edge = [trails[n_trails-1][j], trails[0][j]]
+    direct_edges.append(direct_edge)
+
+for src, dst in direct_edges:
+    data.add_edge(src, dst, is_trail_edge=False, force=deviation_force)
+
+# # Layer-wise CEM
+# t0 = time.time()
+# ff_graph = data.cem(max_iter=100, verbose=True)
+# t1 = time.time()
+# print(f"CEM took {t1 - t0:.5f} seconds")
+# ff_graph.verify_equilibrium(verbose=True)
+# ff_graph.plot(title="CEM")
+# plt.show()
+
+# Graph-wise CEM
+t0 = time.time()
+ff_graph = data.mpcem(max_iter=100, verbose=True, damping_factor=0.0)
+t1 = time.time()
+print(f"MP-CEM took {t1 - t0:.5f} seconds")
+ff_graph.verify_equilibrium(verbose=True)
+ff_graph.plot(title="MP-CEM", show=True)
+
+# x = [node[0].item() for node in origin_coords]
+# y = [node[1].item() for node in origin_coords]
+# z = [node[2].item() for node in origin_coords]
+
+# fig = plt.figure(figsize=(10, 8))
+# ax = fig.add_subplot(111, projection="3d")
+# ax.plot(x, y, z, "o")
+# plt.show()
