@@ -28,7 +28,6 @@ jobs:
           echo \"Using PyG wheel index: $url\"
           uv pip install torch-scatter -f $url
           
-          uv pip install torch_geometric
           uv pip install -e .[dev]
 
       - name: Run tests
