@@ -8,9 +8,10 @@ from torch_structure.formfinding import create_branch_node_matrix
 
 
 class TrussBridgeGenerator(BaseGenerator):
-    def __init__(self, **overrides):
+    def __init__(self, analysis=True, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
+        self.analysis = analysis
 
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
@@ -303,45 +304,46 @@ class TrussBridgeGenerator(BaseGenerator):
                 )
 
         # Analysis
-        support = data.support_condition
-        load = data.load
+        if self.analysis:
+            support = data.support_condition
+            load = data.load
 
-        coords = torch.clone(data.coords)  # check if this is necessary
-        C = create_branch_node_matrix(data.directed_edge_index)
+            coords = torch.clone(data.coords)  # check if this is necessary
+            C = create_branch_node_matrix(data.directed_edge_index)
 
-        CxT = C[:, ~support[:, 0]].T   # (n_free_x, E)
-        CyT = C[:, ~support[:, 1]].T   # (n_free_y, E)
-        CzT = C[:, ~support[:, 2]].T   # (n_free_z, E)
+            CxT = C[:, ~support[:, 0]].T   # (n_free_x, E)
+            CyT = C[:, ~support[:, 1]].T   # (n_free_y, E)
+            CzT = C[:, ~support[:, 2]].T   # (n_free_z, E)
 
-        u = torch.mv(C, coords[:, 0])
-        v = torch.mv(C, coords[:, 1])
-        w = torch.mv(C, coords[:, 2])
-        U = torch.diag(u)
-        V = torch.diag(v)
-        W = torch.diag(w)
+            u = torch.mv(C, coords[:, 0])
+            v = torch.mv(C, coords[:, 1])
+            w = torch.mv(C, coords[:, 2])
+            U = torch.diag(u)
+            V = torch.diag(v)
+            W = torch.diag(w)
 
-        A = torch.vstack((
-            CxT @ U,
-            CyT @ V,
-            CzT @ W
-        ))
+            A = torch.vstack((
+                CxT @ U,
+                CyT @ V,
+                CzT @ W
+            ))
 
-        b = torch.hstack((load[~support[:, 0], 0], load[~support[:, 1], 1], load[~support[:, 2], 2]))
+            b = torch.hstack((load[~support[:, 0], 0], load[~support[:, 1], 1], load[~support[:, 2], 2]))
 
-        force_density = torch.linalg.lstsq(A, b).solution
+            force_density = torch.linalg.lstsq(A, b).solution
 
-        data.force_density = data.edge_attr_to_undirected(force_density.view(-1, 1), mask=data.directed_mask)
-        data.force = data.force_density * data.length_from_coords
-        if not data.verify_equilibrium():
-            raise ValueError("Equilibrium not found.")
-        
-        prev_coords = torch.clone(data.coords)
-        data = data.fdm()
-        if (data.coords - prev_coords).abs().max() > 1e-4:
-            # print("Inconsistent geometry detected.")
-            # data.plot()
-            # data.plot(show=True, force=None, coords=prev_coords)
-            raise ValueError("Inconsistent geometry.")
+            data.force_density = data.edge_attr_to_undirected(force_density.view(-1, 1), mask=data.directed_mask)
+            data.force = data.force_density * data.length_from_coords
+            if not data.verify_equilibrium():
+                raise ValueError("Equilibrium not found.")
+            
+            prev_coords = torch.clone(data.coords)
+            data = data.fdm()
+            if (data.coords - prev_coords).abs().max() > 1e-4:
+                # print("Inconsistent geometry detected.")
+                # data.plot()
+                # data.plot(show=True, force=None, coords=prev_coords)
+                raise ValueError("Inconsistent geometry.")
 
         
         # Text labels
