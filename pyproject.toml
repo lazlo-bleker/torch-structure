@@ -2,7 +2,7 @@
 name = "torch_structure"
 version = "0.0.1"
 authors = [
-    {name = "Lazlo Bleker", email = "lazlo.bleker@tum.de"}
+    {name = "Lazlo Bleker"}
 ]
 readme = "README.md"
 requires-python = ">=3.9"
@@ -11,6 +11,7 @@ dependencies = [
     "matplotlib>=3.9.0",
     "pydantic>=2.10.6",
     "scipy>=1.13",
+    "torch-geometric>=2.6.1",
 ]
 
 [project.optional-dependencies]
