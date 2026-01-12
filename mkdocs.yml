@@ -1,7 +1,10 @@
-site_name: '<span class="torchstructure">Torch<span class="structure">Structure</span></span>'
+site_name: TorchStructure
 repo_url: https://github.com/lazlo-bleker/torch-structure
 theme:
+  logo: assets/ts_logo_light_icon.svg
+  favicon: assets/ts_logo_light_icon.svg
   name: material
+  custom_dir: overrides
   language: en
   features:
     - content.code.copy
