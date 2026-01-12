@@ -57,10 +57,6 @@ h1, h2, h3, h4, h5, h6 {
   color: #F05F42;
 }
 
-.md-header__button.md-logo {
-  display: none;
-}
-
 /* Hide the "Made with Material for MkDocs" footer bar */
 .md-footer-meta { display: none; }
 
@@ -93,3 +89,17 @@ h1, h2, h3, h4, h5, h6 {
   text-transform: none !important;
 }
 
+/* Hide both by default */
+.ts-logo--light,
+.ts-logo--dark {
+  display: none !important;
+}
+
+/* Show one based on current scheme (attribute is on <body>) */
+body[data-md-color-scheme="default"] .ts-logo--light {
+  display: inline-block !important;
+}
+
+body[data-md-color-scheme="slate"] .ts-logo--dark {
+  display: inline-block !important;
+}
