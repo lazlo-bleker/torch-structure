@@ -1,8 +1,8 @@
 site_name: TorchStructure
 repo_url: https://github.com/lazlo-bleker/torch-structure
 theme:
-  logo: assets/ts_logo_light_icon.svg
-  favicon: assets/ts_logo_light_icon.svg
+  logo: assets/ts_arch_light.svg
+  favicon: assets/ts_arch_light.svg
   name: material
   custom_dir: overrides
   language: en
