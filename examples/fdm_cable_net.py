@@ -27,29 +27,12 @@ input_params = {
 # 2. Generate the cable net geometry
 # ----------------------------------
 cable_net_generator = ts.generators.CableNetGenerator(**input_params)
+cable_net_generator.verbose=True
 data = cable_net_generator()  # Main data object of TorchStructure we'll work with
-
-# ----------------------------------
-# 3. Assign force densities to edges
-# ----------------------------------
-q = torch.full((data.num_edges,), 40.0)
-
-# Assign higher stiffness to boundary edges
-q[data.is_boundary_edge.view(-1)] = 250.0
-
-# Assign stiffness to diagonal edges (if present)
-q[data.is_diagonal_edge.view(-1)] = 60.0
-
-# Set force density values on the graph
-data.force_density = q.unsqueeze(1)
-
-# ------------------
-# 4. Solve using FDM
-# ------------------
-data = data.fdm()
 
 # -------------------------------
 # 5. Plot the resulting structure
 # -------------------------------
 data.plot(title="Randomized Cable Net", legend=False)
+
 plt.show()
