@@ -30,9 +30,9 @@ class BaseGenerator(ABC):
                     self.success_count += 1
                     return result
                 except Exception as e:
-                    if self.verbose:
+                    if hasattr(self, "verbose") and self.verbose:
                         print(f"[Attempt {attempt}/{self.max_attempts}] Failed: {e}")
-                        # traceback.print_exc()
+                        traceback.print_exc()
                     continue
 
         raise RuntimeError(
