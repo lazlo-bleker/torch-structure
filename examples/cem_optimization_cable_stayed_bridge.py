@@ -39,7 +39,7 @@ force_mask = (~data.is_trail_edge & data.directed_mask).clone()
 
 # Remove deviation edge in the center of the deck from optimization
 edge_to_exclude = "deck_trail_0_node_0-deck_trail_1_node_0"
-force_mask[data.edge_name_to_index[edge_to_exclude]] = False
+force_mask[data.metadata["edge_name_to_index"][edge_to_exclude]] = False
 
 # Compute mask for forces in reciprocal edges
 reciprocal_force_idx = data.reciprocal_edge[force_mask]
@@ -48,7 +48,7 @@ reciprocal_force_mask[reciprocal_force_idx] = True
 
 # Create a mask for all deck nodes (used to check flatness)
 deck_node_indices = [
-    i for name, i in data.node_name_to_index.items() if "deck_trail" in name
+    i for name, i in data.metadata["node_name_to_index"].items() if "deck_trail" in name
 ]
 deck_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
 deck_mask[deck_node_indices] = True
