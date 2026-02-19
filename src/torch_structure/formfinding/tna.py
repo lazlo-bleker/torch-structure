@@ -7,6 +7,27 @@ from torch_structure.formfinding.fdm import fdm
 def tna(
     coords, is_support, load, edge_index, q_target, verbose=False
 ):  # only works for directed graphs
+    """
+    Performs the Thrust Network Analysis (TNA) formfinding algorithm by finding the
+    least squares force densities with respect to target force densities that preserve
+    x and y coordinates.
+
+    Args:
+        coords (torch.Tensor): A tensor of shape (num_nodes, 3) containing the 3D
+            coordinates of each node. Only the x and y coordinates have an effect on the
+            output.
+        load (torch.Tensor): A tensor of shape (num_nodes, 3) containing the load vector
+            applied at each node.
+        is_support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating
+            which nodes are fixed (True) or free (False).
+        edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices
+            of the nodes that form each edge. Needs to be directed.
+        q_target (torch.Tensor): A tensore of shape (num_edges) containing the target
+            force density for each edge.
+        verbose (bool): If True, prints the number of degrees of freedom in the least
+            squares TNA solution.
+
+    """
     force_density = least_squares_tna(coords, is_support, edge_index, q_target, verbose)
     coords, force = fdm(
         coords,
