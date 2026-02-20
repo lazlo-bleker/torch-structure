@@ -599,9 +599,9 @@ class CableNetGenerator(BaseGenerator):
         )
 
         # Set force densities
-        q = np.random.uniform(30.0, 50.0) * torch.ones(graph.num_edges)
-        q[graph.is_boundary_edge.view(-1)] = np.random.uniform(200.0, 300.0)
-        q[graph.is_diagonal_edge.view(-1)] = np.random.uniform(30.0, 100.0)
+        q = q_field * torch.ones(graph.num_edges)
+        q[graph.is_boundary_edge.view(-1)] = q_boundary
+        q[graph.is_diagonal_edge.view(-1)] = q_diagonal
         graph.force_density = q.unsqueeze(1)
 
         # Force density method
