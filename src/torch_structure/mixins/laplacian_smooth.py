@@ -1,6 +1,7 @@
 from torch_structure.formfinding import laplacian_smoothing
+from torch_structure.mixins.utils import OverrideResolveMixin
 
-class LaplacianSmoothingMixin:
+class LaplacianSmoothingMixin(OverrideResolveMixin):
     def xy_laplacian_smoothing(
         self,
         inplace: bool=False,
@@ -14,12 +15,10 @@ class LaplacianSmoothingMixin:
         # Node inputs
         if coords is None:
             coords = self.coords[:, :2]  # Only use x and y coordinates
-        if is_fixed is None:
-            is_fixed = self.is_fixed
+        is_fixed = self._resolve_override("is_fixed", is_fixed)
 
         # Edge inputs
-        if edge_index is None:
-            edge_index = self.edge_index
+        edge_index = self._resolve_override("edge_index", edge_index)
 
         # TNA computation
         new_coords, _, _ = laplacian_smoothing(

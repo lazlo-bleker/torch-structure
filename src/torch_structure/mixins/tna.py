@@ -1,6 +1,7 @@
 from torch_structure.formfinding import tna
+from torch_structure.mixins.utils import OverrideResolveMixin
 
-class TNAMixin:
+class TNAMixin(OverrideResolveMixin):
     def tna(
         self,
         inplace: bool=False,
@@ -20,19 +21,14 @@ class TNAMixin:
         # batch = getattr(self, "batch", None) # todo: add batching support
 
         # Node inputs
-        if coords is None:
-            coords = self.coords
-        if is_support is None:
-            is_support = self.is_support
-        if load is None:
-            load = self.load
+        coords = self._resolve_override("coords", coords)
+        is_support = self._resolve_override("is_support", is_support)
+        load = self._resolve_override("load", load)
 
         # Edge inputs
         edge_mask = self.directed_mask.view(-1)
-        if edge_index is None:
-            edge_index = self.edge_index[:, edge_mask]
-        if q_target is None:
-            q_target = self.q_target[edge_mask]
+        edge_index = self._resolve_override("directed_edge_index", edge_index)
+        q_target = self._resolve_override("q_target", q_target, mask=edge_mask)
 
         # TNA computation
         new_coords, new_directed_force, new_directed_force_density = tna(

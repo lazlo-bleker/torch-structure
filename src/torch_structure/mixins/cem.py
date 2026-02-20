@@ -1,6 +1,7 @@
 from torch_structure.formfinding import mpcem_algorithm, cem_algorithm, seq_cem_algorithm
+from torch_structure.mixins.utils import OverrideResolveMixin
 
-class CEMMixin:
+class CEMMixin(OverrideResolveMixin):
     def mpcem(
         self,
         inplace: bool=False,
@@ -28,29 +29,19 @@ class CEMMixin:
         See [`torch_structure.formfinding.fdm`](../formfinding/fdm.md).
         """
         # Node inputs
-        if coords is None:
-            coords = self.coords
-        if load is None:
-            load = self.load
-        if is_support is None:
-            is_support = self.is_support
-        if is_origin_node is None:
-            is_origin_node = self.is_origin_node
-        if constraint_plane is None and hasattr(self, "constraint_plane"):
-            constraint_plane = self.constraint_plane
+        coords = self._resolve_override("coords", coords)
+        load = self._resolve_override("load", load)
+        is_support = self._resolve_override("is_support", is_support)
+        is_origin_node = self._resolve_override("is_origin_node", is_origin_node)
+        constraint_plane = self._resolve_override("constraint_plane", constraint_plane, required=False)
 
         # Edge inputs
         edge_mask = self.cem_edge_mask
-        if cem_edge_index is None:
-            cem_edge_index = self.cem_edge_index
-        if is_trail_edge is None:
-            is_trail_edge = self.is_trail_edge[edge_mask]
-        if length is None:
-            length = self.length[edge_mask]
-        if force_sign is None:
-            force_sign = self.force_sign[edge_mask]
-        if force is None:
-            force = self.force[edge_mask]
+        cem_edge_index = self._resolve_override("cem_edge_index", cem_edge_index)
+        is_trail_edge = self._resolve_override("is_trail_edge", is_trail_edge, mask=edge_mask)
+        length = self._resolve_override("length", length, mask=edge_mask)
+        force_sign = self._resolve_override("force_sign", force_sign, mask=edge_mask)
+        force = self._resolve_override("force", force, mask=edge_mask)
 
         # MP-CEM computation
         new_coords, new_semi_directed_force, new_reaction_force, new_load = mpcem_algorithm(
