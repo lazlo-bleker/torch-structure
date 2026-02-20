@@ -5,8 +5,8 @@ from typing import Any
 class OverrideResolveMixin:
     def _resolve_override(
         self,
-        value: Any,
         default_name: str,
+        value: Any,
         mask=None,
         required: bool = True,
     ):
