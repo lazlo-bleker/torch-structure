@@ -2,7 +2,6 @@
 Example: Form-find a Cable Net with the Force Density Method (FDM)
 """
 
-import torch
 import torch_structure as ts
 import matplotlib.pyplot as plt
 
@@ -27,11 +26,10 @@ input_params = {
 # 2. Generate the cable net geometry
 # ----------------------------------
 cable_net_generator = ts.generators.CableNetGenerator(**input_params)
-cable_net_generator.verbose=True
 data = cable_net_generator()  # Main data object of TorchStructure we'll work with
 
 # -------------------------------
-# 5. Plot the resulting structure
+# 3. Plot the resulting structure
 # -------------------------------
 data.plot(title="Randomized Cable Net", legend=False)
 
