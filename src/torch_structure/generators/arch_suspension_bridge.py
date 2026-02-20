@@ -5,7 +5,7 @@ from torch_scatter import scatter
 from functools import partial
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
 from torch_structure.formfinding.cem import constrained_deck_cb
 from torch_structure.geometry.utils import line_direction
 
@@ -73,7 +73,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         deck_rise,
     ):
         if n_cables not in [1,  2]:
-            raise ValueError("Number of cables must be either 1 or 2.")
+            raise InvalidSampleError("Number of cables must be either 1 or 2.")
 
     def sample_input(
         self,
@@ -312,10 +312,10 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         z_factor = 0.5
         if y_extent > span * y_factor:
             # print("bbox (wide)")
-            raise ValueError(f"Bridge geometry is too wide ({y_extent.item()} > {span * y_factor}).")
+            raise InvalidSampleError(f"Bridge geometry is too wide ({y_extent.item()} > {span * y_factor}).")
         if z_extent > span * z_factor:
             # print("bbox (tall)")
-            raise ValueError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
+            raise InvalidSampleError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
         
         # # smoothness filter
         max_angle = 35  # degrees
@@ -336,19 +336,19 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             # print("Invalid nodes:", is_invalid.sum())
             # print("vector sums:", vector_sum[degree_2_mask][is_invalid])
             # print("smoothness")
-            raise ValueError(f"Trails have too sharp angles (>{max_angle}°).")
+            raise InvalidSampleError(f"Trails have too sharp angles (>{max_angle}°).")
 
         # # force density filter
         data.force_density = data.force / data.length_from_coords
         abs_force_density = data.force_density.abs()
         # if abs_force_density[~edge_mask].max() > abs_force_density[edge_mask].min():
         #     # print("force density")
-        #     raise ValueError("Some secondary edges have higher force density magnitude than deck/main cable edges.")
+        #     raise InvalidSampleError("Some secondary edges have higher force density magnitude than deck/main cable edges.")
         
         # # force density magnitude filter
         mag_threshold = 30
         if abs_force_density.max() > mag_threshold:
-            raise ValueError(f"Some edges have too high force density magnitude (>{mag_threshold}).")
+            raise InvalidSampleError(f"Some edges have too high force density magnitude (>{mag_threshold}).")
         
         # Text labels
         typology = "suspension_bridge" if cable_force > 0 else "arch_bridge"

@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
 
 
 class CableNetGenerator(BaseGenerator):
@@ -608,7 +608,7 @@ class CableNetGenerator(BaseGenerator):
         graph = graph.fdm()
 
         if graph.bbox[0, 2] < 0.0 or graph.bbox[1, 2] > 1.0:
-            raise ValueError("Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2])
+            raise InvalidSampleError("Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2])
 
         # Set support
         graph.is_support = graph.is_support
