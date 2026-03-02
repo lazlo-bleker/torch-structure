@@ -1,7 +1,5 @@
 from typing import Any
 
-from typing import Any
-
 class OverrideResolveMixin:
     def _resolve_override(
         self,
