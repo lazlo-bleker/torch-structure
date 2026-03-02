@@ -58,6 +58,7 @@ def mpcem_algorithm(
             state["constraint_plane"] = point_normal_to_plane(state["constraint_plane"])
         constraint_plane_mask = ~torch.isnan(state["constraint_plane"]).any(dim=1)
         trail_edge_constraint_plane_mask = constraint_plane_mask[trail_dst]
+        trail_dst_constraint_plane_mask = trail_dst[trail_edge_constraint_plane_mask]
     else:
         trail_edge_constraint_plane_mask = torch.zeros_like(
             state["length"][is_trail_edge], dtype=torch.bool
@@ -125,7 +126,7 @@ def mpcem_algorithm(
         # Coordinates defined by constraint planes
         if state["constraint_plane"] is not None:
             new_coords_plane, t = line_plane_intersect(
-                plane=state["constraint_plane"][constraint_plane_mask],
+                plane=state["constraint_plane"][trail_dst_constraint_plane_mask],
                 point=state["coords"][trail_src][trail_edge_constraint_plane_mask],
                 vector=unit_trail_force[trail_edge_constraint_plane_mask],
                 return_t=True,
