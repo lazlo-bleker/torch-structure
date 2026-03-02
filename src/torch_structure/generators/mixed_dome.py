@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
 
 
 class MixedDomeGenerator(BaseGenerator):
@@ -194,7 +194,7 @@ class MixedDomeGenerator(BaseGenerator):
             if not torch.allclose(ring_height, ring_height[0], atol=1e-4):
                 symmetric = False
             if not symmetric:
-                raise ValueError("Form-found structure is not radially symmetric.")
+                raise InvalidSampleError("Form-found structure is not radially symmetric.")
 
         return data
 

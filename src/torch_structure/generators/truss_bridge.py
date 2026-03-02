@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
 from torch_structure.formfinding import create_branch_node_matrix
 
 
@@ -335,7 +335,7 @@ class TrussBridgeGenerator(BaseGenerator):
             data.force_density = data.edge_attr_to_undirected(force_density.view(-1, 1), mask=data.directed_mask)
             data.force = data.force_density * data.length_from_coords
             if not data.verify_equilibrium():
-                raise ValueError("Equilibrium not found.")
+                raise InvalidSampleError("Equilibrium not found.")
             
             prev_coords = torch.clone(data.coords)
             data = data.fdm()
@@ -343,7 +343,7 @@ class TrussBridgeGenerator(BaseGenerator):
                 # print("Inconsistent geometry detected.")
                 # data.plot()
                 # data.plot(show=True, force=None, coords=prev_coords)
-                raise ValueError("Inconsistent geometry.")
+                raise InvalidSampleError("Inconsistent geometry.")
 
         
         # Text labels

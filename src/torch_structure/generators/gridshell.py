@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
 
 
 class GridShellGenerator(BaseGenerator):
@@ -616,12 +616,12 @@ class GridShellGenerator(BaseGenerator):
         graph = graph.tna(verbose=False)
 
         if graph.bbox[0, 2] < 0 or graph.bbox[1, 2] > 3.0:
-            raise ValueError(
+            raise InvalidSampleError(
                 f"Z-coordinates out of bounds: ({graph.bbox[0, 2]}, {graph.bbox[1, 2]})"
             )
 
         if graph.force_density.max() > 0.0:
-            raise ValueError(f"Tension element(s) present: {graph.force_density.max()}")
+            raise InvalidSampleError(f"Tension element(s) present: {graph.force_density.max()}")
 
         return graph
 

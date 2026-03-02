@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
 
 
 class CableNetGenerator(BaseGenerator):
@@ -599,16 +599,16 @@ class CableNetGenerator(BaseGenerator):
         )
 
         # Set force densities
-        q = np.random.uniform(30.0, 50.0) * torch.ones(graph.num_edges)
-        q[graph.is_boundary_edge.view(-1)] = np.random.uniform(200.0, 300.0)
-        q[graph.is_diagonal_edge.view(-1)] = np.random.uniform(30.0, 100.0)
+        q = q_field * torch.ones(graph.num_edges)
+        q[graph.is_boundary_edge.view(-1)] = q_boundary
+        q[graph.is_diagonal_edge.view(-1)] = q_diagonal
         graph.force_density = q.unsqueeze(1)
 
         # Force density method
         graph = graph.fdm()
 
         if graph.bbox[0, 2] < 0.0 or graph.bbox[1, 2] > 1.0:
-            raise ValueError("Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2])
+            raise InvalidSampleError("Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2])
 
         # Set support
         graph.is_support = graph.is_support

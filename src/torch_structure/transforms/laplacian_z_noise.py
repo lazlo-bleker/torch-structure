@@ -56,7 +56,7 @@ class AddLaplacianZNoise(BaseTransform):
         data.coords[:, 2] = (1 + noise) * data.coords[:, 2]
 
         if not self.keep_lpe and compute_lpe:
-            del data.data.laplacian_pe
+            del data.laplacian_pe
 
         return data
 
