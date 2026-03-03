@@ -34,6 +34,10 @@ class FDMMixin(OverrideResolveMixin):
         edge_index = self._resolve_override("directed_edge_index", edge_index)
         force_density = self._resolve_override("force_density", force_density, mask=edge_mask)
 
+        # Output keys
+        coords_key = "coords" if coords_out is None else coords_out
+        force_key = "force" if force_out is None else force_out
+
         # FDM computation
         new_coords, new_directed_force = fdm(
             coords,
@@ -51,16 +55,8 @@ class FDMMixin(OverrideResolveMixin):
 
         # Update data object
         new_data = self if inplace else self.clone()
-
-        if coords_out is None:
-            new_data.coords = new_coords
-        else:
-            new_data[coords_out] = new_coords
-
-        if force_out is None:
-            new_data.force = new_force
-        else:
-            new_data[force_out] = new_force
+        new_data[coords_key] = new_coords
+        new_data[force_key] = new_force
 
         if not inplace:
             return new_data
