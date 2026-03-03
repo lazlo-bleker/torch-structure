@@ -21,6 +21,9 @@ class CEMMixin(OverrideResolveMixin):
         verbose=False,
         track_history=False,
         callback=None,
+        coords_out=None,
+        force_out=None,
+        load_out=None,
     ):
         """
         Applies the Force Density Method (FDM) to this structure and updates `coords`
@@ -42,6 +45,11 @@ class CEMMixin(OverrideResolveMixin):
         length = self._resolve_override("length", length, mask=edge_mask)
         force_sign = self._resolve_override("force_sign", force_sign, mask=edge_mask)
         force = self._resolve_override("force", force, mask=edge_mask)
+
+        # Output keys
+        coords_key = "coords" if coords_out is None else coords_out
+        load_key  = "load"  if load_out  is None else load_out
+        force_key = "force" if force_out is None else force_out
 
         # MP-CEM computation
         new_coords, new_semi_directed_force, new_reaction_force, new_load = mpcem_algorithm(
@@ -71,16 +79,16 @@ class CEMMixin(OverrideResolveMixin):
         new_data = self if inplace else self.clone()
 
         if track_history:
-            self._track_history("coords", new_coords)
-            new_data.coords = new_coords[-1]
-            self._track_history("load", new_load)
-            new_data.load = new_load[-1]
-            self._track_history("force", new_force)
-            new_data.force = new_force[-1]
+            self._track_history(coords_key, new_coords)
+            new_data[coords_key] = new_coords[-1]
+            self._track_history(load_key, new_load)
+            new_data[load_key] = new_load[-1]
+            self._track_history(force_key, new_force)
+            new_data[force_key] = new_force[-1]
         else:
-            new_data.coords = new_coords
-            new_data.load = new_load
-            new_data.force = new_force
+            new_data[coords_key] = new_coords
+            new_data[load_key] = new_load
+            new_data[force_key] = new_force
 
         new_data.reaction_force = new_reaction_force
 
