@@ -34,7 +34,6 @@ class SingleTrailGenerator(BaseGenerator):
             "length": torch.tensor([torch.nan]),
             "is_trail_edge": torch.tensor(True, dtype=torch.bool),
             "force_sign": torch.tensor(-1.0, dtype=torch.float),
-
         }
     
     def sample_input(self, **kwargs):

@@ -28,8 +28,8 @@ bridge_params = {
 }
 
 # Generate bridge structure
-bridge = ts.generators.CableStayedBridge(**bridge_params)
-data = bridge.graph  # This is the main data structure of TorchStructure we'll work with
+bridge_generator = ts.generators.CableStayedBridge(**bridge_params)
+data = bridge_generator()  # This is the main data structure of TorchStructure we'll work with
 
 # --------------------------------
 # 2. Define optimization variables
