@@ -10,6 +10,7 @@ from .network_arch_bridge import NetworkArchBridge
 from .dome import DomeGenerator
 from .mixed_dome import MixedDomeGenerator
 from .truss_bridge import TrussBridgeGenerator
+from .single_trail import SingleTrailGenerator
 
 __all__ = [
     "ArchSuspensionBridgeGenerator",
@@ -24,4 +25,5 @@ __all__ = [
     "NetworkArchBridge",
     "MixedDomeGenerator",
     "TrussBridgeGenerator",
+    "SingleTrailGenerator",
 ]
