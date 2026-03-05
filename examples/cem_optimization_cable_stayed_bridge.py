@@ -22,14 +22,16 @@ bridge_params = {
     "cable_deviation_force": torch.tensor(1.0),  # Tension in cables
     "deck_load": torch.tensor([0.0, 0.0, -1.0]),  # Downward gravity load on the deck
     "tower_height": 5.0,  # Height of each tower
-    "tower_offset": 1.0,  # Horizontal distance from peak of towers to the deck
-    "back_stay_distance": 5.0,  # Distance of back stays from the deck
+    "tower_offset": 1.0,  # Horizontal offset from the deck to the tower peaks
+    "back_stay_offset": 5.0,  # Horizontal offset from the tower peaks to the back stay
     "back_stay_force": torch.tensor(10.0),  # Force in back stays
 }
 
 # Generate bridge structure
 bridge_generator = ts.generators.CableStayedBridge(**bridge_params)
-data = bridge_generator()  # This is the main data structure of TorchStructure we'll work with
+data = (
+    bridge_generator()
+)  # This is the main data structure of TorchStructure we'll work with
 
 # --------------------------------
 # 2. Define optimization variables

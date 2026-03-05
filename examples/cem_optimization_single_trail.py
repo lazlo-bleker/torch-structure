@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 # 1. Create initial setup
 # ------------------------------
 trail_params = {
-    "n_nodes" : 10,
-    "trail_element_length" : 0.1,
-    "nodal_load" : [0.0, 0.0, -1.0],
-    "origin_node_load" : [4.0, 0.0, 0.0],
+    "n_nodes": 10,
+    "trail_element_length": 0.1,
+    "nodal_load": [0.0, 0.0, -1.0],
+    "origin_node_load": [4.0, 0.0, 0.0],
 }
 coords_target = torch.tensor([1.0, 0.0, -1.0])
 
@@ -36,17 +36,20 @@ trail_lengths = trail.length[trail_element_mask]
 
 # Compute mask for forces in reciprocal edges
 reciprocal_idx = trail.reciprocal_edge[trail_element_mask]
-trail_element_mask_reciprocal = torch.zeros(trail.num_edges, dtype=torch.bool).unsqueeze(1)
+trail_element_mask_reciprocal = torch.zeros(
+    trail.num_edges, dtype=torch.bool
+).unsqueeze(1)
 trail_element_mask_reciprocal[reciprocal_idx] = True
 
 # Compute mask for support node
 target_mask = trail.is_support
 
+
 # -------------------------------
 # 3. Define optimization function
 # -------------------------------
 @ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
-def obj_func(trail_lengths, struc_data : StructData):
+def obj_func(trail_lengths, struc_data: StructData):
     trail_lengths = (
         trail_lengths.float()
     )  # Cast to 32-bit float (ToDo: add easy 64-bit support)
@@ -61,16 +64,15 @@ def obj_func(trail_lengths, struc_data : StructData):
     struc_data = struc_data.mpcem(max_iter=1000, damping_factor=0.5)
 
     # Compute mean square Z deviation (measure of flatness)
-    coords_computed = struc_data.coords[target_mask.expand(-1,3)]
+    coords_computed = struc_data.coords[target_mask.expand(-1, 3)]
     coords_deviation = coords_target - coords_computed
     return torch.sum(coords_deviation**2)
+
 
 # Define callback for logging progress (optional)
 def make_callback():
     def callback(x):
-        print(
-            f"Iteration {callback.iteration:3d} | Loss: {obj_func.best_loss:.6f}"
-        )
+        print(f"Iteration {callback.iteration:3d} | Loss: {obj_func.best_loss:.6f}")
         callback.iteration += 1
 
     callback.iteration = 0
@@ -81,7 +83,9 @@ def make_callback():
 # 5. Run optimization
 # -------------------
 # Start from uniform force values
-initial_values = trail_params["trail_element_length"] * torch.ones(torch.sum(trail_element_mask), dtype=torch.float64)
+initial_values = trail_params["trail_element_length"] * torch.ones(
+    torch.sum(trail_element_mask), dtype=torch.float64
+)
 
 # Define constraint of lengths being positive
 eps = 1e-1
@@ -95,7 +99,7 @@ result = minimize(
     method="SLSQP",
     jac=True,
     callback=make_callback(),
-    bounds = bounds,
+    bounds=bounds,
     options={"disp": True, "ftol": 1e-7, "gtol": 1e-7, "maxiter": 100},
 )
 
