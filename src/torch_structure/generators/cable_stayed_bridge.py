@@ -2,35 +2,14 @@ import torch
 import numpy as np
 
 from torch_structure.data import StructData
-from torch_structure.generators.base_generator import BaseGenerator
+from torch_structure.generators.base_generator_cem import BaseGeneratorCEM
+from torch_structure.generators.topology import build_trail
 
 
-class CableStayedBridge(BaseGenerator):
+class CableStayedBridge(BaseGeneratorCEM):
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
-
-        self.node_attrs = {
-            "coords": torch.empty((0, 3), dtype=torch.float),
-            "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
-            "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
-            "sequence": torch.empty((0, 1), dtype=torch.long),
-        }
-        self.edge_attrs = {
-            "force": torch.empty((0, 1), dtype=torch.float),
-            "length": torch.empty((0, 1), dtype=torch.float),
-            "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
-            "force_sign": torch.empty((0, 1), dtype=torch.float),
-        }
-        self.default_attrs = {
-            "force": torch.tensor([torch.nan]),
-            "length": torch.tensor([torch.nan]),
-            "coords": torch.full((3,), torch.nan),
-            "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
-            "is_origin_node": torch.tensor(0, dtype=torch.bool),
-        }
 
     def sample_input(self, **kwargs):
         """
@@ -73,41 +52,13 @@ class CableStayedBridge(BaseGenerator):
             torch.tensor([0.5 * deck_trail_length, 0.0, 0.0]),
         ]
         for i in range(2):
-            # Add origin nodes
-            graph.add_node(
-                f"deck_trail_{i}_node_0",
-                coords=deck_origin_coords[i],
-                is_origin_node=torch.tensor(True),
-                sequence=torch.tensor(0),
+            build_trail(
+                graph, f"deck_trail_{i}", n_deck_trail_edges,
+                origin_coords=deck_origin_coords[i],
                 load=deck_load,
+                force_sign=-1.0,
+                length=deck_trail_length,
             )
-            for j in range(1, n_deck_trail_edges + 1):
-                load = (
-                    torch.zeros(3, dtype=torch.float)
-                    if j == n_deck_trail_edges
-                    else deck_load
-                )
-                support_condition = (
-                    torch.tensor([True, True, True])
-                    if j == n_deck_trail_edges
-                    else torch.tensor([False, False, False])
-                )
-                # Add node
-                graph.add_node(
-                    f"deck_trail_{i}_node_{j}",
-                    is_origin_node=torch.tensor(False),
-                    sequence=torch.tensor(j),
-                    load=load,
-                    support_condition=support_condition,
-                )
-                # Add new edge with the created node and its previous node
-                graph.add_edge(
-                    f"deck_trail_{i}_node_{j - 1}",
-                    f"deck_trail_{i}_node_{j}",
-                    is_trail_edge=torch.tensor(True),
-                    length=deck_trail_length,
-                    force_sign=torch.tensor(-1.0),
-                )
 
         # Add element connecting rails
         graph.add_edge(
@@ -126,55 +77,23 @@ class CableStayedBridge(BaseGenerator):
             tower_origin_coords = torch.tensor(
                 [tower_x[i], applied_tower_offset, tower_height]
             )
-            graph.add_node(
-                f"tower_trail_{i}_node_0",
-                coords=tower_origin_coords,
-                is_origin_node=torch.tensor(True),
-                sequence=torch.tensor(0),
+            build_trail(
+                graph, f"tower_trail_{i}", n_cables,
+                origin_coords=tower_origin_coords,
+                force_sign=-1.0,
+                length=tower_trail_length,
+                last_edge_kwargs={"length": tower_height * 0.8},
             )
-            for j in range(1, n_cables + 1):
-                support_condition = (
-                    torch.tensor([True, True, True])
-                    if j == n_cables
-                    else torch.tensor([False, False, False])
-                )
-                length = tower_height * 0.8 if j == n_cables else tower_trail_length
-                graph.add_node(
-                    f"tower_trail_{i}_node_{j}",
-                    is_origin_node=torch.tensor(False),
-                    sequence=torch.tensor(j),
-                    support_condition=support_condition,
-                )
-                graph.add_edge(
-                    f"tower_trail_{i}_node_{j - 1}",
-                    f"tower_trail_{i}_node_{j}",
-                    is_trail_edge=torch.tensor(True),
-                    length=length,
-                    force_sign=torch.tensor(-1.0),
-                )
             # Backstay
             applied_back_stay_offset = alternate * (tower_offset + back_stay_offset)
             backstay_origin_coords = torch.tensor(
                 [tower_x[i], applied_back_stay_offset, 0.01]
             )
-            graph.add_node(
-                f"backstay_trail_{i}_node_0",
-                coords=backstay_origin_coords,
-                is_origin_node=torch.tensor(True),
-                sequence=torch.tensor(0),
-            )
-            graph.add_node(
-                f"backstay_trail_{i}_node_1",
-                is_origin_node=torch.tensor(False),
-                sequence=torch.tensor(1),
-                support_condition=[True, True, True],
-            )
-            graph.add_edge(
-                f"backstay_trail_{i}_node_0",
-                f"backstay_trail_{i}_node_1",
-                is_trail_edge=torch.tensor(True),
+            build_trail(
+                graph, f"backstay_trail_{i}", 1,
+                origin_coords=backstay_origin_coords,
+                force_sign=1.0,
                 length=0.4 * tower_height,
-                force_sign=torch.tensor(1.0),
             )
             graph.add_edge(
                 f"tower_trail_{i}_node_0",

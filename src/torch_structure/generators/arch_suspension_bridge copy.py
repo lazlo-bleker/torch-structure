@@ -8,7 +8,6 @@ from torch_structure.data import StructData
 from torch_structure.formfinding.cem import constrained_deck_cb
 from torch_structure.generators.base_generator import InvalidSampleError
 from torch_structure.generators.base_generator_cem import BaseGeneratorCEM
-from torch_structure.generators.topology import build_trail
 from torch_structure.geometry.utils import line_direction
 
 
@@ -186,29 +185,38 @@ class ArchSuspensionBridgeGenerator(BaseGeneratorCEM):
         for i, origin_coord in enumerate(origin_coords):
             side = 1 if origin_coord[0] > 0 else -1
             is_deck = i < 4
-            trail_load = load if is_deck else torch.zeros(3, dtype=torch.float)
-            shared_node_attrs = {
-                "is_deck_node": torch.tensor(is_deck),
-                "is_left_side_node": torch.tensor(profile_side[i] == "left"),
-                "is_right_side_node": torch.tensor(profile_side[i] == "right"),
-                "is_center_node": torch.tensor(profile_side[i] == "center"),
-            }
-            build_trail(
-                data, f"trail_{i}", n_bays,
-                origin_coords=origin_coord,
-                load=trail_load,
-                force_sign=None,
-                origin_node_kwargs={
-                    **shared_node_attrs,
-                    "deck_slope": torch.tensor(side * 8 * deck_rise / span / (n_bays + 0.5)),
-                },
-                node_kwargs=lambda j: {
-                    **shared_node_attrs,
-                    "constraint_plane": torch.tensor([side * (j + 0.5) * bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
-                    "deck_slope": torch.tensor(side * 8 * deck_rise / span * (j + 1) / (n_bays + 0.5)),
-                },
-                edge_kwargs={"is_deck_trail_edge": torch.tensor(is_deck)},
+            data.add_node(
+                f"trail_{i}_node_0",
+                coords=origin_coord,
+                is_origin_node=torch.tensor(True),
+                load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
+                sequence=torch.tensor([0], dtype=torch.long),
+                deck_slope=torch.tensor(side*8*deck_rise/span * 1 / (n_bays + 0.5)),
+                is_deck_node=torch.tensor(is_deck),
+                is_left_side_node=torch.tensor(profile_side[i] == "left"),
+                is_right_side_node=torch.tensor(profile_side[i] == "right"),
+                is_center_node=torch.tensor(profile_side[i] == "center"),
             )
+            for j in range(n_bays):
+                data.add_node(
+                    f"trail_{i}_node_{j+1}",
+                    load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
+                    support_condition=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
+                    constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
+                    sequence=torch.tensor([j + 1], dtype=torch.long),
+                    deck_slope=torch.tensor(side*8*deck_rise/span * (j + 2) / (n_bays + 0.5)),
+                    is_deck_node=torch.tensor(is_deck),
+                    is_left_side_node=torch.tensor(profile_side[i] == "left"),
+                    is_right_side_node=torch.tensor(profile_side[i] == "right"),
+                    is_center_node=torch.tensor(profile_side[i] == "center"),
+                )
+                # Trail edges
+                data.add_edge(
+                    f"trail_{i}_node_{j}",
+                    f"trail_{i}_node_{j+1}",
+                    is_trail_edge=torch.tensor(True),
+                    is_deck_trail_edge=torch.tensor(is_deck),
+                )
 
         # Deviation edges
         center_deck_pairs = [(0, 2), (1, 3)]
