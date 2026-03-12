@@ -1,16 +1,23 @@
 import torch
 from torch_scatter import scatter
 from torch_structure.message_passing import ResidualForce
-from torch_structure.geometry import line_plane_intersect, point_normal_to_plane, graph_edge_lengths, line_direction
+from torch_structure.geometry import (
+    line_plane_intersect,
+    point_normal_to_plane,
+    graph_edge_lengths,
+    line_direction,
+)
+from config import TORCH_FLOAT
 
 ALLOWED_UPDATE_KEYS = {
-    "coords", 
-    "load", 
-    "length", 
-    "force_sign", 
-    "force", 
+    "coords",
+    "load",
+    "length",
+    "force_sign",
+    "force",
     "constraint_plane",
 }
+
 
 def mpcem_algorithm(
     coords,
@@ -47,7 +54,9 @@ def mpcem_algorithm(
         "length": length.clone(),
         "force_sign": force_sign.clone(),
         "force": force.clone(),
-        "constraint_plane": constraint_plane.clone() if constraint_plane is not None else None,
+        "constraint_plane": constraint_plane.clone()
+        if constraint_plane is not None
+        else None,
     }
 
     residual_force_update = ResidualForce()
@@ -101,7 +110,10 @@ def mpcem_algorithm(
 
         # Calculate outgoing trail force
         residual_force = residual_force_update(
-            state["coords"], state["force"][valid_edges], cem_edge_index[:, valid_edges], state["load"]
+            state["coords"],
+            state["force"][valid_edges],
+            cem_edge_index[:, valid_edges],
+            state["load"],
         )
         # if i > 0 and torch.norm(residual_force[trail_src] - trail_force, dim=1).max() < tolerance:
         #     converged = True
@@ -116,11 +128,16 @@ def mpcem_algorithm(
         # Coordinates defined by trail lengths
         length_coords_update = (
             unit_trail_force[~trail_edge_constraint_plane_mask]
-            * state["length"][is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
-            * -state["force_sign"][is_trail_edge][~trail_edge_constraint_plane_mask].unsqueeze(1)
+            * state["length"][is_trail_edge][
+                ~trail_edge_constraint_plane_mask
+            ].unsqueeze(1)
+            * -state["force_sign"][is_trail_edge][
+                ~trail_edge_constraint_plane_mask
+            ].unsqueeze(1)
         )
         new_coords_length = (
-            state["coords"][trail_src][~trail_edge_constraint_plane_mask] + length_coords_update
+            state["coords"][trail_src][~trail_edge_constraint_plane_mask]
+            + length_coords_update
         )
 
         # Coordinates defined by constraint planes
@@ -133,22 +150,26 @@ def mpcem_algorithm(
             )
             state["force_sign"][edge_constraint_plane_mask] = -torch.sign(t)
         else:
-            new_coords_plane = state["coords"][trail_dst][trail_edge_constraint_plane_mask]
+            new_coords_plane = state["coords"][trail_dst][
+                trail_edge_constraint_plane_mask
+            ]
 
         new_coords = torch.empty_like(state["coords"][trail_dst])
         new_coords[~trail_edge_constraint_plane_mask] = new_coords_length
         new_coords[trail_edge_constraint_plane_mask] = new_coords_plane
 
         # Update force of trail edges
-        state["force"][is_trail_edge] = state["force_sign"][is_trail_edge] * trail_force_mag
+        state["force"][is_trail_edge] = (
+            state["force_sign"][is_trail_edge] * trail_force_mag
+        )
 
         # Apply damping to new coordinates
         if state["coords"][trail_dst].isnan().any():
             state["coords"][trail_dst] = new_coords
         else:
-            state["coords"][trail_dst] = state["coords"][trail_dst] + (1 - damping_factor) * (
-                new_coords - state["coords"][trail_dst]
-            )
+            state["coords"][trail_dst] = state["coords"][trail_dst] + (
+                1 - damping_factor
+            ) * (new_coords - state["coords"][trail_dst])
 
         if track_history:
             if i == 0:
@@ -156,9 +177,15 @@ def mpcem_algorithm(
                 force_history = state["force"].unsqueeze(0).clone()
                 load_history = state["load"].unsqueeze(0).clone()
             else:
-                coords_history = torch.cat((coords_history, state["coords"].unsqueeze(0)), dim=0)
-                force_history = torch.cat((force_history, state["force"].unsqueeze(0)), dim=0)
-                load_history = torch.cat((load_history, state["load"].unsqueeze(0)), dim=0)
+                coords_history = torch.cat(
+                    (coords_history, state["coords"].unsqueeze(0)), dim=0
+                )
+                force_history = torch.cat(
+                    (force_history, state["force"].unsqueeze(0)), dim=0
+                )
+                load_history = torch.cat(
+                    (load_history, state["load"].unsqueeze(0)), dim=0
+                )
 
         n_steps += 1
 
@@ -168,7 +195,9 @@ def mpcem_algorithm(
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((state["coords"].shape[0], 3), float("nan")).to(state["coords"].device)
+    reaction_force = torch.full((state["coords"].shape[0], 3), float("nan")).to(
+        state["coords"].device
+    )
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:
@@ -178,30 +207,41 @@ def mpcem_algorithm(
     if track_history:
         return coords_history, force_history, reaction_force, load_history
     else:
-        return state["coords"], state["force"].unsqueeze(1), reaction_force, state["load"]
+        return (
+            state["coords"],
+            state["force"].unsqueeze(1),
+            reaction_force,
+            state["load"],
+        )
+
 
 def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
     # Only consider edges with a coordinate (estimate) for both nodes
     valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
-    valid_edges = (valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]])
+    valid_edges = valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]]
 
     # Calculate edge loads due to self-weight
     length = graph_edge_lengths(state["coords"], edge_index[:, valid_edges]).view(-1)
     force = state["force"][edge_cem_to_undir][valid_edges]
-    valid_edge_load = -load_factor * 0.5 * length * force.abs()  # load_factor = density / yield_strength
+    valid_edge_load = (
+        -load_factor * 0.5 * length * force.abs()
+    )  # load_factor = density / yield_strength
     edge_load = torch.zeros_like(state["force"][edge_cem_to_undir])
     edge_load[valid_edges] = valid_edge_load
 
     # Aggregate to node loads
     node_load = torch.zeros_like(state["load"])
-    node_load[:, 2] = scatter(edge_load, edge_index[1], dim=0, dim_size=state["coords"].shape[0], reduce="sum")
+    node_load[:, 2] = scatter(
+        edge_load, edge_index[1], dim=0, dim_size=state["coords"].shape[0], reduce="sum"
+    )
 
-    state_updates = {
-        "load": node_load
-    }
+    state_updates = {"load": node_load}
     return state_updates
 
-def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_mod_h, sequence, deck_slope):  # TODO: Simplify
+
+def constrained_deck_cb(
+    state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_mod_h, sequence, deck_slope
+):  # TODO: Simplify
     # Enforce expected input shapes
     is_deck_trail_edge = is_deck_trail_edge.view(-1)
     is_mod_v = is_mod_v.view(-1)
@@ -211,48 +251,76 @@ def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_
 
     # Only consider edges with a coordinate (estimate) for both nodes
     valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
-    valid_edges = (valid_nodes[cem_edge_index[0]] & valid_nodes[cem_edge_index[1]])
-    valid_to_deck_edges = (valid_edges & torch.isin(cem_edge_index[1, :], cem_edge_index[0, is_deck_trail_edge]))
-    valid_from_deck_edges = (valid_edges & torch.isin(cem_edge_index[0, :], cem_edge_index[0, is_deck_trail_edge]))
+    valid_edges = valid_nodes[cem_edge_index[0]] & valid_nodes[cem_edge_index[1]]
+    valid_to_deck_edges = valid_edges & torch.isin(
+        cem_edge_index[1, :], cem_edge_index[0, is_deck_trail_edge]
+    )
+    valid_from_deck_edges = valid_edges & torch.isin(
+        cem_edge_index[0, :], cem_edge_index[0, is_deck_trail_edge]
+    )
     valid_to_deck_is_mod_v = valid_to_deck_edges & is_mod_v
     valid_from_deck_is_mod_v = valid_from_deck_edges & is_mod_v
-    positive_direction = line_direction(state["coords"][cem_edge_index[0]], state["coords"][cem_edge_index[1]])[:, 1] > 0
+    positive_direction = (
+        line_direction(
+            state["coords"][cem_edge_index[0]], state["coords"][cem_edge_index[1]]
+        )[:, 1]
+        > 0
+    )
     valid_is_mod_h_pos = valid_edges & is_mod_h & positive_direction
     valid_is_mod_h_neg = valid_edges & is_mod_h & ~positive_direction
 
     # Calculate residual force
     residual_force_mp = ResidualForce()
-    residual_force = residual_force_mp(state["coords"], state["force"][valid_to_deck_edges],
-                                       cem_edge_index[:, valid_to_deck_edges], state["load"])
+    residual_force = residual_force_mp(
+        state["coords"],
+        state["force"][valid_to_deck_edges],
+        cem_edge_index[:, valid_to_deck_edges],
+        state["load"],
+    )
 
     # Update forces of vertical modification edges
     mod_v_src, mod_v_dst = cem_edge_index[:, valid_to_deck_is_mod_v]
-    mod_v_direction = line_direction(state["coords"][mod_v_src], state["coords"][mod_v_dst])
+    mod_v_direction = line_direction(
+        state["coords"][mod_v_src], state["coords"][mod_v_dst]
+    )
     x_res, _, z_res = residual_force[mod_v_dst].unbind(dim=1)
-    state["force"][valid_to_deck_is_mod_v] += (z_res + deck_slope[mod_v_dst] / x_res) / mod_v_direction[:, 2]
+    state["force"][valid_to_deck_is_mod_v] += (
+        z_res + deck_slope[mod_v_dst] / x_res
+    ) / mod_v_direction[:, 2]
 
     mod_v_dst, mod_v_src = cem_edge_index[:, valid_from_deck_is_mod_v]
-    mod_v_direction = line_direction(state["coords"][mod_v_src], state["coords"][mod_v_dst])
+    mod_v_direction = line_direction(
+        state["coords"][mod_v_src], state["coords"][mod_v_dst]
+    )
     x_res, _, z_res = residual_force[mod_v_dst].unbind(dim=1)
-    state["force"][valid_from_deck_is_mod_v] += (z_res + deck_slope[mod_v_dst] / x_res) / mod_v_direction[:, 2]
+    state["force"][valid_from_deck_is_mod_v] += (
+        z_res + deck_slope[mod_v_dst] / x_res
+    ) / mod_v_direction[:, 2]
 
     # Update forces of horizontal modification edges
-    residual_force = residual_force_mp(state["coords"], state["force"][valid_to_deck_edges],
-                                       cem_edge_index[:, valid_to_deck_edges], state["load"])
+    residual_force = residual_force_mp(
+        state["coords"],
+        state["force"][valid_to_deck_edges],
+        cem_edge_index[:, valid_to_deck_edges],
+        state["load"],
+    )
     mod_h_src, mod_h_dst = cem_edge_index[:, valid_is_mod_h_pos]
     x_src, y_src, _ = residual_force[mod_h_src].unbind(dim=1)
     x_dst, y_dst, _ = residual_force[mod_h_dst].unbind(dim=1)
-    state["force"][valid_is_mod_h_pos] += -(y_src * x_dst - x_src * y_dst) / (x_src + x_dst)
+    state["force"][valid_is_mod_h_pos] += -(y_src * x_dst - x_src * y_dst) / (
+        x_src + x_dst
+    )
 
     mod_h_src, mod_h_dst = cem_edge_index[:, valid_is_mod_h_neg]
     x_src, y_src, _ = residual_force[mod_h_src].unbind(dim=1)
     x_dst, y_dst, _ = residual_force[mod_h_dst].unbind(dim=1)
-    state["force"][valid_is_mod_h_neg] += (y_src * x_dst - x_src * y_dst) / (x_src + x_dst)
+    state["force"][valid_is_mod_h_neg] += (y_src * x_dst - x_src * y_dst) / (
+        x_src + x_dst
+    )
 
-    state_updates = {
-        "force": state["force"]
-    }
+    state_updates = {"force": state["force"]}
     return state_updates
+
 
 def cem_algorithm(
     coords,
@@ -369,7 +437,9 @@ def cem_algorithm(
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((coords.shape[0], 3), float("nan")).to(coords.device)
+    reaction_force = torch.full(
+        (coords.shape[0], 3), float("nan"), dtype=TORCH_FLOAT, device=coords.device
+    )
     reaction_force[is_support] = -residual_force[is_support]
 
     if verbose:

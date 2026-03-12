@@ -1,121 +1,89 @@
 """
-Example: Optimize a single trail sequencce using CEM and scipy
+Example: Optimize a single trail sequence using CEM and scipy
 
 This is a minimal example of optimization with torch_structure
 """
 
 import torch
+import matplotlib.pyplot as plt
 import torch_structure as ts
 from torch_structure.data import StructData
-from scipy.optimize import minimize, Bounds
-import numpy as np
-import matplotlib.pyplot as plt
-
-# ------------------------------
-# 1. Create initial setup
-# ------------------------------
-trail_params = {
-    "n_nodes": 10,
-    "trail_element_length": 0.1,
-    "nodal_load": [0.0, 0.0, -1.0],
-    "origin_node_load": [4.0, 0.0, 0.0],
-}
-coords_target = torch.tensor([1.0, 0.0, -1.0])
-
-# Generate bridge structure
-trail_generator = ts.generators.SingleTrailGenerator(**trail_params)
-# This is the main data structure of TorchStructure we'll work with
-trail = trail_generator()
-
-# --------------------------------
-# 2. Define optimization variables
-# --------------------------------
-# Select which edge forces to optimize: deviation (i.e. non-trail) edges in the directed mask
-trail_element_mask = (trail.is_trail_edge & trail.directed_mask).clone()
-trail_lengths = trail.length[trail_element_mask]
-
-# Compute mask for forces in reciprocal edges
-reciprocal_idx = trail.reciprocal_edge[trail_element_mask]
-trail_element_mask_reciprocal = torch.zeros(
-    trail.num_edges, dtype=torch.bool
-).unsqueeze(1)
-trail_element_mask_reciprocal[reciprocal_idx] = True
-
-# Compute mask for support node
-target_mask = trail.is_support
+from optimizer import Optimizer, DesignVariableConfig, SolverConfig, ObjectiveConfig
 
 
-# -------------------------------
-# 3. Define optimization function
-# -------------------------------
-@ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
-def obj_func(trail_lengths, struc_data: StructData):
-    trail_lengths = (
-        trail_lengths.float()
-    )  # Cast to 32-bit float (ToDo: add easy 64-bit support)
+def main():
+    # 1. Generate structure
+    n_nodes = 10
+    trail_generator = ts.generators.SingleTrailGenerator(
+        n_nodes=n_nodes,
+        trail_element_length=0.1,
+        nodal_load=[0.0, 0.0, -0.1],
+        origin_node_load=[1.0, 0.0, 0.0],
+    )
+    trail = trail_generator()
 
-    # Update the force vector with optimization variables
-    full_trail_lengths = struc_data.length.clone()
-    full_trail_lengths[trail_element_mask] = trail_lengths
-    full_trail_lengths[trail_element_mask_reciprocal] = trail_lengths
-    struc_data.length = full_trail_lengths
+    # 2. Define optimization variables
+    eps = 1e-3
+    dv_config_list = [
+        DesignVariableConfig(
+            name="trail_lengths",
+            attr_name="length",
+            mask_keyword="trail_elements",
+            is_dual_edge=True,
+            lower_bound=eps,
+        )
+    ]
 
-    # Form-find new structure with MPCEM
-    struc_data = struc_data.mpcem(max_iter=1000, damping_factor=0.5)
+    # 3. Define objective function
+    def obj_func(graph_solved: StructData, target_mask, target_coords):
+        # Compare current coords with target coords
+        diff = graph_solved.coords[target_mask] - target_coords
+        return torch.sum(diff * diff)
 
-    # Compute mean square Z deviation (measure of flatness)
-    coords_computed = struc_data.coords[target_mask.expand(-1, 3)]
-    coords_deviation = coords_target - coords_computed
-    return torch.sum(coords_deviation**2)
+    def reg_func(graph_solved: StructData):
+        lengths = graph_solved.length_from_coords
+        mean_length = torch.mean(lengths)
+        diff = lengths - mean_length
+        return torch.sum(diff * diff)
+
+    target_coords = torch.tensor([[1.0, 0.0, -1.0]])
+    target_mask = trail.is_support.squeeze()
+    assert trail.coords[target_mask].shape == target_coords.shape, (
+        "Target and mask do not match their shape"
+    )
+
+    obj_func_config_list = [
+        ObjectiveConfig(
+            name="match_target_coords",
+            obj_function=lambda g: obj_func(g, target_mask, target_coords),
+        ),
+        ObjectiveConfig(name="length_similarity", obj_function=reg_func, weight=1e1),
+    ]
+
+    # 4. Initialize & run optimizer
+    solver_config = SolverConfig(
+        solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}
+    )
+
+    optimizer = Optimizer(
+        graph=trail,
+        solver_config=solver_config,
+        dv_config_list=dv_config_list,
+        obj_func_config_list=obj_func_config_list,
+    )
+    optimizer.run(100)
+
+    # 6. Visualize result
+    trail.plot(
+        title="Optimized Trail",
+        legend=False,
+        show_supports=True,
+        show_load=True,
+        force_scale=0.1,
+    )
+    plt.show()
+    print("Finish")
 
 
-# Define callback for logging progress (optional)
-def make_callback():
-    def callback(x):
-        print(f"Iteration {callback.iteration:3d} | Loss: {obj_func.best_loss:.6f}")
-        callback.iteration += 1
-
-    callback.iteration = 0
-    return callback
-
-
-# -------------------
-# 5. Run optimization
-# -------------------
-# Start from uniform force values
-initial_values = trail_params["trail_element_length"] * torch.ones(
-    torch.sum(trail_element_mask), dtype=torch.float64
-)
-
-# Define constraint of lengths being positive
-eps = 1e-1
-bounds = Bounds(eps, np.inf)
-
-# Run optimization using scipy
-result = minimize(
-    fun=obj_func,
-    args=(trail),
-    x0=initial_values.detach().numpy(),
-    method="SLSQP",
-    jac=True,
-    callback=make_callback(),
-    bounds=bounds,
-    options={"disp": True, "ftol": 1e-7, "gtol": 1e-7, "maxiter": 100},
-)
-
-# ---------------------------------------
-# 6. Apply optimized forces and visualize
-# ---------------------------------------
-# Update forces with optimized values
-optimized_lengths = torch.tensor(result.x, dtype=torch.float32)
-trail.force[trail_element_mask] = optimized_lengths
-trail.force[trail_element_mask_reciprocal] = optimized_lengths
-
-
-# Final run to compute the equilibrium structure with optimized forces
-trail = trail.mpcem(max_iter=1000, verbose=True)
-
-# Plot the optimized structure
-trail.plot(title="Optimized Trail", legend=False)
-plt.show()
-print("Finish")
+if __name__ == "__main__":
+    main()
