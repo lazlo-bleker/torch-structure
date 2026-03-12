@@ -5,40 +5,41 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .core import Optimizer
 
-
 class Logger:
-    def __init__(self, optimizer: "Optimizer", log_interval=10, export_dir=None):
-        """
-        Initialize a logging object with full access to the optimizer
-        """
-        self.iteration = 0
+    def __init__(self, optimizer, log_interval=2, flush = False):
         self.optimizer = optimizer
         self.log_interval = log_interval
-
-        # Determine directory to export data
-        if export_dir is not None:
-            self.base_dir = export_dir
-        else:
-            timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
-            self.base_dir = f"{os.getcwd()}/results/{timestamp}"
-        # Check that base_dir exists
-        os.makedirs(self.base_dir, exist_ok=True)
+        self.iteration = 0
+        self.flush = flush
 
     def __call__(self, _):
-        """
-        When called, logs data and prints the optimizer status to terminal.
-        """
-        # Advance iteration counter
         self.iteration += 1
-        # Skip logger very log_interval
-        if self.iteration % self.log_interval == 0:
+
+        if self.iteration % self.log_interval != 0:
             return None
 
-        # Total loss printout
-        out = f"Iteration {self.iteration:3d}"
-        for (
-            loss_name,
-            loss_value,
-        ) in self.optimizer.objective_function_handler.loss_dict.items():
-            out += f"\t| {loss_name} : {float(loss_value):.6f}"
-        print(out)
+        obj_log = self.optimizer.objective_function_handler.log
+        constr_log = self.optimizer.constraint_function_handler.log
+
+        msg = self.format_status(obj_log, constr_log)
+        print("\r" + msg, end="", flush=self.flush)
+
+    def format_status(self, obj_log, constr_log):
+        obj_txt = format_log_dict(obj_log)
+        constr_txt = format_log_dict(constr_log)
+        return f"Iter {self.iteration:4d} \t| Obj: {obj_txt} \t| Constr: {constr_txt} \n"
+    
+def format_log_dict(log_dicts, precision=3):
+    parts = []
+    for key_0, log_dict in log_dicts.items():
+        for key_1, value in log_dict.items():
+            key = f"{key_0}.{key_1}"
+            parts.append(f"{key}={format_value(value, precision)}")
+    return ", ".join(parts)
+
+def format_value(value, precision=3):
+    if isinstance(value, float):
+        return f"{value:.{precision}e}"
+    if hasattr(value, "item") and getattr(value, "ndim", None) == 0:
+        return f"{value.item():.{precision}e}"
+    return str(value)

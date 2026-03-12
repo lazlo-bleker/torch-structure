@@ -27,9 +27,15 @@ class Objective:
         """
         Calls a function that acts on a solved graph resulting from StrucData.cem and optional stored variables
         """
-        out = self.obj_function(graph, **self.kwargs)
-        return out
+        self.y = self.obj_function(graph, **self.kwargs)
+        return self.y
 
+    @property
+    def log(self):
+        """
+        Returns log data as a dictionary
+        """
+        return {"value" : self.y.item()}
 
 class ObjectiveHandler:
     def __init__(self, solve_graph, obj_func_config_list: list[ObjectiveConfig]):
@@ -42,8 +48,6 @@ class ObjectiveHandler:
         self.weights = {}
         # Init collection of Function_Objects
         self.function_objects = {}
-        # Init attribute to store loss values (for data logging)
-        self.loss_dict = {}
         # Add objective functions
         for obj_func_config in obj_func_config_list:
             # Add object to dictionary
@@ -57,13 +61,10 @@ class ObjectiveHandler:
         graph_solved = self.solve_graph(x)
         # Compute total loss based on CEM solution
         total_loss = torch.tensor(0.0)
-        for name, obj_function in self.function_objects.items():
+        for _, obj_function in self.function_objects.items():
             # Add contribution of obj function from list
-            partial_loss = obj_function(graph_solved)
-            self.loss_dict[name] = partial_loss.detach().item()
-            total_loss += obj_function.weight * partial_loss
+            total_loss += obj_function.weight * obj_function(graph_solved)
         # Save total loss too
-        self.loss_dict["total"] = total_loss.detach().item()
         return total_loss
 
     def func_grad(self, x):
@@ -84,3 +85,13 @@ class ObjectiveHandler:
         grad, loss = func_grad_value(x)
         # Cast to numpy to use in scipy
         return loss.item(), torch_to_np_float(grad)
+    
+    @property
+    def log(self):
+        """
+        Collect log of objectives
+        """
+        out = {}
+        for obj_name, obj in self.function_objects.items():
+            out[obj_name] = obj.log
+        return out

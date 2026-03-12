@@ -31,8 +31,15 @@ class ConstraintObject:
         # Store additional keyword arguments if needed
         self.kwargs = constr_config.kwargs
         # Store bounds as attributes
-        self.lower_bound = constr_config.lower_bound
-        self.upper_bound = constr_config.upper_bound
+        # Handle bounds of the design variable
+        if constr_config.lower_bound is None:
+            constr_config.lower_bound = -torch.inf
+        if constr_config.upper_bound is None:
+            constr_config.upper_bound = torch.inf
+        if constr_config.upper_bound <= constr_config.lower_bound:
+            raise ValueError("upper_bound must be greater than lower_bound.")
+        self.lower_bound = torch.tensor(constr_config.lower_bound)
+        self.upper_bound = torch.tensor(constr_config.upper_bound)
         # Create attributes to store the constrainted values and their Jacobian matrix
         self.y = None
         self.J = None
@@ -71,13 +78,15 @@ class ConstraintObject:
         x = np_to_torch_float(x)
         return torch_to_np_float(self.backward(x))
 
+    @property
     def log(self):
         """
-        TODO: option to log data on a Constraint object
+        Returns log data as a dictionary
         """
-        raise NotImplementedError
-
-
+        under = torch.relu(self.lower_bound - self.y)
+        over = torch.relu(-self.upper_bound + self.y)
+        constr_violation = under + over
+        return {"violation" : constr_violation.item()}
 class ConstraintHandler:
     def __init__(self, solve_graph_method, constr_config_list):
         """
@@ -119,11 +128,12 @@ class ConstraintHandler:
             constraint_list_scipy.append(non_linear_constraint)
         return constraint_list_scipy
 
+    @property
     def log(self):
         """
         Aggregates the logged data in the constraint objects
         """
         log = {}
         for name, obj_function in self.constraint_objects.items():
-            log[name] = obj_function.log()
+            log[name] = obj_function.log
         return log

@@ -8,7 +8,7 @@ import torch
 import matplotlib.pyplot as plt
 import torch_structure as ts
 from torch_structure.data import StructData
-from optimizer import Optimizer, DesignVariableConfig, SolverConfig, ObjectiveConfig
+from optimizer import Optimizer, DesignVariableConfig, SolverConfig, ObjectiveConfig, ConstraintConfig
 
 
 def main():
@@ -53,14 +53,20 @@ def main():
     )
 
     obj_func_config_list = [
-        ObjectiveConfig(
-            name="match_target_coords",
-            obj_function=lambda g: obj_func(g, target_mask, target_coords),
-        ),
         ObjectiveConfig(name="length_similarity", obj_function=reg_func, weight=1e1),
     ]
 
-    # 4. Initialize & run optimizer
+    # 4. Define constraint
+    constr_config_list = [
+        ConstraintConfig(
+            name="support_coords", 
+            constr_function=lambda g: obj_func(g, target_mask, target_coords),
+            lower_bound=0.0,
+            upper_bound=1e-1,
+        )
+    ]
+
+    # 5. Initialize & run optimizer
     solver_config = SolverConfig(
         solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}
     )
@@ -70,6 +76,7 @@ def main():
         solver_config=solver_config,
         dv_config_list=dv_config_list,
         obj_func_config_list=obj_func_config_list,
+        constr_config_list=constr_config_list
     )
     optimizer.run(100)
 
