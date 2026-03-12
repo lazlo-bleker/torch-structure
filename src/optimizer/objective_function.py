@@ -35,7 +35,8 @@ class Objective:
         """
         Returns log data as a dictionary
         """
-        return {"value" : self.y.item()}
+        return {"value": self.y.item()}
+
 
 class ObjectiveHandler:
     def __init__(self, solve_graph, obj_func_config_list: list[ObjectiveConfig]):
@@ -85,7 +86,7 @@ class ObjectiveHandler:
         grad, loss = func_grad_value(x)
         # Cast to numpy to use in scipy
         return loss.item(), torch_to_np_float(grad)
-    
+
     @property
     def log(self):
         """

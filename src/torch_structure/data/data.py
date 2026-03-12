@@ -11,16 +11,18 @@ from torch_structure.loss import ResidualForceLoss
 from torch_structure.geometry import graph_edge_lengths
 from torch_structure.mixins import TSMixin
 
+
 class StructData(TSMixin, pyg.data.Data):
-    def __init__(self,
-                 edge_index=torch.empty((2, 0), dtype=torch.long),
-                 directed_mask=torch.empty((0, 1), dtype=torch.bool),
-                 reciprocal_edge=torch.empty((0, 1), dtype=torch.long),
-                 node_attrs={},
-                 edge_attrs={},
-                 graph_attrs={},
-                 default_attrs={},
-                 **kwargs,
+    def __init__(
+        self,
+        edge_index=torch.empty((2, 0), dtype=torch.long),
+        directed_mask=torch.empty((0, 1), dtype=torch.bool),
+        reciprocal_edge=torch.empty((0, 1), dtype=torch.long),
+        node_attrs={},
+        edge_attrs={},
+        graph_attrs={},
+        default_attrs={},
+        **kwargs,
     ):
         super().__init__(
             edge_index=edge_index,
@@ -95,16 +97,13 @@ class StructData(TSMixin, pyg.data.Data):
         )
 
         return obj
-    
+
     def to_rhino(self):
         import Rhino.Geometry as rg
 
         xyz = self.coords.detach().cpu().numpy()
         src, dst = (
-            self.edge_index[:, self.directed_mask.view(-1)]
-            .detach()
-            .cpu()
-            .numpy()
+            self.edge_index[:, self.directed_mask.view(-1)].detach().cpu().numpy()
         )
 
         points = [rg.Point3d(float(x), float(y), float(z)) for x, y, z in xyz]
@@ -119,7 +118,7 @@ class StructData(TSMixin, pyg.data.Data):
             return self.num_nodes
         else:
             return 0
-        
+
     def verify_equilibrium(self, tolerance=1e-7, verbose=False, **kwargs):
         if "coords" not in kwargs:
             kwargs["coords"] = self.coords
@@ -140,7 +139,7 @@ class StructData(TSMixin, pyg.data.Data):
             print(f"Equilibrium: {equilibrium} (loss = {loss})")
 
         return equilibrium
-    
+
     def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
         mask = mask.view(-1)
         device = edge_attr.device
@@ -170,10 +169,8 @@ class StructData(TSMixin, pyg.data.Data):
             value[~mask] = value[self.reciprocal_edge[~mask].view(-1)]
 
         return value
-    
-    def _track_history(
-        self, attr_name, value
-    ):  # Todo: requires attr exists in self
+
+    def _track_history(self, attr_name, value):  # Todo: requires attr exists in self
         history_attr_name = f"{attr_name}_history"
         current_attr = getattr(self, attr_name)
 
@@ -192,7 +189,7 @@ class StructData(TSMixin, pyg.data.Data):
             new_history = torch.cat([current_attr.unsqueeze(0), value], dim=0)
 
         setattr(self, history_attr_name, new_history)
-        
+
     # Properties
     @property
     def is_support(self):
@@ -201,17 +198,19 @@ class StructData(TSMixin, pyg.data.Data):
 
         # If 'is_support' is missing, fall back to support_condition if available
         elif "support_condition" in self._store:
-            return torch.any(self.support_condition, dim=1, keepdim=True)  # ToDO: check per dim
+            return torch.any(
+                self.support_condition, dim=1, keepdim=True
+            )  # ToDO: check per dim
 
         else:
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute 'is_support' or 'support_condition'"
             )
-        
+
     @property
     def support(self):
         return self.is_support  ### REMOVE LATER TEMP
-    
+
     @property
     def length_from_coords(self):
         if hasattr(self, "coords"):
@@ -234,15 +233,15 @@ class StructData(TSMixin, pyg.data.Data):
     @property
     def directed_edge_index(self):
         return self.edge_index[:, self.directed_mask.view(-1)]
-    
+
     @property
     def cem_edge_index(self):
         return self.edge_index[:, self.cem_edge_mask]
-    
+
     @property
     def cem_edge_mask(self):
         return ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
-        
+
     # Graph Editing Functionality
     @property
     @requires_metadata
@@ -250,7 +249,9 @@ class StructData(TSMixin, pyg.data.Data):
         """
         Provides networkx-style access to node attributes without caching.
         """
-        return NodeView(self, self.metadata["node_name_to_index"], self.metadata["node_attr_list"])
+        return NodeView(
+            self, self.metadata["node_name_to_index"], self.metadata["node_attr_list"]
+        )
 
     @requires_metadata
     def add_node(self, name: str, **kwargs):
@@ -268,7 +269,9 @@ class StructData(TSMixin, pyg.data.Data):
         if name in self.metadata["node_name_to_index"]:
             raise ValueError(f"Node '{name}' already exists!")
 
-        self.metadata["node_name_to_index"][name] = self.num_nodes  # Add node to node_name_to_index
+        self.metadata["node_name_to_index"][name] = (
+            self.num_nodes
+        )  # Add node to node_name_to_index
         self.num_nodes += 1  # Increment number of nodes
 
         # Add node attributes
@@ -298,7 +301,7 @@ class StructData(TSMixin, pyg.data.Data):
                 attr,
                 torch.cat([getattr(self, attr), value.unsqueeze(0)], dim=0),
             )
-    
+
     @requires_metadata
     def add_edge(self, src: str, dst: str, name=None, **kwargs):
         """
@@ -442,5 +445,8 @@ class StructData(TSMixin, pyg.data.Data):
 
     def __repr__(self):
         attrs = {k: v for k, v in self._store.items() if k != "metadata"}
-        attr_str = ", ".join(f"{k}={v.shape if isinstance(v, torch.Tensor) else v}" for k, v in attrs.items())
+        attr_str = ", ".join(
+            f"{k}={v.shape if isinstance(v, torch.Tensor) else v}"
+            for k, v in attrs.items()
+        )
         return f"{self.__class__.__name__}({attr_str})"

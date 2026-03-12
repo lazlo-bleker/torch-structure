@@ -1,4 +1,10 @@
-from .cem import mpcem_algorithm, selfweight_cb, constrained_deck_cb, cem_algorithm, seq_cem_algorithm
+from .cem import (
+    mpcem_algorithm,
+    selfweight_cb,
+    constrained_deck_cb,
+    cem_algorithm,
+    seq_cem_algorithm,
+)
 from .fdm import fdm
 from .laplacian_smooth import laplacian_smoothing
 from .tna import tna

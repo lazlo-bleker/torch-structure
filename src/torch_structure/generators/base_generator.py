@@ -2,9 +2,12 @@ from abc import ABC, abstractmethod
 from torch_structure.data import StructData
 import traceback
 
+
 class InvalidSampleError(Exception):
     """Sample violated generator constraints."""
+
     pass
+
 
 class BaseGenerator(ABC):
     r"""An abstract base class for writing structure generators."""
@@ -36,7 +39,9 @@ class BaseGenerator(ABC):
                     self.success_count += 1
                     return result
                 except InvalidSampleError as e:
-                    error_message = f"Attempt {attempt+1}/{self.max_attempts} failed: {str(e)}"
+                    error_message = (
+                        f"Attempt {attempt + 1}/{self.max_attempts} failed: {str(e)}"
+                    )
                     if self.verbose:
                         print(error_message)
                     continue

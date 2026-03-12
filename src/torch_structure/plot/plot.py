@@ -28,7 +28,7 @@ def plot_data(
     show=False,
     show_edge_indices=False,
     show_deck=False,
-    is_deck_node=None
+    is_deck_node=None,
 ):
     """
     Plot a structure in 3D.
@@ -119,10 +119,12 @@ def plot_data(
 
         # --- 2) enforce pairwise y ordering within each consecutive pair
         if len(deck_coords) % 2 != 0:
-            raise ValueError("Expected an even number of deck coordinates (strict pairs).")
+            raise ValueError(
+                "Expected an even number of deck coordinates (strict pairs)."
+            )
         for i in range(0, len(deck_coords), 2):
-            if deck_coords[i, 1] > deck_coords[i+1, 1]:
-                deck_coords[[i, i+1]] = deck_coords[[i+1, i]]
+            if deck_coords[i, 1] > deck_coords[i + 1, 1]:
+                deck_coords[[i, i + 1]] = deck_coords[[i + 1, i]]
 
         # --- 3) group into pairs: shape -> (n_pairs, 2, 3)
         pairs = deck_coords.reshape(-1, 2, 3)  # [ [low_y, high_y] per x ]
@@ -130,15 +132,17 @@ def plot_data(
         # --- 4) build quads between adjacent x-pairs
         quads = []
         for k in range(pairs.shape[0] - 1):
-            left_low,  left_high  = pairs[k, 0], pairs[k, 1]
-            right_low, right_high = pairs[k+1, 0], pairs[k+1, 1]
+            left_low, left_high = pairs[k, 0], pairs[k, 1]
+            right_low, right_high = pairs[k + 1, 0], pairs[k + 1, 1]
 
             # Counter-clockwise ordering (as seen from +x toward origin) to make normals consistent
             quad = [left_low, left_high, right_high, right_low]
             quads.append(quad)
 
         # --- 5) plot as a single Poly3DCollection
-        coll = Poly3DCollection(quads, facecolors='grey', edgecolors='k', linewidths=0.5, alpha=0.4)
+        coll = Poly3DCollection(
+            quads, facecolors="grey", edgecolors="k", linewidths=0.5, alpha=0.4
+        )
         ax.add_collection3d(coll)
 
     # Plot edges

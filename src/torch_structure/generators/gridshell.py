@@ -621,7 +621,9 @@ class GridShellGenerator(BaseGenerator):
             )
 
         if graph.force_density.max() > 0.0:
-            raise InvalidSampleError(f"Tension element(s) present: {graph.force_density.max()}")
+            raise InvalidSampleError(
+                f"Tension element(s) present: {graph.force_density.max()}"
+            )
 
         return graph
 

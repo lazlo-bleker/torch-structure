@@ -1,10 +1,15 @@
-from torch_structure.formfinding import mpcem_algorithm, cem_algorithm, seq_cem_algorithm
+from torch_structure.formfinding import (
+    mpcem_algorithm,
+    cem_algorithm,
+    seq_cem_algorithm,
+)
 from torch_structure.mixins.utils import OverrideResolveMixin
+
 
 class CEMMixin(OverrideResolveMixin):
     def mpcem(
         self,
-        inplace: bool=False,
+        inplace: bool = False,
         coords=None,
         load=None,
         is_support=None,
@@ -36,44 +41,49 @@ class CEMMixin(OverrideResolveMixin):
         load = self._resolve_override("load", load)
         is_support = self._resolve_override("is_support", is_support)
         is_origin_node = self._resolve_override("is_origin_node", is_origin_node)
-        constraint_plane = self._resolve_override("constraint_plane", constraint_plane, required=False)
+        constraint_plane = self._resolve_override(
+            "constraint_plane", constraint_plane, required=False
+        )
 
         # Edge inputs
         edge_mask = self.cem_edge_mask
         cem_edge_index = self._resolve_override("cem_edge_index", cem_edge_index)
-        is_trail_edge = self._resolve_override("is_trail_edge", is_trail_edge, mask=edge_mask)
+        is_trail_edge = self._resolve_override(
+            "is_trail_edge", is_trail_edge, mask=edge_mask
+        )
         length = self._resolve_override("length", length, mask=edge_mask)
         force_sign = self._resolve_override("force_sign", force_sign, mask=edge_mask)
         force = self._resolve_override("force", force, mask=edge_mask)
 
         # Output keys
         coords_key = "coords" if coords_out is None else coords_out
-        load_key  = "load"  if load_out  is None else load_out
+        load_key = "load" if load_out is None else load_out
         force_key = "force" if force_out is None else force_out
 
         # MP-CEM computation
-        new_coords, new_semi_directed_force, new_reaction_force, new_load = mpcem_algorithm(
-            coords,
-            load,
-            is_support,
-            is_origin_node,
-            cem_edge_index,
-            is_trail_edge,
-            length,
-            force_sign,
-            force,
-            constraint_plane,
-            max_iter=max_iter,
-            tolerance=tolerance,
-            damping_factor=damping_factor,
-            verbose=verbose,
-            track_history=track_history,
-            callback=callback,
+        new_coords, new_semi_directed_force, new_reaction_force, new_load = (
+            mpcem_algorithm(
+                coords,
+                load,
+                is_support,
+                is_origin_node,
+                cem_edge_index,
+                is_trail_edge,
+                length,
+                force_sign,
+                force,
+                constraint_plane,
+                max_iter=max_iter,
+                tolerance=tolerance,
+                damping_factor=damping_factor,
+                verbose=verbose,
+                track_history=track_history,
+                callback=callback,
+            )
         )
         new_force = self.edge_attr_to_undirected(
-            new_semi_directed_force,
-            edge_mask,
-            batched=track_history)
+            new_semi_directed_force, edge_mask, batched=track_history
+        )
 
         # Update data object
         new_data = self if inplace else self.clone()
@@ -94,10 +104,10 @@ class CEMMixin(OverrideResolveMixin):
 
         if not inplace:
             return new_data
-        
+
     def cem(
         self,
-        inplace: bool=False,
+        inplace: bool = False,
         coords=None,
         load=None,
         is_support=None,
@@ -160,9 +170,8 @@ class CEMMixin(OverrideResolveMixin):
             track_history=track_history,
         )
         new_force = self.edge_attr_to_undirected(
-            new_semi_directed_force,
-            edge_mask,
-            batched=track_history)
+            new_semi_directed_force, edge_mask, batched=track_history
+        )
 
         # Update data object
         new_data = self if inplace else self.clone()
@@ -183,7 +192,7 @@ class CEMMixin(OverrideResolveMixin):
 
     def seqcem(
         self,
-        inplace: bool=False,
+        inplace: bool = False,
         coords=None,
         load=None,
         is_support=None,
@@ -246,9 +255,8 @@ class CEMMixin(OverrideResolveMixin):
             track_history=track_history,
         )
         new_force = self.edge_attr_to_undirected(
-            new_semi_directed_force,
-            edge_mask,
-            batched=track_history)
+            new_semi_directed_force, edge_mask, batched=track_history
+        )
 
         # Update data object
         new_data = self if inplace else self.clone()

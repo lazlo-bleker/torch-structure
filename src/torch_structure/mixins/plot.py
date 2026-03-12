@@ -1,6 +1,7 @@
 from torch_structure.plot import plot_data
 from torch_structure.mixins.utils import OverrideResolveMixin
 
+
 class PlotMixin(OverrideResolveMixin):
     def plot(
         self,
@@ -9,7 +10,7 @@ class PlotMixin(OverrideResolveMixin):
         is_support=None,
         force=None,
         load=None,
-        **kwargs
+        **kwargs,
     ):
         coords = self._resolve_override("coords", coords)
         edge_index = self._resolve_override("edge_index", edge_index)
@@ -23,5 +24,5 @@ class PlotMixin(OverrideResolveMixin):
             is_support=is_support,
             force=force,
             load=load,
-            **kwargs
+            **kwargs,
         )

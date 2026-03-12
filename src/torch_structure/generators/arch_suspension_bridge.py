@@ -72,7 +72,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         inter_cable_force,
         deck_rise,
     ):
-        if n_cables not in [1,  2]:
+        if n_cables not in [1, 2]:
             raise InvalidSampleError("Number of cables must be either 1 or 2.")
 
     def sample_input(
@@ -99,7 +99,9 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         if n_cables is None:
             n_cables = np.random.choice([1, 2], p=[0.5, 0.5])
         if n_bays is None:
-            n_bays = np.random.randint(math.ceil(0.5 * span / 7), math.floor(0.5 * span / 3) + 1)
+            n_bays = np.random.randint(
+                math.ceil(0.5 * span / 7), math.floor(0.5 * span / 3) + 1
+            )
         if midspan_height is None:
             midspan_height = span * np.sign(cable_force) * np.random.uniform(-0.2, 0.05)
         if deck_width is None:
@@ -108,14 +110,22 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             twisted = np.random.choice([False, True], p=[0.6, 0.4])
             twist = twisted * np.random.uniform(5.0, 20.0)
         if connected_cables is None:
-            connected_cables = np.random.choice([False, True], p=[0.3, 0.7]) if not twisted else 1
+            connected_cables = (
+                np.random.choice([False, True], p=[0.3, 0.7]) if not twisted else 1
+            )
         if inclined_cables is None:
             if n_cables == 1:
                 inclined_cables = False
             else:
-                inclined_cables = np.random.choice([False, True], p=[0.3, 0.7]) if not twisted and not connected_cables else 1
+                inclined_cables = (
+                    np.random.choice([False, True], p=[0.3, 0.7])
+                    if not twisted and not connected_cables
+                    else 1
+                )
         if inter_cable_distance is None:
-            inter_cable_distance = np.random.uniform(3.0, 20.0) if inclined_cables else deck_width
+            inter_cable_distance = (
+                np.random.uniform(3.0, 20.0) if inclined_cables else deck_width
+            )
         if deck_force is None:
             deck_force = np.random.uniform(-3.0, -1.5)
         if inter_cable_force is None:
@@ -171,29 +181,54 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         twist_offset = 0.5 * bay_size * math.tan(twist_rad)
 
         # Origin nodes
-        deck_origin_coords = torch.tensor([
-            [0.5*bay_size, 0.5*deck_width, 0.0],
-            [0.5*bay_size, -0.5*deck_width, 0.0],
-            [-0.5*bay_size, 0.5*deck_width, 0.0],
-            [-0.5*bay_size, -0.5*deck_width, 0.0],
-        ], dtype=torch.float)
+        deck_origin_coords = torch.tensor(
+            [
+                [0.5 * bay_size, 0.5 * deck_width, 0.0],
+                [0.5 * bay_size, -0.5 * deck_width, 0.0],
+                [-0.5 * bay_size, 0.5 * deck_width, 0.0],
+                [-0.5 * bay_size, -0.5 * deck_width, 0.0],
+            ],
+            dtype=torch.float,
+        )
         profile_side = ["right", "left", "right", "left"]
 
         if n_cables == 1:
-            cable_origin_coords = torch.tensor([
-                [0.5*bay_size, twist_offset, midspan_height],
-                [-0.5*bay_size, -twist_offset, midspan_height],
-            ], dtype=torch.float)
+            cable_origin_coords = torch.tensor(
+                [
+                    [0.5 * bay_size, twist_offset, midspan_height],
+                    [-0.5 * bay_size, -twist_offset, midspan_height],
+                ],
+                dtype=torch.float,
+            )
             profile_side += ["center", "center"]
         elif n_cables == 2:
-            cable_origin_coords = torch.tensor([
-                [0.5*bay_size, 0.5*inter_cable_distance + twist_offset, midspan_height],
-                [0.5*bay_size, -0.5*inter_cable_distance + twist_offset, midspan_height],
-                [-0.5*bay_size, 0.5*inter_cable_distance - twist_offset, midspan_height],
-                [-0.5*bay_size, -0.5*inter_cable_distance - twist_offset, midspan_height],
-            ], dtype=torch.float)
+            cable_origin_coords = torch.tensor(
+                [
+                    [
+                        0.5 * bay_size,
+                        0.5 * inter_cable_distance + twist_offset,
+                        midspan_height,
+                    ],
+                    [
+                        0.5 * bay_size,
+                        -0.5 * inter_cable_distance + twist_offset,
+                        midspan_height,
+                    ],
+                    [
+                        -0.5 * bay_size,
+                        0.5 * inter_cable_distance - twist_offset,
+                        midspan_height,
+                    ],
+                    [
+                        -0.5 * bay_size,
+                        -0.5 * inter_cable_distance - twist_offset,
+                        midspan_height,
+                    ],
+                ],
+                dtype=torch.float,
+            )
             profile_side += ["right", "left", "right", "left"]
-    
+
         origin_coords = torch.cat([deck_origin_coords, cable_origin_coords], dim=0)
 
         for i, origin_coord in enumerate(origin_coords):
@@ -205,7 +240,9 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 is_origin_node=torch.tensor(True),
                 load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
                 sequence=torch.tensor([0], dtype=torch.long),
-                deck_slope=torch.tensor(side*8*deck_rise/span * 1 / (n_bays + 0.5)),
+                deck_slope=torch.tensor(
+                    side * 8 * deck_rise / span * 1 / (n_bays + 0.5)
+                ),
                 is_deck_node=torch.tensor(is_deck),
                 is_left_side_node=torch.tensor(profile_side[i] == "left"),
                 is_right_side_node=torch.tensor(profile_side[i] == "right"),
@@ -213,12 +250,18 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             )
             for j in range(n_bays):
                 data.add_node(
-                    f"trail_{i}_node_{j+1}",
+                    f"trail_{i}_node_{j + 1}",
                     load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
-                    support_condition=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
-                    constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
+                    support_condition=torch.tensor([True, True, True])
+                    if j == n_bays - 1
+                    else torch.tensor([False, False, False]),
+                    constraint_plane=torch.tensor(
+                        [side * (j + 1.5) * bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]
+                    ),
                     sequence=torch.tensor([j + 1], dtype=torch.long),
-                    deck_slope=torch.tensor(side*8*deck_rise/span * (j + 2) / (n_bays + 0.5)),
+                    deck_slope=torch.tensor(
+                        side * 8 * deck_rise / span * (j + 2) / (n_bays + 0.5)
+                    ),
                     is_deck_node=torch.tensor(is_deck),
                     is_left_side_node=torch.tensor(profile_side[i] == "left"),
                     is_right_side_node=torch.tensor(profile_side[i] == "right"),
@@ -227,7 +270,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 # Trail edges
                 data.add_edge(
                     f"trail_{i}_node_{j}",
-                    f"trail_{i}_node_{j+1}",
+                    f"trail_{i}_node_{j + 1}",
                     is_trail_edge=torch.tensor(True),
                     is_deck_trail_edge=torch.tensor(is_deck),
                 )
@@ -297,13 +340,15 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                     )
 
         # Formfinding
-        callback = partial(constrained_deck_cb,
-                           cem_edge_index=data.cem_edge_index,
-                           is_mod_v=data.is_mod_v[data.cem_edge_mask],
-                           is_mod_h=data.is_mod_h[data.cem_edge_mask],
-                           is_deck_trail_edge=data.is_deck_trail_edge[data.cem_edge_mask],
-                           sequence=data.sequence,
-                           deck_slope=data.deck_slope)
+        callback = partial(
+            constrained_deck_cb,
+            cem_edge_index=data.cem_edge_index,
+            is_mod_v=data.is_mod_v[data.cem_edge_mask],
+            is_mod_h=data.is_mod_h[data.cem_edge_mask],
+            is_deck_trail_edge=data.is_deck_trail_edge[data.cem_edge_mask],
+            sequence=data.sequence,
+            deck_slope=data.deck_slope,
+        )
         data = data.mpcem(callback=callback, verbose=False)
 
         # bbox filter
@@ -312,25 +357,35 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         z_factor = 0.5
         if y_extent > span * y_factor:
             # print("bbox (wide)")
-            raise InvalidSampleError(f"Bridge geometry is too wide ({y_extent.item()} > {span * y_factor}).")
+            raise InvalidSampleError(
+                f"Bridge geometry is too wide ({y_extent.item()} > {span * y_factor})."
+            )
         if z_extent > span * z_factor:
             # print("bbox (tall)")
-            raise InvalidSampleError(f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor}).")
-        
+            raise InvalidSampleError(
+                f"Bridge geometry is too tall ({z_extent.item()} > {span * z_factor})."
+            )
+
         # # smoothness filter
         max_angle = 35  # degrees
 
-        edge_mask = (data.is_trail_edge.view(-1) | data.is_center_deviation_edge.view(-1))
+        edge_mask = data.is_trail_edge.view(-1) | data.is_center_deviation_edge.view(-1)
         src, dst = data.edge_index[:, edge_mask]
         unit_vector = line_direction(data.coords[src], data.coords[dst])
-        vector_sum = scatter(unit_vector, src, dim=0, reduce="sum", dim_size=data.num_nodes)
-        degree = scatter(torch.ones_like(src), src, dim=0, reduce="sum", dim_size=data.num_nodes)
+        vector_sum = scatter(
+            unit_vector, src, dim=0, reduce="sum", dim_size=data.num_nodes
+        )
+        degree = scatter(
+            torch.ones_like(src), src, dim=0, reduce="sum", dim_size=data.num_nodes
+        )
         degree_2_mask = degree == 2
 
         R2 = vector_sum[degree_2_mask].pow(2).sum(dim=1)
         cos_theta = R2 * 0.5 - 1
         cos_theta = cos_theta.clamp(-1.0, 1.0)
-        cos_min = torch.cos(torch.deg2rad(torch.tensor(180 - max_angle, dtype=torch.float)))
+        cos_min = torch.cos(
+            torch.deg2rad(torch.tensor(180 - max_angle, dtype=torch.float))
+        )
         is_invalid = cos_theta > cos_min
         if is_invalid.any():
             # print("Invalid nodes:", is_invalid.sum())
@@ -344,15 +399,20 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         # if abs_force_density[~edge_mask].max() > abs_force_density[edge_mask].min():
         #     # print("force density")
         #     raise InvalidSampleError("Some secondary edges have higher force density magnitude than deck/main cable edges.")
-        
+
         # # force density magnitude filter
         mag_threshold = 30
         if abs_force_density.max() > mag_threshold:
-            raise InvalidSampleError(f"Some edges have too high force density magnitude (>{mag_threshold}).")
-        
+            raise InvalidSampleError(
+                f"Some edges have too high force density magnitude (>{mag_threshold})."
+            )
+
         # Text labels
         typology = "suspension_bridge" if cable_force > 0 else "arch_bridge"
-        if typology == "suspension_bridge" and data.coords[:, 2].max().item() < 0.05*span:
+        if (
+            typology == "suspension_bridge"
+            and data.coords[:, 2].max().item() < 0.05 * span
+        ):
             typology = "inverted_arch"
         if typology == "suspension_bridge":
             typology_extended = "underspanned" if midspan_height < 0 else None
@@ -360,7 +420,10 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             typology_extended = "deck" if midspan_height < 0 else "through"
         else:
             typology_extended = None
-        arch_rise_or_cable_sag = data.coords[~data.is_deck_node.view(-1), 2].max().item() - data.coords[~data.is_deck_node.view(-1), 2].min().item()
+        arch_rise_or_cable_sag = (
+            data.coords[~data.is_deck_node.view(-1), 2].max().item()
+            - data.coords[~data.is_deck_node.view(-1), 2].min().item()
+        )
         text_label_dict = {
             "typology": typology,
             "typology_extended": typology_extended,
@@ -368,7 +431,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "inclined_cables_or_arches": bool(inclined_cables),
             "cables_or_arches_connected": connected_cables,
             "arch_rise_or_cable_sag": arch_rise_or_cable_sag,
-            "n_columns_or_hangers": 4*n_bays,
+            "n_columns_or_hangers": 4 * n_bays,
             "span": span,
             "deck_width": deck_width,
             "twisted": bool(twist > 1e-3),
@@ -376,14 +439,18 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         }
 
         data.topology_params = torch.tensor(
-            [1,
-             -100,
-             -100,
-             -100,
-             -100,
-             -100,
-             n_cables - 1,
-             n_bays,
-             int(connected_cables) if n_cables > 1 else -100], dtype=torch.long).view(1, -1)
+            [
+                1,
+                -100,
+                -100,
+                -100,
+                -100,
+                -100,
+                n_cables - 1,
+                n_bays,
+                int(connected_cables) if n_cables > 1 else -100,
+            ],
+            dtype=torch.long,
+        ).view(1, -1)
 
         return data, text_label_dict

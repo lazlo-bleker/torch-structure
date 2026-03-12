@@ -1,10 +1,11 @@
 from torch_structure.formfinding import laplacian_smoothing
 from torch_structure.mixins.utils import OverrideResolveMixin
 
+
 class LaplacianSmoothingMixin(OverrideResolveMixin):
     def xy_laplacian_smoothing(
         self,
-        inplace: bool=False,
+        inplace: bool = False,
         coords=None,
         is_fixed=None,
         edge_index=None,

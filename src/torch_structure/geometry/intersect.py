@@ -2,6 +2,7 @@ from __future__ import annotations  # necessary for Python < 3.10 (Rhino)
 import torch
 from torch_structure.geometry import point_normal_to_plane
 
+
 def line_plane_intersect(
     plane: torch.Tensor,
     point: torch.Tensor,

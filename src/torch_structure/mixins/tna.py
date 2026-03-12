@@ -1,10 +1,11 @@
 from torch_structure.formfinding import tna
 from torch_structure.mixins.utils import OverrideResolveMixin
 
+
 class TNAMixin(OverrideResolveMixin):
     def tna(
         self,
-        inplace: bool=False,
+        inplace: bool = False,
         coords=None,
         is_support=None,
         load=None,
@@ -40,7 +41,9 @@ class TNAMixin(OverrideResolveMixin):
             verbose=verbose,
         )
         new_force = self.edge_attr_to_undirected(new_directed_force, edge_mask)
-        new_force_density = self.edge_attr_to_undirected(new_directed_force_density, edge_mask)
+        new_force_density = self.edge_attr_to_undirected(
+            new_directed_force_density, edge_mask
+        )
 
         # Update data object
         new_data = self if inplace else self.clone()

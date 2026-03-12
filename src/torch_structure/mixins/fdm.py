@@ -1,10 +1,11 @@
 from torch_structure.formfinding import fdm
 from torch_structure.mixins.utils import OverrideResolveMixin
 
+
 class FDMMixin(OverrideResolveMixin):
     def fdm(
         self,
-        inplace: bool=False,
+        inplace: bool = False,
         coords=None,
         load=None,
         support=None,
@@ -32,7 +33,9 @@ class FDMMixin(OverrideResolveMixin):
         # Edge inputs
         edge_mask = self.directed_mask.view(-1)
         edge_index = self._resolve_override("directed_edge_index", edge_index)
-        force_density = self._resolve_override("force_density", force_density, mask=edge_mask)
+        force_density = self._resolve_override(
+            "force_density", force_density, mask=edge_mask
+        )
 
         # Output keys
         coords_key = "coords" if coords_out is None else coords_out

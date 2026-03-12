@@ -86,7 +86,9 @@ class ConstraintObject:
         under = torch.relu(self.lower_bound - self.y)
         over = torch.relu(-self.upper_bound + self.y)
         constr_violation = under + over
-        return {"violation" : constr_violation.item()}
+        return {"violation": constr_violation.item()}
+
+
 class ConstraintHandler:
     def __init__(self, solve_graph_method, constr_config_list):
         """

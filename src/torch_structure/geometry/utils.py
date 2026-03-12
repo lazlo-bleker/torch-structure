@@ -1,20 +1,22 @@
 import torch
 
+
 def line_length(start_coords, end_coords):
-    r""" Compute the length of lines defined by start and end coordinates.
+    r"""Compute the length of lines defined by start and end coordinates.
 
     Args:
         start_coords (torch.Tensor): Tensor of shape [N, 3] representing the start coordinates of N lines.
         end_coords (torch.Tensor): Tensor of shape [N, 3] representing the end coordinates of N lines.
-    
+
     Returns:
         (torch.Tensor): Tensor of shape [N, 1] representing the lengths of the lines.
     """
     length = torch.norm(end_coords - start_coords, dim=1, keepdim=True)
     return length
 
+
 def graph_edge_lengths(coords, edge_index):
-    r""" Compute the lengths of edges in a graph.
+    r"""Compute the lengths of edges in a graph.
 
     Args:
         coords (torch.Tensor): Tensor of shape [N, 3] representing the coordinates of N nodes.
@@ -29,8 +31,9 @@ def graph_edge_lengths(coords, edge_index):
     lengths = line_length(start_coords, end_coords)
     return lengths
 
+
 def line_direction(start_coords, end_coords):
-    r""" Compute the direction vectors of lines defined by start and end coordinates.
+    r"""Compute the direction vectors of lines defined by start and end coordinates.
 
     Args:
         start_coords (torch.Tensor): Tensor of shape [N, 3] representing the start coordinates of N lines.

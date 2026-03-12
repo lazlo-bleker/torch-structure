@@ -608,7 +608,9 @@ class CableNetGenerator(BaseGenerator):
         graph = graph.fdm()
 
         if graph.bbox[0, 2] < 0.0 or graph.bbox[1, 2] > 1.0:
-            raise InvalidSampleError("Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2])
+            raise InvalidSampleError(
+                "Z out of bounds:", graph.bbox[0, 2], graph.bbox[1, 2]
+            )
 
         # Set support
         graph.is_support = graph.is_support
