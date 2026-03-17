@@ -4,6 +4,7 @@ import numpy as np
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 
+from config import TORCH_FLOAT
 
 class CableStayedBridge(BaseGenerator):
     def __init__(self, **overrides):
@@ -11,25 +12,27 @@ class CableStayedBridge(BaseGenerator):
         self.max_attempts = 100
 
         self.node_attrs = {
-            "coords": torch.empty((0, 3), dtype=torch.float),
-            "load": torch.empty((0, 3), dtype=torch.float),
+            "coords": torch.empty((0, 3), dtype=TORCH_FLOAT),
+            "load": torch.empty((0, 3), dtype=TORCH_FLOAT),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
         }
         self.edge_attrs = {
-            "force": torch.empty((0, 1), dtype=torch.float),
-            "length": torch.empty((0, 1), dtype=torch.float),
+            "force": torch.empty((0, 1), dtype=TORCH_FLOAT),
+            "length": torch.empty((0, 1), dtype=TORCH_FLOAT),
             "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
-            "force_sign": torch.empty((0, 1), dtype=torch.float),
+            "force_sign": torch.empty((0, 1), dtype=TORCH_FLOAT),
+            "active_edof": torch.empty((0, 1), dtype=torch.bool),
         }
         self.default_attrs = {
             "force": torch.tensor([torch.nan]),
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
-            "load": torch.zeros(3, dtype=torch.float),
+            "load": torch.zeros(3, dtype=TORCH_FLOAT),
             "support_condition": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
+            "active_edof": torch.tensor(True, dtype=torch.bool),
         }
 
     def sample_input(self, **kwargs):
@@ -83,7 +86,7 @@ class CableStayedBridge(BaseGenerator):
             )
             for j in range(1, n_deck_trail_edges + 1):
                 load = (
-                    torch.zeros(3, dtype=torch.float)
+                    torch.zeros(3, dtype=TORCH_FLOAT)
                     if j == n_deck_trail_edges
                     else deck_load
                 )

@@ -41,15 +41,20 @@ def main():
     ]
 
     # 3. Define objective function
-    def obj_func(graph_solved: StructData, target_mask, target_coords):
-        # Compare current coords with target coords
-        diff = graph_solved.coords[target_mask] - target_coords
-        return torch.sum(diff * diff)
-
     def reg_func(graph_solved: StructData):
         lengths = graph_solved.length_from_coords
         mean_length = torch.mean(lengths)
         diff = lengths - mean_length
+        return torch.sum(diff * diff)
+
+    obj_func_config_list = [
+        ObjectiveConfig(name="length_similarity", obj_function=reg_func, weight=1e1),
+    ]
+
+    # 4. Define constraint
+    def obj_func(graph_solved: StructData, target_mask, target_coords):
+        # Compare current coords with target coords
+        diff = graph_solved.coords[target_mask] - target_coords
         return torch.sum(diff * diff)
 
     target_coords = torch.tensor([[1.0, 0.0, -1.0]])
@@ -57,12 +62,7 @@ def main():
     assert trail.coords[target_mask].shape == target_coords.shape, (
         "Target and mask do not match their shape"
     )
-
-    obj_func_config_list = [
-        ObjectiveConfig(name="length_similarity", obj_function=reg_func, weight=1e1),
-    ]
-
-    # 4. Define constraint
+    
     constr_config_list = [
         ConstraintConfig(
             name="support_coords",
