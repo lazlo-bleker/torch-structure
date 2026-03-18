@@ -62,7 +62,7 @@ def main():
     assert trail.coords[target_mask].shape == target_coords.shape, (
         "Target and mask do not match their shape"
     )
-    
+
     constr_config_list = [
         ConstraintConfig(
             name="support_coords",
