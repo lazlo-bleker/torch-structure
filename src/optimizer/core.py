@@ -17,6 +17,8 @@ class SolverConfig:
 
     solver_name: str
     solver_kwargs: dict = field(default_factory=dict)
+    export_dir: str = "results/run"
+    log_interval: int = 10
     opt_method: str = "SLSQP"
     ftol: float = 1e-7
 
@@ -58,7 +60,11 @@ class Optimizer:
         self.constraint_function_handler = ConstraintHandler(
             self.solve_graph, constr_config_list
         )
-        self.logger = Logger(self)
+        self.logger = Logger(
+            self,
+            log_interval=solver_config.log_interval,
+            export_dir=solver_config.export_dir,
+        )
 
     def solve_graph(self, x):
         """

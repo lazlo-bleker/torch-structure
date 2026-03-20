@@ -48,8 +48,13 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+.vscode
 .pytest_cache/
 cover/
+
+# Optimization output
+**events.out.tfevents**
+**.vtp
 
 # Translations
 *.mo

@@ -4,6 +4,8 @@ import torch
 # Define floating point variable precision
 NP_FLOAT = np.float64
 TORCH_FLOAT = torch.float64
+optimizer_export_paraview = True
+optimizer_export_tensorboard = True
 
 
 def torch_to_np_float(x):
