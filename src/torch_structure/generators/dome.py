@@ -4,6 +4,8 @@ import numpy as np
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator_cem import BaseGeneratorCEM
+from torch_structure.generators.topology import fix_graph, build_trail
+from torch_structure.generators.helpers import compute_trail_origin, add_opening_ring_edges
 
 class DomeGenerator(BaseGeneratorCEM):
     def __init__(self, **overrides):
@@ -58,31 +60,23 @@ class DomeGenerator(BaseGeneratorCEM):
         # Generate trails
         for i in range(n_trails):
             angle = angles[i]
-            if opening:
-                origin_diameter = trail_length
-                x = torch.cos(angle) * 0.5 * origin_diameter
-                y = torch.sin(angle) * 0.5 * origin_diameter
-                origin_coords = centroid + torch.tensor([x, y, 0.0])
-                origin_load = torch.tensor([0.0, 0.0, -1.0])
-            else:
-                origin_coords = centroid
-                x_load = torch.cos(angle) * center_deviation_force
-                y_load = torch.sin(angle) * center_deviation_force
-                origin_load = torch.tensor([x_load, y_load, -1.0 / n_trails])
-            self.generate_trail(
-                data=data,
+            origin_coords, origin_load, origin_diameter = compute_trail_origin(
+                angle, opening, trail_length, center_deviation_force, centroid, n_trails
+            )
+            build_trail(
+                data,
+                name=f"trail_{i}",
+                n_nodes=n_rings,
                 origin_coords=origin_coords,
-                origin_load=origin_load,
-                id=i,
-                n_rings=n_rings,
-                trail_length=trail_length,
+                load=origin_load,
+                node_load=torch.tensor([0.0, 0.0, -1.0]),
+                length=trail_length,
+                force_sign=-1.0,
             )
 
         # Add ring deviations
         for i in range(1, n_rings):
-            force_sign = torch.randint(2, (1,)) * 2 - 1
-            force_magnitude = torch.rand(1) * 2 + 1
-            force = force_sign * force_magnitude
+            force = -(torch.rand(1) * 2 + 1)
             for j in range(n_trails):
                 data.add_edge(
                     f"trail_{j}_node_{i}",
@@ -93,18 +87,12 @@ class DomeGenerator(BaseGeneratorCEM):
 
         if opening:
             ring_force = center_deviation_force * origin_diameter * 50
-            for i in range(n_trails):
-                data.add_edge(
-                    f"trail_{i}_node_0",
-                    f"trail_{(i + 1) % n_trails}_node_0",
-                    is_trail_edge=torch.tensor(False),
-                    force=ring_force,
-                )
+            add_opening_ring_edges(data, n_trails, ring_force)
 
         # Formfinding
         data = data.mpcem()
         if not opening:
-            self.fix_graph(data, n_trails)
+            fix_graph(data, n_trails)
 
         if self.filter(data):
             raise RuntimeError("Negative inclination detected.")
@@ -123,46 +111,6 @@ class DomeGenerator(BaseGeneratorCEM):
             raise RuntimeError("Z out of bounds:", data.bbox[0, 2], data.bbox[1, 2])
 
         return data
-
-    def generate_trail(
-        self, data, origin_coords, origin_load, id, n_rings, trail_length
-    ):
-        data.add_node(
-            f"trail_{id}_node_0",
-            coords=origin_coords,
-            is_origin_node=torch.tensor(True),
-            sequence=torch.tensor(0),
-            load=origin_load,
-        )
-        for i in range(1, n_rings + 1):
-            support_condition = (
-                torch.tensor([True, True, True])
-                if i == n_rings
-                else torch.tensor([False, False, False])
-            )
-            data.add_node(
-                f"trail_{id}_node_{i}",
-                is_origin_node=torch.tensor(False),
-                sequence=torch.tensor(i),
-                load=torch.tensor([0.0, 0.0, -1.0]),
-                support_condition=support_condition,
-            )
-            data.add_edge(
-                f"trail_{id}_node_{i - 1}",
-                f"trail_{id}_node_{i}",
-                is_trail_edge=torch.tensor(True),
-                length=trail_length,
-                force_sign=torch.tensor(-1.0),
-            )
-
-    def fix_graph(self, data, n_trails):
-        data.add_node(
-            "centroid",
-            coords=torch.tensor([0.0, 0.0, 0.0]),
-            load=torch.tensor([0.0, 0.0, -1.0]),
-        )
-        merge_nodes = [f"trail_{i}_node_0" for i in range(n_trails)]
-        data.merge_nodes("centroid", merge_nodes)
 
     def filter(self, data):
         mask = (data.is_trail_edge & data.directed_mask).view(-1)

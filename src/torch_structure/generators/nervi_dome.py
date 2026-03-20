@@ -1,13 +1,19 @@
-# ToDo: Refactor to inherit from BaseGenerator
-
 import torch
 import math
+import numpy as np
 
 from torch_structure.data import StructData
+from torch_structure.generators.base_generator_cem import BaseGeneratorCEM
+from torch_structure.generators.topology import build_trail, fix_graph
+from torch_structure.generators.helpers import compute_trail_origin, add_opening_ring_edges
 
 
-class NerviDome:
-    def __init__(
+class NerviDome(BaseGeneratorCEM):
+    def __init__(self, **overrides):
+        super().__init__(**overrides)
+        self.max_attempts = 100
+
+    def validate_input(
         self,
         n_trails,
         n_rings,
@@ -16,148 +22,93 @@ class NerviDome:
         center_deviation_force,
         ring_force,
         opening_diameter,
+        opening,
+    ):
+        if n_trails % 2 != 0:
+            raise ValueError("Number of trails must be even.")
+
+    def sample_input(
+        self,
+        n_trails=None,
+        n_rings=None,
+        trail_length=0.1,
+        deviation_force=-2.0,
+        center_deviation_force=-3.0,
+        ring_force=-15.0,
+        opening_diameter=0.2,
         opening=True,
     ):
-        # Topological parameters
-        self.n_trails = n_trails
-        self.n_rings = n_rings
-        self.opening = opening
+        if n_trails is None:
+            n_trails = 2 * np.random.randint(5, 15)
+        if n_rings is None:
+            n_rings = np.random.randint(3, 6)
 
-        # Metric parameters
-        self.trail_length = trail_length
-        self.center_deviation_force = center_deviation_force
-        self.ring_force = ring_force
-        self.opening_diameter = opening_diameter
-        self.deviation_force = deviation_force
+        return {
+            "n_trails": n_trails,
+            "n_rings": n_rings,
+            "trail_length": trail_length,
+            "deviation_force": deviation_force,
+            "center_deviation_force": center_deviation_force,
+            "ring_force": ring_force,
+            "opening_diameter": opening_diameter,
+            "opening": opening,
+        }
 
-        # if self.n_trails % 2 != 0:
-        #     raise ValueError('Number of trails must be even.')  # doublecheck
-
-        self.generate_graph()
-        if not self.opening:
-            self.fix_graph()
-
-    def generate_graph(self):
+    def generate(
+        self,
+        n_trails,
+        n_rings,
+        trail_length,
+        deviation_force,
+        center_deviation_force,
+        ring_force,
+        opening_diameter,
+        opening,
+    ):
         # Initialize data object
-        node_attrs = {
-            "coords": torch.empty((0, 3), dtype=torch.float),
-            "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
-            "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
-            "sequence": torch.empty((0, 1), dtype=torch.long),
-        }
-        edge_attrs = {
-            "force": torch.empty((0, 1), dtype=torch.float),
-            "length": torch.empty((0, 1), dtype=torch.float),
-            "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
-            "force_sign": torch.empty((0, 1), dtype=torch.float),
-            "source_sequence": torch.empty((0, 1), dtype=torch.long),
-        }
-        default_attrs = {
-            "force": torch.tensor([torch.nan]),
-            "length": torch.tensor([torch.nan]),
-            "coords": torch.full((3,), torch.nan),
-            "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
-            "is_origin_node": torch.tensor(0, dtype=torch.bool),
-        }
-        self.graph = StructData(
-            node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
+        data = StructData(
+            node_attrs=self.node_attrs,
+            edge_attrs=self.edge_attrs,
+            default_attrs=self.default_attrs,
         )
 
         # Create topology diagram
         centroid = torch.tensor([0.0, 0.0, 0.0])
-        angles = torch.linspace(0, 2 * math.pi, self.n_trails + 1)[:-1]
-        # pi = math.pi
-        # print(f'{pi:.200f}')
-        # angles = torch.tensor([0, 0.5*pi, pi, 1.5*pi])
-
-        # manual_radius = 0.75
-        # manual_origin_coords = [torch.tensor([manual_radius, 0.0000, 0.0000]),
-        #                         torch.tensor([0.0000,  manual_radius,  0.0000]),
-        #                         torch.tensor([-manual_radius, 0.0000,  0.0000]),
-        #                         torch.tensor([0.0000, -manual_radius,  0.0000])]
+        angles = torch.linspace(0, 2 * math.pi, n_trails + 1)[:-1]
 
         # Generate trails
-        for i in range(self.n_trails):
+        for i in range(n_trails):
             angle = angles[i]
-            if self.opening:
-                origin_diameter = self.opening_diameter
-                x = torch.cos(angle) * 0.5 * origin_diameter
-                y = torch.sin(angle) * 0.5 * origin_diameter
-                origin_coords = centroid + torch.tensor([x, y, 0.0])
-                # origin_coords = manual_origin_coords[i]
-                origin_load = torch.tensor([0.0, 0.0, -1.0])
-            else:
-                origin_coords = centroid
-                x_load = torch.cos(angle) * self.center_deviation_force
-                y_load = torch.sin(angle) * self.center_deviation_force
-                origin_load = torch.tensor([x_load, y_load, -1.0 / self.n_trails])
-            self.generate_trail(
-                origin_coords=origin_coords, origin_load=origin_load, id=i
+            origin_coords, origin_load, _ = compute_trail_origin(
+                angle, opening, opening_diameter, center_deviation_force, centroid, n_trails
+            )
+            build_trail(
+                data,
+                name=f"trail_{i}",
+                n_nodes=n_rings,
+                origin_coords=origin_coords,
+                load=origin_load,
+                node_load=torch.tensor([0.0, 0.0, -1.0]),
+                length=trail_length,
+                force_sign=-1.0,
             )
 
         # Add ring deviations
-        for i in range(0, self.n_rings):
-            for j in range(self.n_trails):
-                self.graph.add_edge(
+        for i in range(n_rings):
+            for j in range(n_trails):
+                data.add_edge(
                     f"trail_{j}_node_{i}",
-                    f"trail_{(j + 1) % self.n_trails}_node_{i + 1}",
+                    f"trail_{(j + 1) % n_trails}_node_{i + 1}",
                     is_trail_edge=torch.tensor(False),
-                    force=self.deviation_force,
-                    source_sequence=torch.tensor(i),
+                    force=deviation_force,
                 )
 
-        if self.opening:
-            for i in range(self.n_trails):
-                self.graph.add_edge(
-                    f"trail_{i}_node_0",
-                    f"trail_{(i + 1) % self.n_trails}_node_0",
-                    is_trail_edge=torch.tensor(False),
-                    force=self.ring_force,
-                    source_sequence=torch.tensor(-1),
-                )
+        if opening:
+            add_opening_ring_edges(data, n_trails, ring_force)
+        else:
+            fix_graph(data, n_trails)
 
-    def generate_trail(self, origin_coords, origin_load, id):
-        self.graph.add_node(
-            f"trail_{id}_node_0",
-            coords=origin_coords,
-            is_origin_node=torch.tensor(True),
-            sequence=torch.tensor(0),
-            load=origin_load,
-        )
-        for i in range(1, self.n_rings + 1):
-            support_condition = (
-                torch.tensor([True, True, True])
-                if i == self.n_rings
-                else torch.tensor([False, False, False])
-            )
-            load = (
-                torch.tensor([0.0, 0.0, 0.0])
-                if i == self.n_rings
-                else torch.tensor([0.0, 0.0, -1.0])
-            )
-            self.graph.add_node(
-                f"trail_{id}_node_{i}",
-                is_origin_node=torch.tensor(False),
-                sequence=torch.tensor(i),
-                load=load,
-                support_condition=support_condition,
-            )
-            self.graph.add_edge(
-                f"trail_{id}_node_{i - 1}",
-                f"trail_{id}_node_{i}",
-                is_trail_edge=torch.tensor(True),
-                length=self.trail_length,
-                force_sign=torch.tensor(-1.0),
-                source_sequence=torch.tensor(i - 1),
-            )
+        # Formfinding
+        data = data.mpcem()
 
-    def fix_graph(self):
-        self.graph.add_node(
-            "centroid",
-            coords=torch.tensor([0.0, 0.0, 0.0]),
-            load=torch.tensor([0.0, 0.0, 0.0]),
-        )
-        merge_nodes = [f"trail_{i}_node_0" for i in range(self.n_trails)]
-        self.graph.merge_nodes("centroid", merge_nodes)
+        return data
