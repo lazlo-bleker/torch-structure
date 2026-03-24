@@ -8,6 +8,7 @@ from .cablenet import CableNetGenerator
 from .cable_stayed_bridge import CableStayedBridge
 from .network_arch_bridge import NetworkArchBridge
 from .dome import DomeGenerator
+from .dome_uv import DomeUVGenerator
 from .mixed_dome import MixedDomeGenerator
 from .truss_bridge import TrussBridgeGenerator
 from .single_trail import SingleTrailGenerator
@@ -19,6 +20,7 @@ __all__ = [
     "Bridge",
     "GridShellGenerator",
     "DomeGenerator",
+    "DomeUVGenerator",
     "CableNetGenerator",
     "CableStayedBridge",
     "NerviDome",

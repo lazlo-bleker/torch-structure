@@ -9,7 +9,7 @@ from optimizer import (
     ObjectiveConfig,
     ConstraintConfig,
 )
-
+from obj_functions.self_supporting import self_supporting_loss
 
 def load_path_func(graph_solved: StructData):
     lengths = graph_solved.length_from_coords
@@ -62,18 +62,20 @@ def trail_length_function(n_trails: int, n_rings: int) -> torch.Tensor:
 
 def main():
     # 1. Generate structure
-    n_trails = 24
-    n_rings = 10
+    n_trails = 13
+    n_rings = 15
     n_nodes = n_trails * n_rings
-    data_generator = ts.generators.DomeGenerator(
+    data_generator = ts.generators.DomeUVGenerator(
         n_trails=n_trails,
         n_rings=n_rings,
-        center_deviation_force=1.0,
         deviation_force_function=deviation_force_function,
         trail_length_function=trail_length_function,
-        opening=True,
     )
     data = data_generator()
+
+    # DEV: plot self-supporting loss
+    data.cem(inplace=True)
+    self_supporting_loss(data)
 
     # 2. Define optimization variables
     eps = 1e-1
@@ -97,9 +99,8 @@ def main():
     obj_func_config_list = [
         ObjectiveConfig(
             name="length_similarity",
-            obj_function=orthogonal_func,
+            obj_function=self_supporting_loss,
             weight=1e0,
-            kwargs=cache_quad(data),
         ),
     ]
 
