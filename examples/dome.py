@@ -9,7 +9,7 @@ from optimizer import (
     ObjectiveConfig,
     ConstraintConfig,
 )
-from obj_functions.self_supporting import self_supporting_loss
+from obj_functions.self_supporting import cache_supporting_loss, supporting_loss, plot_supporting_loss
 
 def load_path_func(graph_solved: StructData):
     lengths = graph_solved.length_from_coords
@@ -47,23 +47,23 @@ def cache_quad(graph_solved: StructData):
 def deviation_force_function(n_trails: int, n_rings: int) -> torch.Tensor:
     u = torch.linspace(-torch.pi, torch.pi, n_trails)
     v = torch.linspace(-torch.pi, torch.pi, n_rings)
-    forces_u = torch.ones_like(u)
-    forces_v = torch.ones_like(v)
-    return -0.1 * torch.outer(forces_u, forces_v)
+    forces_u = 1 + 0.015 * torch.cos(2 * u)
+    forces_v = torch.cos(v)
+    return 0.4 * torch.outer(forces_u, forces_v)
 
 
 def trail_length_function(n_trails: int, n_rings: int) -> torch.Tensor:
     u = torch.linspace(-torch.pi, torch.pi, n_trails)
     v = torch.linspace(-torch.pi, torch.pi, n_rings)
-    lentghts_u = torch.ones_like(u)
+    lentghts_u = 1 + 0.05 * torch.cos(2 * u)
     lentghts_v = torch.ones_like(v)
     return 3.0 / (n_rings - 1) * torch.outer(lentghts_u, lentghts_v)
 
 
 def main():
     # 1. Generate structure
-    n_trails = 13
-    n_rings = 15
+    n_trails = 12
+    n_rings = 20
     n_nodes = n_trails * n_rings
     data_generator = ts.generators.DomeUVGenerator(
         n_trails=n_trails,
@@ -75,7 +75,16 @@ def main():
 
     # DEV: plot self-supporting loss
     data.cem(inplace=True)
-    self_supporting_loss(data)
+    kwargs = cache_supporting_loss(data)
+    loss, step_losses = supporting_loss(data, **kwargs)
+    import matplotlib.pyplot as plt
+    plt.plot(step_losses)
+    plt.title("Aux. Force Loss Throughout Assembly")
+    plt.xlabel("Assembly Step")
+    plt.ylabel("Aux. Force Norm")
+    plt.savefig("./img/plot.png")
+    plt.close()
+    plot_supporting_loss(data, step_losses, **kwargs)
 
     # 2. Define optimization variables
     eps = 1e-1
@@ -96,12 +105,14 @@ def main():
     ]
 
     # 3. Define objective function
+    # kwargs = cache_quad(data)
     obj_func_config_list = [
-        ObjectiveConfig(
-            name="length_similarity",
-            obj_function=self_supporting_loss,
-            weight=1e0,
-        ),
+        # ObjectiveConfig(
+        #     name="length_similarity",
+        #     obj_function=orthogonal_func,
+        #     weight=1e0,
+        #     kwargs=kwargs
+        # ),
     ]
 
     # 4. Define constraint

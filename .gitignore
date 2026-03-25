@@ -55,6 +55,7 @@ cover/
 # Optimization output
 **events.out.tfevents**
 **.vtp
+**.png
 
 # Translations
 *.mo

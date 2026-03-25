@@ -24,13 +24,11 @@ class DomeUVGenerator(BaseGenerator):
 
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=TORCH_FLOAT),
-            "uv_coords": torch.empty((0, 2), dtype=TORCH_FLOAT),
             "group": torch.empty((0, 1), dtype=torch.long),
             "load": torch.empty((0, 3), dtype=TORCH_FLOAT),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.bool),
-            "grid_index": torch.empty((0, 2), dtype=torch.long),
         }
         self.edge_attrs = {
             "force": torch.empty((0, 1), dtype=TORCH_FLOAT),
@@ -38,15 +36,15 @@ class DomeUVGenerator(BaseGenerator):
             "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
             "force_sign": torch.empty((0, 1), dtype=TORCH_FLOAT),
             "active_edof": torch.empty((0, 1), dtype=torch.bool),
+            "assembly_sequence": torch.empty((0, 1), dtype=torch.long),
         }
         self.default_attrs = {
             "active_edof": torch.tensor(True, dtype=torch.bool),
             "force": torch.tensor([torch.nan]),
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
-            "uv_coords": torch.full((2,), torch.nan),
             "sequence": torch.tensor([torch.nan]),
-            "grid_index": torch.full((2,), torch.nan),
+            "assembly_sequence": torch.tensor([torch.nan]),
             "load": torch.zeros(3, dtype=TORCH_FLOAT),
             "support_condition": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
@@ -103,7 +101,7 @@ class DomeUVGenerator(BaseGenerator):
         )
 
         # Eval function to get attributes
-        trail_lengths_ij = trail_length_function(n_trails, n_rings - 1)
+        trail_lengths_ij = trail_length_function(n_trails, n_rings)
         deviation_forces_ij = deviation_force_function(n_trails, n_rings)
         nodal_loads_ijk = nodal_load_function(n_trails, n_rings)
 
@@ -111,62 +109,41 @@ class DomeUVGenerator(BaseGenerator):
         centroid = torch.tensor([0.0, 0.0, 0.0])
         angles = torch.linspace(0, 2 * math.pi, n_trails + 1)[:-1]
 
-        data.incoming_trail =   - torch.ones((n_trails, n_rings), dtype=torch.long)
-        data.outgoing_trail =   - torch.ones((n_trails, n_rings), dtype=torch.long)
-        data.deviation_a =      - torch.ones((n_trails, n_rings), dtype=torch.long)
-        data.deviation_b =      - torch.ones((n_trails, n_rings), dtype=torch.long)
-        data.node_grid =        - torch.ones((n_trails, n_rings), dtype=torch.long)
-
         # Generate origin nodes
         j = 0
         for i in range(n_trails):
             _x = torch.cos(angles[i]) * 0.5 * origin_diameter
             _y = torch.sin(angles[i]) * 0.5 * origin_diameter
-            _u = i / (n_trails - 1)
-            _v = j / (n_rings - 1)
             origin_coords = centroid + torch.tensor([_x, _y, 0.0])
             data.add_node(
                 f"trail_{i}_node_{j}",
                 is_origin_node=torch.tensor(True),
                 coords=origin_coords,
-                uv_coords=torch.tensor([_u, _v]),
-                grid_index=torch.tensor([i,j]),
                 load=nodal_loads_ijk[i, j],
                 sequence = torch.tensor(j)
             )
-            data.node_grid[i,j] = data.num_nodes - 1
         
         # Generate inner nodes
         for j in range(1,n_rings-1):
             for i in range(n_trails):
-                _u = i / (n_trails - 1)
-                _v = j / (n_rings - 1)
                 data.add_node(
                     f"trail_{i}_node_{j}",
                     is_origin_node=torch.tensor(False),
-                    uv_coords=torch.tensor([_u, _v]),
-                    grid_index=torch.tensor([i,j]),
                     load=nodal_loads_ijk[i, j],
                     sequence = torch.tensor(j)
                 )
-                data.node_grid[i,j] = data.num_nodes - 1
 
         
         # Generate support nodes
         j = n_rings - 1
         for i in range(n_trails):
-            _u = i / (n_trails - 1)
-            _v = j / (n_rings - 1)
             data.add_node(
                 f"trail_{i}_node_{j}",
                 is_origin_node=torch.tensor(False),
-                uv_coords=torch.tensor([_u, _v]),
-                grid_index=torch.tensor([i,j]),
                 load=nodal_loads_ijk[i, j],
                 support_condition = torch.tensor([True, True, True]),
                 sequence = torch.tensor(j)
             )
-            data.node_grid[i,j] = data.num_nodes - 1
 
         # Generate trail edges
         for j in range(n_rings-1):
@@ -177,14 +154,12 @@ class DomeUVGenerator(BaseGenerator):
                     is_trail_edge=torch.tensor(True),
                     length=trail_lengths_ij[i,j],
                     force_sign=torch.tensor(-1.0),
+                    assembly_sequence = (n_rings - 2 - j)
+                    # assembly_sequence = (n_rings - 2 - j) * (n_trails) + i - 1
                 )
-                # Incoming trail for node (i,j+1)
-                data.incoming_trail[i,j+1] = data.num_edges - 1
-                # Outgoing trail for node (i,j)
-                data.outgoing_trail[i,j] = data.num_edges - 1
 
         # Generate deviation edges
-        for j in range(n_rings):
+        for j in range(n_rings-1):
             for i in range(n_trails):
                 i_next = (i + 1) % n_trails
                 data.add_edge(
@@ -192,11 +167,9 @@ class DomeUVGenerator(BaseGenerator):
                     f"trail_{i_next}_node_{j}",
                     is_trail_edge=torch.tensor(False),
                     force=deviation_forces_ij[i, j],
+                    # assembly_sequence = (n_rings - 2 - j) * (n_trails) + i
+                    assembly_sequence = (n_rings - 2 - j)
                 )
-                # Deviation a for node (i,j)
-                data.deviation_a[i,j] = data.num_edges - 1
-                # Deviation b for node (i,j)
-                data.deviation_b[i_next,j] = data.num_edges - 1
 
         data.is_support = data.is_support
 
