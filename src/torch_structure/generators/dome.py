@@ -1,17 +1,11 @@
 import torch
 import math
 import numpy as np
-from collections.abc import Callable
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
+
 from config import TORCH_FLOAT
-
-
-def uniform_function(n_trails: int, n_rings: int, scale=1.0) -> torch.Tensor:
-    return scale * torch.ones((n_trails, n_rings))
-
-
 class DomeGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)
@@ -19,7 +13,6 @@ class DomeGenerator(BaseGenerator):
 
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=TORCH_FLOAT),
-            "uv_coords": torch.empty((0, 2), dtype=torch.long),
             "load": torch.empty((0, 3), dtype=TORCH_FLOAT),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
@@ -30,65 +23,49 @@ class DomeGenerator(BaseGenerator):
             "length": torch.empty((0, 1), dtype=TORCH_FLOAT),
             "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
             "force_sign": torch.empty((0, 1), dtype=TORCH_FLOAT),
-            "active_edof": torch.empty((0, 1), dtype=torch.bool),
         }
         self.default_attrs = {
-            "active_edof": torch.tensor(True, dtype=torch.bool),
             "force": torch.tensor([torch.nan]),
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
-            "uv_coords": torch.full((2,), -1),
             "load": torch.zeros(3, dtype=TORCH_FLOAT),
             "support_condition": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
 
-    def validate_input(self, n_trails, **kwwargs):
+    def validate_input(
+        self, n_trails, n_rings, trail_length, center_deviation_force, opening
+    ):
         if n_trails % 2 != 0:
             raise ValueError("Number of trails must be even.")
 
     def sample_input(
         self,
-        n_trails: int | None = None,
-        n_rings: int | None = None,
-        trail_length_function: Callable[[int, int], torch.Tensor] = lambda i, j: (
-            uniform_function(i, j, scale=5e-2)
-        ),
-        deviation_force_function: Callable[[int, int], torch.Tensor] = lambda i, j: (
-            uniform_function(i, j, scale=-1.0)
-        ),
-        center_deviation_force: float | None = None,
-        opening: bool = False,
-    ) -> dict:
+        n_trails=None,
+        n_rings=None,
+        trail_length=None,
+        center_deviation_force=None,
+        opening=False,
+    ):
         if n_trails is None:
             n_trails = 2 * np.random.randint(5, 15)
-
         if n_rings is None:
             n_rings = np.random.randint(3, 6)
-
+        if trail_length is None:
+            trail_length = np.random.uniform(0.05, 0.2)
         if center_deviation_force is None:
-            center_deviation_force = np.random.uniform(-8.0, -1.0)
-
-        trail_lengths_ij = trail_length_function(n_trails, n_rings - 1)
-        deviation_forces_ij = deviation_force_function(n_trails, n_rings)
+            center_deviation_force = np.random.uniform(-1.0, -8.0)
 
         return {
             "n_trails": n_trails,
             "n_rings": n_rings,
-            "trail_lengths_ij": trail_lengths_ij,
-            "deviation_forces_ij": deviation_forces_ij,
+            "trail_length": trail_length,
             "center_deviation_force": center_deviation_force,
             "opening": opening,
         }
 
     def generate(
-        self,
-        n_trails,
-        n_rings,
-        trail_lengths_ij,
-        deviation_forces_ij,
-        center_deviation_force,
-        opening,
+        self, n_trails, n_rings, trail_length, center_deviation_force, opening
     ):
         # Initialize data object
         data = StructData(
@@ -105,7 +82,7 @@ class DomeGenerator(BaseGenerator):
         for i in range(n_trails):
             angle = angles[i]
             if opening:
-                origin_diameter = trail_lengths_ij[i, 0]
+                origin_diameter = trail_length
                 x = torch.cos(angle) * 0.5 * origin_diameter
                 y = torch.sin(angle) * 0.5 * origin_diameter
                 origin_coords = centroid + torch.tensor([x, y, 0.0])
@@ -121,23 +98,39 @@ class DomeGenerator(BaseGenerator):
                 origin_load=origin_load,
                 id=i,
                 n_rings=n_rings,
-                trail_lengths=trail_lengths_ij[i],
+                trail_length=trail_length,
             )
 
         # Add ring deviations
-        for j in range(n_rings):
+        for i in range(1, n_rings):
+            force_sign = torch.randint(2, (1,)) * 2 - 1
+            force_magnitude = torch.rand(1) * 2 + 1
+            force = force_sign * force_magnitude
+            for j in range(n_trails):
+                data.add_edge(
+                    f"trail_{j}_node_{i}",
+                    f"trail_{(j + 1) % n_trails}_node_{i}",
+                    is_trail_edge=torch.tensor(False),
+                    force=force,
+                )
+
+        if opening:
+            ring_force = center_deviation_force * origin_diameter * 50
             for i in range(n_trails):
                 data.add_edge(
-                    f"trail_{i}_node_{j}",
-                    f"trail_{(i + 1) % n_trails}_node_{j}",
+                    f"trail_{i}_node_0",
+                    f"trail_{(i + 1) % n_trails}_node_0",
                     is_trail_edge=torch.tensor(False),
-                    force=deviation_forces_ij[i, j],
+                    force=ring_force,
                 )
 
         # Formfinding
         data = data.mpcem()
         if not opening:
             self.fix_graph(data, n_trails)
+
+        if self.filter(data):
+            raise RuntimeError("Negative inclination detected.")
 
         # Scale to unit length
         radius = torch.norm(data.coords[:, 0:2], dim=1).max()
@@ -149,41 +142,39 @@ class DomeGenerator(BaseGenerator):
         # Set support
         data.is_support = data.is_support
 
-        if data.bbox[0, 2] < -1e2 or data.bbox[1, 2] > 1e2:
+        if data.bbox[0, 2] < 0 or data.bbox[1, 2] > 3.0:
             raise RuntimeError("Z out of bounds:", data.bbox[0, 2], data.bbox[1, 2])
 
         return data
 
     def generate_trail(
-        self, data, origin_coords, origin_load, id, n_rings, trail_lengths
+        self, data, origin_coords, origin_load, id, n_rings, trail_length
     ):
         data.add_node(
             f"trail_{id}_node_0",
             coords=origin_coords,
-            uv_coords=torch.tensor([id, 0]),
             is_origin_node=torch.tensor(True),
             sequence=torch.tensor(0),
             load=origin_load,
         )
-        for j in range(1, n_rings):
-            if j == n_rings - 1:
-                support_condition = torch.tensor([True, True, True])
-            else:
-                support_condition = torch.tensor([False, False, False])
-
+        for i in range(1, n_rings + 1):
+            support_condition = (
+                torch.tensor([True, True, True])
+                if i == n_rings
+                else torch.tensor([False, False, False])
+            )
             data.add_node(
-                f"trail_{id}_node_{j}",
-                uv_coords=torch.tensor([id, j]),
+                f"trail_{id}_node_{i}",
                 is_origin_node=torch.tensor(False),
-                sequence=torch.tensor(j),
+                sequence=torch.tensor(i),
                 load=torch.tensor([0.0, 0.0, -1.0]),
                 support_condition=support_condition,
             )
             data.add_edge(
-                f"trail_{id}_node_{j - 1}",
-                f"trail_{id}_node_{j}",
+                f"trail_{id}_node_{i - 1}",
+                f"trail_{id}_node_{i}",
                 is_trail_edge=torch.tensor(True),
-                length=trail_lengths[j - 1],
+                length=trail_length,
                 force_sign=torch.tensor(-1.0),
             )
 
@@ -195,3 +186,11 @@ class DomeGenerator(BaseGenerator):
         )
         merge_nodes = [f"trail_{i}_node_0" for i in range(n_trails)]
         data.merge_nodes("centroid", merge_nodes)
+
+    def filter(self, data):
+        mask = (data.is_trail_edge & data.directed_mask).view(-1)
+        src, dst = data.edge_index[:, mask]
+        src_centroid_distance = torch.norm(data.coords[src, 0:2], dim=1)
+        dst_centroid_distance = torch.norm(data.coords[dst, 0:2], dim=1)
+        invalid = dst_centroid_distance < src_centroid_distance
+        return invalid.any()
