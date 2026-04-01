@@ -6,6 +6,8 @@ from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 
 from config import TORCH_FLOAT
+
+
 class DomeGenerator(BaseGenerator):
     def __init__(self, **overrides):
         super().__init__(**overrides)

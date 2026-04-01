@@ -65,7 +65,7 @@ def main():
     n_trails = 12
     n_rings = 20
     n_nodes = n_trails * n_rings
-    data_generator = ts.generators.DomeUVGenerator(
+    data_generator = ts.generators.DomeAssemblyGenerator(
         n_trails=n_trails,
         n_rings=n_rings,
         deviation_force_function=deviation_force_function,
