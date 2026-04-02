@@ -219,4 +219,3 @@ def export_graph_to_vtp(G: nx.Graph, out_path: str, compress: bool = True):
     if writer.Write() == 0:
         raise RuntimeError("VTK writer failed")
     return out_path
-

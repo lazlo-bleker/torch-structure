@@ -10,6 +10,7 @@ from torch_structure.data.utils import requires_metadata
 from torch_structure.loss import ResidualForceLoss
 from torch_structure.geometry import graph_edge_lengths
 from torch_structure.mixins import TSMixin
+from config import TORCH_FLOAT
 
 
 class StructData(TSMixin, pyg.data.Data):
@@ -45,7 +46,13 @@ class StructData(TSMixin, pyg.data.Data):
                 "node_attr_list": [kwarg for kwarg in node_attrs.keys()],
                 "edge_attr_list": [kwarg for kwarg in edge_attrs.keys()],
                 "graph_attr_list": [kwarg for kwarg in graph_attrs.keys()],
+                "attr_dtype": {},
             }
+
+            # Fill dtype info for all attributes:
+            for name, value in {**node_attrs, **edge_attrs, **graph_attrs}.items():
+                if isinstance(value, torch.Tensor):
+                    self.metadata["attr_dtype"][name] = str(value.dtype)
 
     @classmethod
     def from_rhino(cls, points, lines, tolerance=1e-6):
@@ -110,6 +117,75 @@ class StructData(TSMixin, pyg.data.Data):
         lines = [rg.Line(points[int(s)], points[int(d)]) for s, d in zip(src, dst)]
 
         return points, lines
+
+    @classmethod
+    def from_log(cls, data: dict):
+        def cast_attr(name, value):
+            dtype_str = data["attr_dtype"][name]
+
+            if "float" in dtype_str:
+                # Enforce global TORCH_FLOAT for all float attributes
+                return torch.tensor(value, dtype=TORCH_FLOAT)
+            elif "long" in dtype_str:
+                return torch.tensor(value, dtype=torch.long)
+            elif "int" in dtype_str:
+                return torch.tensor(value, dtype=torch.int)
+            elif "bool" in dtype_str:
+                return torch.tensor(value, dtype=torch.bool)
+            else:
+                raise ValueError(f"Unsupported dtype {dtype_str} for attribute {name}")
+
+        return cls(
+            edge_index=torch.tensor(data["edge_index"], dtype=torch.long),
+            directed_mask=torch.tensor(data["directed_mask"], dtype=torch.bool),
+            reciprocal_edge=torch.tensor(data["reciprocal_edge"], dtype=torch.long),
+            node_attrs={k: cast_attr(k, v) for k, v in data["node_attrs"].items()},
+            edge_attrs={k: cast_attr(k, v) for k, v in data["edge_attrs"].items()},
+            graph_attrs={k: cast_attr(k, v) for k, v in data["graph_attrs"].items()},
+            default_attrs=data["metadata"].get("default_attrs", {}),
+        )
+
+    def to_log(self) -> dict:
+
+        def _to_json_safe(value):
+            if isinstance(value, torch.Tensor):
+                return value.cpu().tolist()
+            if isinstance(value, dict):
+                return {k: _to_json_safe(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_to_json_safe(v) for v in value]
+            return value
+
+        out = {}
+
+        # --- Base tensors ---
+        out["edge_index"] = self.edge_index.cpu().tolist()
+        out["directed_mask"] = self.directed_mask.cpu().tolist()
+        out["reciprocal_edge"] = self.reciprocal_edge.cpu().tolist()
+
+        # --- Metadata used to rebuild attrs ---
+        out["metadata"] = _to_json_safe(self.metadata)
+        out["attr_dtype"] = self.metadata["attr_dtype"]
+
+        # --- Node attributes ---
+        node_attrs = {}
+        for attr in self.metadata["node_attr_list"]:
+            node_attrs[attr] = getattr(self, attr).cpu().tolist()
+        out["node_attrs"] = node_attrs
+
+        # --- Edge attributes ---
+        edge_attrs = {}
+        for attr in self.metadata["edge_attr_list"]:
+            edge_attrs[attr] = getattr(self, attr).cpu().tolist()
+        out["edge_attrs"] = edge_attrs
+
+        # --- Graph attributes ---
+        graph_attrs = {}
+        for attr in self.metadata["graph_attr_list"]:
+            graph_attrs[attr] = getattr(self, attr).cpu().tolist()
+        out["graph_attrs"] = graph_attrs
+
+        return out
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == "reciprocal_edge":

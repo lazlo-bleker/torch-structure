@@ -11,12 +11,19 @@ from config import TORCH_FLOAT
 def uniform_function(
     n_trails: int,
     n_rings: int,
-    base: torch.Tensor = torch.tensor([1.0]),
+    base: torch.Tensor | float = 1.0,
 ) -> torch.Tensor:
     if not torch.is_tensor(base):
         base = torch.tensor(base)
-    base = base.view(1, 1, -1)  # (1, 1, d)
-    return base.expand(n_trails, n_rings, -1)
+
+    # Scalar case → return (n_trails, n_rings)
+    if base.dim() == 0:
+        return base.expand(n_trails, n_rings)
+
+    # Vector case → return (n_trails, n_rings, d)
+    # Ensures base has shape (1, 1, d)
+    base = base.view(1, 1, -1)
+    return base.expand(n_trails, n_rings, base.size(-1))
 
 
 def circle_function(
@@ -38,10 +45,11 @@ class DomeAssemblyGenerator(BaseGenerator):
 
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=TORCH_FLOAT),
+            "uv_coords": torch.empty((0, 2), dtype=TORCH_FLOAT),
             "load": torch.empty((0, 3), dtype=TORCH_FLOAT),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
-            "sequence": torch.empty((0, 1), dtype=torch.bool),
+            "sequence": torch.empty((0, 1), dtype=torch.long),
         }
         self.edge_attrs = {
             "force": torch.empty((0, 1), dtype=TORCH_FLOAT),
@@ -53,6 +61,7 @@ class DomeAssemblyGenerator(BaseGenerator):
         }
         self.default_attrs = {
             "coords": torch.full((3,), torch.nan),
+            "uv_coords": torch.full((2,), torch.nan),
             "length": torch.tensor([torch.nan]),
             "active_edof": torch.tensor(True, dtype=torch.bool),
             "assembly_sequence": torch.tensor([torch.nan]),
@@ -145,6 +154,7 @@ class DomeAssemblyGenerator(BaseGenerator):
                 coords=origin_coords,
                 load=nodal_loads_ijk[i, j],
                 sequence=torch.tensor(j),
+                uv_coords=torch.tensor([j, i]),
             )
 
         # Generate inner nodes
@@ -155,6 +165,7 @@ class DomeAssemblyGenerator(BaseGenerator):
                     is_origin_node=torch.tensor(False),
                     load=nodal_loads_ijk[i, j],
                     sequence=torch.tensor(j),
+                    uv_coords=torch.tensor([j, i]),
                 )
 
         # Generate support nodes
@@ -166,6 +177,7 @@ class DomeAssemblyGenerator(BaseGenerator):
                 load=nodal_loads_ijk[i, j],
                 support_condition=torch.tensor([True, True, True]),
                 sequence=torch.tensor(j),
+                uv_coords=torch.tensor([j, i]),
             )
 
         # Generate trail edges

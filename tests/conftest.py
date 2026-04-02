@@ -1,5 +1,5 @@
 import pytest
-from torch_structure.generators.dome import DomeGenerator
+from torch_structure.generators import DomeGenerator, DomeAssemblyGenerator
 import torch
 import random
 
@@ -12,3 +12,15 @@ def dome_data():
     generator = DomeGenerator()
     dome = generator()
     return dome
+
+
+@pytest.fixture
+def dome_data_alt():
+    n_trails = 8
+    n_rings = 12
+    # NOTE: Using new fixture because dome_data results in some nan when using the cem/mpcem method
+    data_generator = DomeAssemblyGenerator(
+        n_trails=n_trails,
+        n_rings=n_rings,
+    )
+    return data_generator()

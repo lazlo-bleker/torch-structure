@@ -86,15 +86,16 @@ class Optimizer:
         obj_func = self.objective_function_handler.func_grad_scipy
         # Use the constraints defined inside child Constraint_Function_Handler
         constr_list = self.constraint_function_handler.build_scipy_constraints()
-        # Use the logger as callback to log results to tensorboard
-        if log:
-            callback = self.logger
-        else:
-            callback = None
         # Test objectuve and constraint functions
         obj_func(x0)
         for constr in constr_list:
             constr.fun(x0)
+        # Use the logger as callback to log results to tensorboard
+        if log:
+            callback = self.logger
+            callback(None)
+        else:
+            callback = None
 
         # Get bounds of design variables
         lb, ub = self.design_variable_handler.get_bounds_scipy()

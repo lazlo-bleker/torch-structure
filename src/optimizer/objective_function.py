@@ -15,27 +15,17 @@ class ObjectiveConfig:
 
 class Objective:
     def __init__(self, objective_config: ObjectiveConfig):
-        """
-        Initializes a funciton with optional state variables
-        """
-        # NOTE: Having a function as an object allows to cache variables (a function can have a sate, store in kwargs)
         self.obj_function = objective_config.obj_function
         self.weight = objective_config.weight
         self.kwargs = dict(objective_config.kwargs)
 
     def __call__(self, graph) -> torch.Tensor:
-        """
-        Calls a function that acts on a solved graph resulting from StrucData.cem and optional stored variables
-        """
         self.y = self.obj_function(graph, **self.kwargs)
         return self.y
 
     @property
     def log(self):
-        """
-        Returns log data as a dictionary
-        """
-        return {"value": self.y.item()}
+        return self.y.item()
 
 
 class ObjectiveHandler:

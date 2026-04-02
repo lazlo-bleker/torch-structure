@@ -57,6 +57,7 @@ cover/
 **.vtp
 **.png
 **.gif
+state**
 
 # Translations
 *.mo
