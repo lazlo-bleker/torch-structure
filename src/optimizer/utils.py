@@ -1,4 +1,3 @@
-# pip install vtk networkx
 import vtk
 import networkx as nx
 import numpy as np
@@ -221,20 +220,3 @@ def export_graph_to_vtp(G: nx.Graph, out_path: str, compress: bool = True):
         raise RuntimeError("VTK writer failed")
     return out_path
 
-
-# -------------------------
-# minimal example
-if __name__ == "__main__":
-    G = nx.MultiGraph()
-    # nodes with 2D coords; a 3D list would also work
-    G.add_node(0, pos=(0.0, 0.0), mass=1.0, label="A")
-    G.add_node(1, pos=(1.0, 0.2), mass=2.0, label="B", color=(255, 0, 0))
-    G.add_node(2, pos=(0.4, 1.1), mass=3.0)
-
-    # edges with attributes
-    G.add_edge(0, 1, stiffness=100.0, type="beam")
-    G.add_edge(1, 2, stiffness=120.0, type="beam", axial=(1.0, 0.0))
-    G.add_edge(2, 0, weight=0.5)  # mixed keys across edges are fine
-
-    path = export_graph_to_vtp(G, "graph.vtp", coord_key="pos")
-    print("wrote:", path)
