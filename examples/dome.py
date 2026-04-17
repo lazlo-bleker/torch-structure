@@ -12,6 +12,7 @@ from obj_functions.orthogonal import orthogonal_func, orthogonal_cache
 from obj_functions.self_supporting import supporting_loss_func, supporting_loss_cache
 from utils import deviation_force_function, trail_length_function, origin_node_function
 
+
 def main():
     # 1. Generate structure
     n_trails = 13

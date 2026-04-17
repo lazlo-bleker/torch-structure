@@ -15,14 +15,33 @@ def supporting_loss_cache(graph_solved: "StructData"):
     kwargs["n_edges_full"] = graph_solved.num_edges // 2  # Account for a directed graph
     n_steps = int(max(graph_solved.assembly_sequence)) + 1
     kwargs["steps"] = torch.arange(n_steps)
+
+    # Cache indices to populate load bearing matrix
+    head = graph_solved.edge_index[1]
+    offsets = torch.tensor(
+        [0, graph_solved.num_nodes, 2 * graph_solved.num_nodes],
+        device=head.device,
+    )
+    edge_apply_node = head.unsqueeze(0) + offsets.unsqueeze(1)
+    kwargs["edge_apply_node"] = edge_apply_node
+
+    edge_index = (
+        (torch.arange(head.numel(), device=head.device) // 2)
+        .unsqueeze(0)
+        .expand_as(edge_apply_node)
+    )
+    kwargs["edge_index"] = edge_index
+
     return kwargs
 
 
-def _eval_projection_systems(
+def supporting_loss_func(
     graph_solved: "StructData",
     steps,
     n_nodes_full,
     n_edges_full,
+    edge_apply_node,
+    edge_index,
 ):
     # NOTE: this version assumes that an edge (even) and its reciprocal (odd) ara adjacent in the array
     # Init linear system matrix
@@ -31,20 +50,23 @@ def _eval_projection_systems(
     # Populate linear system vector
     b_sys_full = graph_solved.load.T.reshape(-1)
 
-    beta_steps = torch.zeros([n_edges_full, len(steps)], dtype=TORCH_FLOAT)
     res_steps = torch.zeros([3 * n_nodes_full, len(steps)], dtype=TORCH_FLOAT)
 
     # Pupulate A_sys
-    for edge_number_directed, edge_indices in enumerate(graph_solved.edge_index.T):
-        # NOTE: Changes to node coords will change directions (carry gradients)
-        edge_direction = _get_edge_direction(graph_solved, edge_number_directed)
-        edge_number = edge_number_directed // 2
-        head_node_indices = [
-            edge_indices[1],
-            edge_indices[1] + n_nodes_full,
-            edge_indices[1] + 2 * n_nodes_full,
-        ]
-        A_sys_full[head_node_indices, edge_number] += edge_direction
+
+    edge_tail_coords = graph_solved.coords[graph_solved.edge_index[0, :]]
+    edge_head_coords = graph_solved.coords[graph_solved.edge_index[1, :]]
+
+    edge_difference = edge_head_coords - edge_tail_coords
+    edge_direction = edge_difference / torch.linalg.norm(
+        edge_difference, dim=1, keepdim=True
+    )
+
+    A_sys_full.index_put_(
+        (edge_apply_node.reshape(-1), edge_index.reshape(-1)),
+        edge_direction.T.reshape(-1),
+        accumulate=True,
+    )
 
     # steps = [steps[-1]]
     for step in steps:
@@ -68,99 +90,6 @@ def _eval_projection_systems(
 
         # Solve subsystem
         beta = torch.linalg.solve(A_sub.T @ A_sub, A_sub.T @ b_sub)
-        beta_steps[active_edges_mask, step] = beta
         res_steps[active_nodes_mask_full, step] = A_sub @ beta - b_sub
 
-    return beta_steps, res_steps
-
-
-def supporting_loss_plot(
-    graph_solved: "StructData",
-    steps,
-    n_nodes_full,
-    n_edges_full,
-    suffix=str,
-    to_gif=True,
-):
-    # Init dict
-    beta_steps, res_steps = _eval_projection_systems(
-        graph_solved, steps, n_nodes_full, n_edges_full
-    )
-    _plot_supporting_loss_state(
-        graph_solved,
-        beta_steps,
-        res_steps,
-        suffix=suffix,
-        to_gif=to_gif,
-    )
-
-    return beta_steps, res_steps
-
-
-def supporting_loss_func(
-    graph_solved: "StructData",
-    steps,
-    n_nodes_full,
-    n_edges_full,
-):
-    _, res_steps = _eval_projection_systems(
-        graph_solved, steps, n_nodes_full, n_edges_full
-    )
     return torch.linalg.norm(res_steps)
-
-
-def _plot_supporting_loss_state(
-    graph_solved: "StructData",
-    beta_steps,
-    res_steps,
-    suffix="",
-    to_gif=True,
-):
-
-    work_dir = f"./img/{suffix}"
-    os.makedirs(work_dir, exist_ok=True)
-
-    for step in range(beta_steps.shape[1]):
-        step_force_dual = torch.zeros(graph_solved.num_edges)
-        step_force_dual[::2] = beta_steps[:, step]
-        step_force_dual[1::2] = beta_steps[:, step]
-        graph_solved.plot(
-            load=res_steps[:, step].reshape([3, -1]).T,
-            force=step_force_dual.unsqueeze(1),
-            show_load=True,
-            force_scale=5e1,
-            path=f"{work_dir}/state_{step:03d}",
-            title=f"Aux. Force Loss: {torch.linalg.norm(res_steps[:, step]):.2e}",
-        )
-        plt.close()
-
-    if to_gif:
-        _save_as_gif(suffix)
-
-
-def _save_as_gif(suffix):
-    # Folder containing your images
-    folder_path = f"./img/{suffix}"
-    output_gif = f"./img/{suffix}.gif"
-
-    # Collect all image files (sorted)
-    images = []
-    for filename in sorted(os.listdir(folder_path)):
-        if filename.endswith((".png", ".jpg", ".jpeg")):
-            image_path = os.path.join(folder_path, filename)
-            images.append(imageio.imread(image_path))
-
-    # Save as GIF
-    imageio.mimsave(
-        output_gif, images, duration=0.5
-    )  # duration = time per frame in seconds
-    shutil.rmtree(folder_path)
-
-
-def _get_edge_direction(graph_solved: "StructData", edge_index):
-    if edge_index == -1:
-        return torch.zeros(3, dtype=TORCH_FLOAT)
-    tail, head = graph_solved.coords[graph_solved.edge_index[:, edge_index]]
-    direction = head - tail
-    direction = direction / torch.linalg.norm(direction, keepdim=True)
-    return direction
