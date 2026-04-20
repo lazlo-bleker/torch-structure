@@ -1,3 +1,5 @@
+import math
+
 import torch
 
 from torch_structure.data import StructData
@@ -66,12 +68,74 @@ def merge_nodes_by_coords(data: StructData, tolerance: float = 1e-6):
     """
     groups = {}
     for name, idx in data.metadata["node_name_to_index"].items():
-        key = tuple((data.coords[idx] / tolerance).round().long().tolist())
+        q = (data.coords[idx] / tolerance).round().long()
+        key = f"{q[0].item()},{q[1].item()},{q[2].item()}"
         groups.setdefault(key, []).append(name)
 
     for names in groups.values():
         if len(names) > 1:
             data.merge_nodes(names[0], names[1:])
+
+
+def polygon_n(data: StructData, n: int, m: int = 4, radius: float = 1.0):
+    """
+    Adds a regular n-gon to data using n triangular grid sectors merged at coincident nodes.
+
+    The polygon is divided into n isoceles triangle sectors from the center.
+    Each sector is filled with triangle_grid using m subdivisions per sector.
+    Adjacent sectors share a side (line from center to a vertex), so
+    merge_nodes_by_coords collapses them into a single connected mesh.
+
+    Args:
+        data: StructData to add the polygon to.
+        n: Number of sides.
+        m: Number of triangle subdivisions per side (resolution).
+        radius: Circumradius — distance from center to each vertex.
+    """
+    step = radius / m
+    for k in range(n):
+        angle_k  = 2 * math.pi * k / n
+        angle_k1 = 2 * math.pi * (k + 1) / n
+        triangle_grid(
+            data,
+            n=m,
+            name=f"sector_{k}",
+            origin=torch.zeros(3),
+            dx=torch.tensor([step * math.cos(angle_k),  step * math.sin(angle_k),  0.0]),
+            dy=torch.tensor([step * math.cos(angle_k1), step * math.sin(angle_k1), 0.0]),
+        )
+    merge_nodes_by_coords(data)
+
+
+def irregular_polygon(data: StructData, vertices: torch.Tensor, m: int = 4):
+    """
+    Adds an irregular n-gon to data by triangulating from the centroid.
+
+    Computes the centroid of the given vertices, then divides the polygon into
+    n triangles (centroid, v_k, v_{k+1}). Each triangle is filled with
+    triangle_grid using m subdivisions per side. merge_nodes_by_coords
+    collapses shared side nodes into a single connected mesh.
+
+    Args:
+        data: StructData to add the polygon to.
+        vertices: Tensor of shape (n, 3) — the polygon vertices in order.
+        m: Number of triangle subdivisions per side (resolution).
+    """
+    n = vertices.shape[0]
+    centroid = vertices.mean(dim=0)
+
+    for k in range(n):
+        v0 = vertices[k]
+        v1 = vertices[(k + 1) % n]
+        triangle_grid(
+            data,
+            n=m,
+            name=f"sector_{k}",
+            origin=centroid,
+            dx=(v0 - centroid) / m,
+            dy=(v1 - centroid) / m,
+        )
+    merge_nodes_by_coords(data)
 
 
 def grid(
@@ -106,6 +170,41 @@ def grid(
             data.add_edge(f"{name}_{i}_node_{j}", f"{name}_{i+1}_node_{j}")
 
 
+def triangle_grid(
+    data: StructData,
+    n: int,
+    name: str = "tri",
+    origin: torch.Tensor = torch.tensor([0.0, 0.0, 0.0]),
+    dx: torch.Tensor = torch.tensor([1.0, 0.0, 0.0]),
+    dy: torch.Tensor = torch.tensor([0.5, math.sqrt(3) / 2, 0.0]),
+):
+    """
+    Adds a triangular grid to data.
+
+    Fills an equilateral triangle with n² small triangles (n subdivisions per side).
+    Nodes sit at origin + i*dx + j*dy for all i≥0, j≥0, i+j≤n.
+    Edges run in three directions: dx, dy, and the cross direction (i+1,j)→(i,j+1).
+
+    Args:
+        data: StructData to add the grid to.
+        n: Number of subdivisions per side (n² triangles total).
+        name: Prefix for node names.
+        origin: Coordinates of the (0,0) corner node.
+        dx: Step vector for the first edge direction.
+        dy: Step vector for the second edge direction (default: 60° from dx).
+    """
+    for j in range(n + 1):
+        for i in range(n + 1 - j):
+            data.add_node(f"{name}_{i}_{j}", coords=origin + i * dx + j * dy)
+
+    for j in range(n + 1):
+        for i in range(n + 1 - j):
+            if i + j < n:
+                data.add_edge(f"{name}_{i}_{j}",   f"{name}_{i+1}_{j}")   # dx edge
+                data.add_edge(f"{name}_{i}_{j}",   f"{name}_{i}_{j+1}")   # dy edge
+                data.add_edge(f"{name}_{i+1}_{j}", f"{name}_{i}_{j+1}")   # cross edge
+
+
 def chain(
     data: StructData,
     length: int,
@@ -132,6 +231,8 @@ def chain(
     for i in range(length):
         data.add_edge(f"{name}_node_{i}", f"{name}_node_{i + 1}")
 
+
+#name coords to topology coords or similar
 
 
 

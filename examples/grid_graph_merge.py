@@ -35,3 +35,8 @@ grid(data, nx=n, ny=n, name="R3",
 merge_nodes_by_coords(data)
 
 data.plot(show=True, title="Hexagon — Merged Nodes")
+
+
+#go over code again
+#separate topology and geometry cooords
+
