@@ -10,15 +10,15 @@ from torch_structure.data.utils import requires_metadata
 from torch_structure.loss import ResidualForceLoss
 from torch_structure.geometry import graph_edge_lengths
 from torch_structure.mixins import TSMixin
-from config import TORCH_FLOAT
+from config import TORCH_FLOAT, DEVICE
 
 
 class StructData(TSMixin, pyg.data.Data):
     def __init__(
         self,
-        edge_index=torch.empty((2, 0), dtype=torch.long),
-        directed_mask=torch.empty((0, 1), dtype=torch.bool),
-        reciprocal_edge=torch.empty((0, 1), dtype=torch.long),
+        edge_index=torch.empty((2, 0), dtype=torch.long, device=DEVICE),
+        directed_mask=torch.empty((0, 1), dtype=torch.bool, device=DEVICE),
+        reciprocal_edge=torch.empty((0, 1), dtype=torch.long, device=DEVICE),
         node_attrs={},
         edge_attrs={},
         graph_attrs={},
@@ -84,12 +84,12 @@ class StructData(TSMixin, pyg.data.Data):
             edges.append((j, i))  # Add reciprocal edge
 
         # Create edge_index tensor
-        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-        coords = torch.tensor(coords_list, dtype=torch.float)
+        edge_index = torch.tensor(edges, dtype=torch.long, device=DEVICE).t().contiguous()
+        coords = torch.tensor(coords_list, dtype=torch.float, device=DEVICE)
 
         num_edges = edge_index.size(1)
 
-        directed_mask = torch.zeros((num_edges, 1), dtype=torch.bool)
+        directed_mask = torch.zeros((num_edges, 1), dtype=torch.bool, device=DEVICE)
         directed_mask[::2] = True
 
         # Reciprocal edge: forward i <-> i+1
@@ -125,20 +125,20 @@ class StructData(TSMixin, pyg.data.Data):
 
             if "float" in dtype_str:
                 # Enforce global TORCH_FLOAT for all float attributes
-                return torch.tensor(value, dtype=TORCH_FLOAT)
+                return torch.tensor(value, dtype=TORCH_FLOAT, device=DEVICE)
             elif "long" in dtype_str:
-                return torch.tensor(value, dtype=torch.long)
+                return torch.tensor(value, dtype=torch.long, device=DEVICE)
             elif "int" in dtype_str:
-                return torch.tensor(value, dtype=torch.int)
+                return torch.tensor(value, dtype=torch.int, device=DEVICE)
             elif "bool" in dtype_str:
-                return torch.tensor(value, dtype=torch.bool)
+                return torch.tensor(value, dtype=torch.bool, device=DEVICE)
             else:
                 raise ValueError(f"Unsupported dtype {dtype_str} for attribute {name}")
 
         return cls(
-            edge_index=torch.tensor(data["edge_index"], dtype=torch.long),
-            directed_mask=torch.tensor(data["directed_mask"], dtype=torch.bool),
-            reciprocal_edge=torch.tensor(data["reciprocal_edge"], dtype=torch.long),
+            edge_index=torch.tensor(data["edge_index"], dtype=torch.long, device=DEVICE),
+            directed_mask=torch.tensor(data["directed_mask"], dtype=torch.bool, device=DEVICE),
+            reciprocal_edge=torch.tensor(data["reciprocal_edge"], dtype=torch.long), device=DEVICE,
             node_attrs={k: cast_attr(k, v) for k, v in data["node_attrs"].items()},
             edge_attrs={k: cast_attr(k, v) for k, v in data["edge_attrs"].items()},
             graph_attrs={k: cast_attr(k, v) for k, v in data["graph_attrs"].items()},
@@ -372,6 +372,7 @@ class StructData(TSMixin, pyg.data.Data):
 
             if value.dim() == 0:
                 value = value.unsqueeze(0)
+            value = value.to(device=getattr(self, attr).device)
             setattr(
                 self,
                 attr,
@@ -404,12 +405,12 @@ class StructData(TSMixin, pyg.data.Data):
 
         # Update directed mask and reciprocal edge
         self.directed_mask = torch.cat(
-            [self.directed_mask, torch.tensor([[True], [False]])], dim=0
+            [self.directed_mask, torch.tensor([[True], [False]], device=DEVICE)], dim=0
         )
         self.reciprocal_edge = torch.cat(
             [
                 self.reciprocal_edge,
-                torch.tensor([[self.num_edges + 1], [self.num_edges]]),
+                torch.tensor([[self.num_edges + 1], [self.num_edges]], device=DEVICE),
             ],
             dim=0,
         )
@@ -419,7 +420,7 @@ class StructData(TSMixin, pyg.data.Data):
             self.metadata["node_name_to_index"][src],
             self.metadata["node_name_to_index"][dst],
         )
-        new_edge = torch.tensor([[src_index, dst_index], [dst_index, src_index]])
+        new_edge = torch.tensor([[src_index, dst_index], [dst_index, src_index]], device=DEVICE)
         self.edge_index = torch.cat([self.edge_index, new_edge], dim=1)
 
         # Add edge attributes
@@ -444,6 +445,8 @@ class StructData(TSMixin, pyg.data.Data):
 
             if value.dim() == 0:
                 value = value.unsqueeze(0)
+
+            value = value.to(device=getattr(self, attr).device)
 
             setattr(
                 self,

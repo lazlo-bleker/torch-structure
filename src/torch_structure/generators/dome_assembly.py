@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
-from config import TORCH_FLOAT
+from config import TORCH_FLOAT, DEVICE
 
 
 def uniform_function(
@@ -44,20 +44,20 @@ class DomeAssemblyGenerator(BaseGenerator):
         self.max_attempts = 100
 
         self.node_attrs = {
-            "coords": torch.empty((0, 3), dtype=TORCH_FLOAT),
-            "uv_coords": torch.empty((0, 2), dtype=TORCH_FLOAT),
-            "load": torch.empty((0, 3), dtype=TORCH_FLOAT),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
-            "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
-            "sequence": torch.empty((0, 1), dtype=torch.long),
+            "coords": torch.empty((0, 3), dtype=TORCH_FLOAT, device=DEVICE),
+            "uv_coords": torch.empty((0, 2), dtype=TORCH_FLOAT, device=DEVICE),
+            "load": torch.empty((0, 3), dtype=TORCH_FLOAT, device=DEVICE),
+            "support_condition": torch.empty((0, 3), dtype=torch.long, device=DEVICE),
+            "is_origin_node": torch.empty((0, 1), dtype=torch.bool, device=DEVICE),
+            "sequence": torch.empty((0, 1), dtype=torch.long, device=DEVICE),
         }
         self.edge_attrs = {
-            "force": torch.empty((0, 1), dtype=TORCH_FLOAT),
-            "length": torch.empty((0, 1), dtype=TORCH_FLOAT),
-            "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
-            "force_sign": torch.empty((0, 1), dtype=TORCH_FLOAT),
-            "active_edof": torch.empty((0, 1), dtype=torch.bool),
-            "assembly_sequence": torch.empty((0, 1), dtype=torch.long),
+            "force": torch.empty((0, 1), dtype=TORCH_FLOAT, device=DEVICE),
+            "length": torch.empty((0, 1), dtype=TORCH_FLOAT, device=DEVICE),
+            "is_trail_edge": torch.empty((0, 1), dtype=torch.bool, device=DEVICE),
+            "force_sign": torch.empty((0, 1), dtype=TORCH_FLOAT, device=DEVICE),
+            "active_edof": torch.empty((0, 1), dtype=torch.bool, device=DEVICE),
+            "assembly_sequence": torch.empty((0, 1), dtype=torch.long, device=DEVICE),
         }
         self.default_attrs = {
             "coords": torch.full((3,), torch.nan),

@@ -2,7 +2,7 @@ import torch
 from dataclasses import dataclass
 
 from torch_structure.data import StructData
-from config import torch_to_np_float, TORCH_FLOAT
+from config import torch_to_np_float, TORCH_FLOAT, DEVICE
 
 
 @dataclass
@@ -130,7 +130,7 @@ class DesignVariableHandler:
         Get the values from the isntance of DataStruc to a single vector
         """
         # Initialize numpy array
-        x = torch.zeros(self.n_dv, dtype=TORCH_FLOAT)
+        x = torch.zeros(self.n_dv, dtype=TORCH_FLOAT, device=DEVICE)
         for _, design_variable_set in self.design_variable_sets.items():
             # Access initial values and pass their value to the array
             design_variable_set.pull_values(x)

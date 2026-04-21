@@ -8,6 +8,14 @@ optimizer_export_paraview = True
 optimizer_export_tensorboard = True
 
 
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+    TORCH_BACKEND = "cuda"
+else:
+    # CPU is faster for some reason
+    DEVICE = torch.device("cpu")
+    TORCH_BACKEND = "cpu"
+
 def torch_to_np_float(x):
     """
     Converts a torch tensor to a numpy array of floating point variables
@@ -17,7 +25,7 @@ def torch_to_np_float(x):
     return x.detach().cpu().numpy().astype(NP_FLOAT, copy=False)
 
 
-def np_to_torch_float(x, device=None):
+def np_to_torch_float(x, device=DEVICE):
     """
     Converts a numpy array to a torch tensor of floating point variables
     """

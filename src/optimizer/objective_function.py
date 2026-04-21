@@ -2,7 +2,7 @@ import torch
 from dataclasses import dataclass, field
 from typing import Callable, Any
 
-from config import torch_to_np_float, TORCH_FLOAT
+from config import torch_to_np_float, TORCH_FLOAT, DEVICE
 
 
 @dataclass
@@ -18,6 +18,7 @@ class Objective:
         self.obj_function = objective_config.obj_function
         self.weight = objective_config.weight
         self.kwargs = dict(objective_config.kwargs)
+        self.y = None
 
     def __call__(self, graph) -> torch.Tensor:
         self.y = self.obj_function(graph, **self.kwargs)
@@ -51,7 +52,7 @@ class ObjectiveHandler:
         # Apply design variables & solve CEM
         graph_solved = self.solve_graph(x)
         # Compute total loss based on CEM solution
-        total_loss = torch.tensor(0.0)
+        total_loss = torch.tensor(0.0, device=DEVICE)
         for _, obj_function in self.function_objects.items():
             # Add contribution of obj function from list
             total_loss += obj_function.weight * obj_function(graph_solved)
@@ -69,7 +70,7 @@ class ObjectiveHandler:
 
     def func_grad_scipy(self, x_np):
         # Convert numpy to torch with gradients being required
-        x = torch.tensor(x_np, dtype=TORCH_FLOAT)
+        x = torch.tensor(x_np, dtype=TORCH_FLOAT, device=DEVICE)
         # Generate grad and value modes from forward
         func_grad_value = torch.func.grad_and_value(self.forward)
         # Evaluate grad and value together

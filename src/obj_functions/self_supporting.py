@@ -1,10 +1,6 @@
-import os
-import imageio
-import shutil
 from torch_structure.data import StructData
 import torch
-from config import TORCH_FLOAT
-import matplotlib.pyplot as plt
+from config import TORCH_FLOAT, DEVICE
 
 
 def supporting_loss_cache(graph_solved: "StructData"):
@@ -46,11 +42,11 @@ def supporting_loss_func(
     # NOTE: this version assumes that an edge (even) and its reciprocal (odd) ara adjacent in the array
     # Init linear system matrix
     # TODO: Make sparse
-    A_sys_full = torch.zeros([n_nodes_full * 3, n_edges_full], dtype=TORCH_FLOAT)
+    A_sys_full = torch.zeros([n_nodes_full * 3, n_edges_full], dtype=TORCH_FLOAT, device=DEVICE)
     # Populate linear system vector
     b_sys_full = graph_solved.load.T.reshape(-1)
 
-    res_steps = torch.zeros([3 * n_nodes_full, len(steps)], dtype=TORCH_FLOAT)
+    res_steps = torch.zeros([3 * n_nodes_full, len(steps)], dtype=TORCH_FLOAT, device=DEVICE)
 
     # Pupulate A_sys
 
