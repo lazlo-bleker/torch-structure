@@ -42,15 +42,16 @@ def main():
             attr_name="force",
             mask_keyword="deviation_elements",
             is_dual_edge=True,
+            # upper_bound=-eps,
         ),
     ]
 
     # 3. Define objective function
     obj_func_config_list = [
         ObjectiveConfig(
-            name="length_similarity",
+            name="self_support",
             obj_function=supporting_loss_func,
-            weight=1e0,
+            weight=1e-4,
             kwargs=supporting_loss_cache(data),
         ),
     ]
@@ -62,6 +63,7 @@ def main():
         return torch.sum(diff * diff)
 
     data.cem(inplace=True)
+    data.plot()
     target_mask = data.is_support.squeeze()
     target_coords = data.coords[target_mask].detach().clone()
     constr_config_list = [
@@ -75,7 +77,7 @@ def main():
 
     # 5. Initialize & run optimizer
     solver_config = SolverConfig(
-        solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}, log_interval=4
+        export_dir="results/run_ext",solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}, log_interval=4
     )
 
     optimizer = Optimizer(
@@ -86,7 +88,7 @@ def main():
         constr_config_list=constr_config_list,
     )
 
-    optimizer.run(50)
+    optimizer.run(300)
 
     print("Finish")
 

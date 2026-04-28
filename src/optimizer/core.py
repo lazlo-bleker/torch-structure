@@ -20,7 +20,7 @@ class SolverConfig:
     export_dir: str = "results/run"
     log_interval: int = 10
     opt_method: str = "SLSQP"
-    ftol: float = 1e-7
+    ftol: float = 1e-9
 
 
 class Optimizer:

@@ -195,12 +195,34 @@ from obj_functions.self_supporting import graph_post_process
 
 if __name__ == "__main__":
     config = PostProcessConfig(
-        dir="./results/run",
-        label="post",
+        dir="./results/run_ext",
+        label="opt",
         # files = ["state_0000.json"],
-        export_img=True,
+        export_img=False,
         export_vtk=True,
-        img_to_gif=True,
+        img_to_gif=False,
+        export_steps=False,
+        post_process_func=graph_post_process,
+    )
+    post_process_export_opt(config)
+    config = PostProcessConfig(
+        dir="./results/run_ext",
+        label="initial",
+        files = ["state_0000.json"],
+        export_img=False,
+        export_vtk=True,
+        img_to_gif=False,
+        export_steps=True,
+        post_process_func=graph_post_process,
+    )
+    post_process_export_opt(config)
+    config = PostProcessConfig(
+        dir="./results/run_ext",
+        label="final",
+        files = ["state_0300.json"],
+        export_img=False,
+        export_vtk=True,
+        img_to_gif=False,
         export_steps=True,
         post_process_func=graph_post_process,
     )
