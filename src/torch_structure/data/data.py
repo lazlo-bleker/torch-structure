@@ -84,7 +84,9 @@ class StructData(TSMixin, pyg.data.Data):
             edges.append((j, i))  # Add reciprocal edge
 
         # Create edge_index tensor
-        edge_index = torch.tensor(edges, dtype=torch.long, device=DEVICE).t().contiguous()
+        edge_index = (
+            torch.tensor(edges, dtype=torch.long, device=DEVICE).t().contiguous()
+        )
         coords = torch.tensor(coords_list, dtype=torch.float, device=DEVICE)
 
         num_edges = edge_index.size(1)
@@ -136,9 +138,14 @@ class StructData(TSMixin, pyg.data.Data):
                 raise ValueError(f"Unsupported dtype {dtype_str} for attribute {name}")
 
         return cls(
-            edge_index=torch.tensor(data["edge_index"], dtype=torch.long, device=DEVICE),
-            directed_mask=torch.tensor(data["directed_mask"], dtype=torch.bool, device=DEVICE),
-            reciprocal_edge=torch.tensor(data["reciprocal_edge"], dtype=torch.long), device=DEVICE,
+            edge_index=torch.tensor(
+                data["edge_index"], dtype=torch.long, device=DEVICE
+            ),
+            directed_mask=torch.tensor(
+                data["directed_mask"], dtype=torch.bool, device=DEVICE
+            ),
+            reciprocal_edge=torch.tensor(data["reciprocal_edge"], dtype=torch.long),
+            device=DEVICE,
             node_attrs={k: cast_attr(k, v) for k, v in data["node_attrs"].items()},
             edge_attrs={k: cast_attr(k, v) for k, v in data["edge_attrs"].items()},
             graph_attrs={k: cast_attr(k, v) for k, v in data["graph_attrs"].items()},
@@ -420,7 +427,9 @@ class StructData(TSMixin, pyg.data.Data):
             self.metadata["node_name_to_index"][src],
             self.metadata["node_name_to_index"][dst],
         )
-        new_edge = torch.tensor([[src_index, dst_index], [dst_index, src_index]], device=DEVICE)
+        new_edge = torch.tensor(
+            [[src_index, dst_index], [dst_index, src_index]], device=DEVICE
+        )
         self.edge_index = torch.cat([self.edge_index, new_edge], dim=1)
 
         # Add edge attributes

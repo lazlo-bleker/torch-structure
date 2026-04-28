@@ -15,8 +15,8 @@ from utils import deviation_force_function, trail_length_function, origin_node_f
 
 def main():
     # 1. Generate structure
-    n_trails = 13
-    n_rings = 8
+    n_trails = 16
+    n_rings = 18
     n_nodes = n_trails * n_rings
     data_generator = ts.generators.DomeAssemblyGenerator(
         n_trails=n_trails,
@@ -75,7 +75,7 @@ def main():
 
     # 5. Initialize & run optimizer
     solver_config = SolverConfig(
-        solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}
+        solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}, log_interval=4
     )
 
     optimizer = Optimizer(

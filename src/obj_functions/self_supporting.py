@@ -31,7 +31,7 @@ def supporting_loss_cache(graph_solved: "StructData"):
     return kwargs
 
 
-def supporting_loss_func(
+def _eval_auxiliary_forces(
     graph_solved: "StructData",
     steps,
     n_nodes_full,
@@ -42,11 +42,18 @@ def supporting_loss_func(
     # NOTE: this version assumes that an edge (even) and its reciprocal (odd) ara adjacent in the array
     # Init linear system matrix
     # TODO: Make sparse
-    A_sys_full = torch.zeros([n_nodes_full * 3, n_edges_full], dtype=TORCH_FLOAT, device=DEVICE)
+    A_sys_full = torch.zeros(
+        [n_nodes_full * 3, n_edges_full], dtype=TORCH_FLOAT, device=DEVICE
+    )
     # Populate linear system vector
     b_sys_full = graph_solved.load.T.reshape(-1)
 
-    res_steps = torch.zeros([3 * n_nodes_full, len(steps)], dtype=TORCH_FLOAT, device=DEVICE)
+    aux_forces_steps = torch.zeros(
+        [n_nodes_full, len(steps), 3], dtype=TORCH_FLOAT, device=DEVICE
+    )
+    internal_force_steps = torch.zeros(
+        [n_edges_full, len(steps)], dtype=TORCH_FLOAT, device=DEVICE
+    )
 
     # Pupulate A_sys
 
@@ -64,7 +71,6 @@ def supporting_loss_func(
         accumulate=True,
     )
 
-    # steps = [steps[-1]]
     for step in steps:
         # Find active edges
         active_edges_mask_directed = (graph_solved.assembly_sequence <= step).squeeze()
@@ -86,6 +92,28 @@ def supporting_loss_func(
 
         # Solve subsystem
         beta = torch.linalg.solve(A_sub.T @ A_sub, A_sub.T @ b_sub)
-        res_steps[active_nodes_mask_full, step] = A_sub @ beta - b_sub
+        aux_forces_flat = A_sub @ beta - b_sub
+        internal_force_steps[active_edges_mask, step] = beta
+        aux_forces_steps[active_nodes_mask, step] = aux_forces_flat.reshape((3, -1)).T
 
-    return torch.linalg.norm(res_steps)
+    return aux_forces_steps, internal_force_steps
+
+
+def supporting_loss_func(*args, **kwargs):
+    aux_forces_steps, _ = _eval_auxiliary_forces(*args, **kwargs)
+    return torch.linalg.norm(aux_forces_steps)
+
+
+def graph_post_process(graph):
+    kwargs = supporting_loss_cache(graph_solved=graph)
+    aux_forces_steps, internal_force_steps = _eval_auxiliary_forces(graph, **kwargs)
+    internal_force_steps = torch.repeat_interleave(
+        internal_force_steps, repeats=2, dim=0
+    )
+    aux_force_total = torch.sum(torch.linalg.norm(aux_forces_steps, dim=2), dim=1)
+
+    setattr(graph, "aux_force_steps", aux_forces_steps)
+    setattr(graph, "aux_force_total", aux_force_total)
+    setattr(graph, "internal_force_steps", internal_force_steps)
+
+    return graph
