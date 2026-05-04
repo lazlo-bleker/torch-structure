@@ -10,7 +10,7 @@ def export_aggragate_vtp(post_data: StructData, export_dir, base_name, cache_dic
     filename = base_name + "_aggregate"
     graph = to_networkx(
         post_data,
-        node_attrs=["coords", "aux_force_total"],
+        node_attrs=["coords", "aux_force_total", "laplacian"],
         edge_attrs=[],
         to_undirected=True,
     )

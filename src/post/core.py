@@ -20,8 +20,8 @@ class PostProcessConfig:
     post_process_func: Callable[[StructData], StructData] = identity
     label: str = "export"
     files: list[str] = None
-    export_vtp: Callable[[StructData], StructData] = return_none
-    export_img: Callable[[StructData], StructData] = return_none
+    export_vtp: Callable[[StructData], StructData] = None
+    export_img: Callable[[StructData], StructData] = None
     verbose: bool = False
 
 

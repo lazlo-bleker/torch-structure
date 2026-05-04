@@ -8,8 +8,9 @@ from optimizer import (
     ObjectiveConfig,
     ConstraintConfig,
 )
-from obj_functions.orthogonal import orthogonal_func, orthogonal_cache
+# from obj_functions.orthogonal import orthogonal_func, orthogonal_cache
 from obj_functions.self_supporting import supporting_loss_func, supporting_loss_cache
+from obj_functions.fairness import fairness_func, fairness_cache
 from utils import deviation_force_function, trail_length_function, origin_node_function
 
 
@@ -54,6 +55,12 @@ def main():
             weight=1e-4,
             kwargs=supporting_loss_cache(data),
         ),
+            ObjectiveConfig(
+            name="fairness",
+            obj_function=fairness_func,
+            weight=1e-3,
+            kwargs=fairness_cache(data),
+        ),
     ]
 
     # 4. Define constraint
@@ -75,12 +82,13 @@ def main():
         )
     ]
 
+    export_dir = "results/run_reg"
     # 5. Initialize & run optimizer
     solver_config = SolverConfig(
-        export_dir="results/run_ext",
+        export_dir=export_dir,
         solver_name="cem",
         solver_kwargs={"max_iter": 10 * n_nodes},
-        log_interval=4,
+        log_interval=50,
     )
 
     optimizer = Optimizer(
@@ -91,9 +99,12 @@ def main():
         constr_config_list=constr_config_list,
     )
 
-    optimizer.run(300)
+    optimizer.run(500)
 
-    print("Finish")
+    print("Finish Opt")
+
+    from post.main import post_main
+    post_main(export_dir)
 
 
 if __name__ == "__main__":
