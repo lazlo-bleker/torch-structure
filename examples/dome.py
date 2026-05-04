@@ -77,7 +77,10 @@ def main():
 
     # 5. Initialize & run optimizer
     solver_config = SolverConfig(
-        export_dir="results/run_ext",solver_name="cem", solver_kwargs={"max_iter": 10 * n_nodes}, log_interval=4
+        export_dir="results/run_ext",
+        solver_name="cem",
+        solver_kwargs={"max_iter": 10 * n_nodes},
+        log_interval=4,
     )
 
     optimizer = Optimizer(
