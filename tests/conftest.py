@@ -1,17 +1,23 @@
 import pytest
-from torch_structure.generators import DomeGenerator, DomeAssemblyGenerator
+from torch_structure.generators import (
+    DomeGenerator,
+    DomeAssemblyGenerator,
+    CableNetGenerator,
+)
 import torch
 import random
 
 
 @pytest.fixture
-def dome_data():
-    torch.manual_seed(42)
-    random.seed(42)
+def cablenet_data(request):
+    generator = CableNetGenerator(seed=request.param)
+    return generator()
 
-    generator = DomeGenerator()
-    dome = generator()
-    return dome
+
+@pytest.fixture
+def dome_data(request):
+    generator = DomeGenerator(seed=request.param)
+    return generator()
 
 
 @pytest.fixture

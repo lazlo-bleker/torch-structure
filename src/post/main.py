@@ -9,10 +9,12 @@ from post.custom import (
     export_assembly_states_vtp,
 )
 
+
 def graph_post_process(graph):
     graph = graph_post_process_1(graph)
     graph = graph_post_process_2(graph)
     return graph
+
 
 def post_main(dir_results):
     # first_iter_name = "state_0000.json"

@@ -2,6 +2,7 @@ import torch
 import math
 import numpy as np
 import random
+from config import TORCH_FLOAT
 
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator, InvalidSampleError
@@ -12,10 +13,10 @@ class CableNetGenerator(BaseGenerator):
         super().__init__(**overrides)
         self.max_attempts = 100
         self.node_attrs = {
-            "pattern_coords": torch.empty((0, 2), dtype=torch.float),
+            "pattern_coords": torch.empty((0, 2), dtype=TORCH_FLOAT),
             "is_support": torch.empty((0, 1), dtype=torch.bool),
             "is_boundary": torch.empty((0, 1), dtype=torch.bool),
-            "z_coord": torch.empty((0, 1), dtype=torch.float),
+            "z_coord": torch.empty((0, 1), dtype=TORCH_FLOAT),
         }
         self.edge_attrs = {
             "is_boundary_edge": torch.empty((0, 1), dtype=torch.bool),
@@ -88,7 +89,12 @@ class CableNetGenerator(BaseGenerator):
         square_size=None,
         corner_angle_list=None,
         corner_support_sequence=None,
+        seed=None,
     ):
+        if seed is not None:
+            torch.manual_seed(seed)
+            random.seed(seed)
+            np.random.seed(seed)
         if n is None:
             if rectangle or square:
                 n = 4
@@ -153,10 +159,10 @@ class CableNetGenerator(BaseGenerator):
             "q_field": q_field,
             "q_boundary": q_boundary,
             "q_diagonal": q_diagonal,
-            "rectangle_width": torch.tensor(rectangle_width, dtype=torch.float),
-            "rectangle_height": torch.tensor(rectangle_height, dtype=torch.float),
-            "square_size": torch.tensor(square_size, dtype=torch.float),
-            "corner_angle_list": torch.tensor(corner_angle_list, dtype=torch.float),
+            "rectangle_width": torch.tensor(rectangle_width, dtype=TORCH_FLOAT),
+            "rectangle_height": torch.tensor(rectangle_height, dtype=TORCH_FLOAT),
+            "square_size": torch.tensor(square_size, dtype=TORCH_FLOAT),
+            "corner_angle_list": torch.tensor(corner_angle_list, dtype=TORCH_FLOAT),
             "corner_support_sequence": torch.tensor(
                 corner_support_sequence, dtype=torch.long
             ),
@@ -582,9 +588,9 @@ class CableNetGenerator(BaseGenerator):
                     is_diagonal_edge=torch.tensor(True),
                 )
 
-        load = torch.zeros((graph.num_nodes, 3), dtype=torch.float)
+        load = torch.zeros((graph.num_nodes, 3), dtype=TORCH_FLOAT)
         load[~graph.is_support.view(-1)] = torch.tensor(
-            [0.0, 0.0, -0.1], dtype=torch.float
+            [0.0, 0.0, -0.1], dtype=TORCH_FLOAT
         )
         graph.load = load
 
@@ -599,7 +605,7 @@ class CableNetGenerator(BaseGenerator):
         )
 
         # Set force densities
-        q = q_field * torch.ones(graph.num_edges)
+        q = q_field * torch.ones(graph.num_edges, dtype=TORCH_FLOAT)
         q[graph.is_boundary_edge.view(-1)] = q_boundary
         q[graph.is_diagonal_edge.view(-1)] = q_diagonal
         graph.force_density = q.unsqueeze(1)

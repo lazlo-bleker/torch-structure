@@ -8,6 +8,7 @@ from optimizer import (
     ObjectiveConfig,
     ConstraintConfig,
 )
+
 # from obj_functions.orthogonal import orthogonal_func, orthogonal_cache
 from obj_functions.self_supporting import supporting_loss_func, supporting_loss_cache
 from obj_functions.fairness import fairness_func, fairness_cache
@@ -55,7 +56,7 @@ def main():
             weight=1e-4,
             kwargs=supporting_loss_cache(data),
         ),
-            ObjectiveConfig(
+        ObjectiveConfig(
             name="fairness",
             obj_function=fairness_func,
             weight=1e-3,
@@ -104,6 +105,7 @@ def main():
     print("Finish Opt")
 
     from post.main import post_main
+
     post_main(export_dir)
 
 
