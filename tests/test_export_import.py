@@ -1,8 +1,8 @@
 import json
 import torch
+from torch_structure.data import StructData
 
-
-def test_structdata_export_import_equivalence(tmp_path, dome_data_alt):
+def test_structdata_export_import_equivalence(tmp_path, dome_data_alt:StructData):
     """
     Test that:
       StructData -> to_log -> JSON -> from_log -> StructData
@@ -29,7 +29,7 @@ def test_structdata_export_import_equivalence(tmp_path, dome_data_alt):
     with open(json_path, "r") as f:
         loaded_log = json.load(f)
 
-    new_data = data.from_log(loaded_log)
+    new_data = StructData.from_log(loaded_log)
 
     # --------------------------------------------------------------
     # Run CEM on both structures

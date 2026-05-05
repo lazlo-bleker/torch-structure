@@ -4,9 +4,6 @@ from torch_structure.generators import (
     DomeAssemblyGenerator,
     CableNetGenerator,
 )
-import torch
-import random
-
 
 @pytest.fixture
 def cablenet_data(request):

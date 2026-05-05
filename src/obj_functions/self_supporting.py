@@ -8,7 +8,8 @@ def supporting_loss_cache(graph_solved: "StructData"):
     # Validate that the assembly sequence starts at 0
     graph_solved.assembly_sequence -= int(min(graph_solved.assembly_sequence))
     kwargs["n_nodes_full"] = graph_solved.num_nodes
-    kwargs["n_edges_full"] = graph_solved.num_edges // 2  # Account for a directed graph
+    n_edges_directed = graph_solved.num_edges // 2
+    kwargs["n_edges_full"] = n_edges_directed  # Account for a directed graph
     n_steps = int(max(graph_solved.assembly_sequence)) + 1
     kwargs["steps"] = torch.arange(n_steps)
 
@@ -20,12 +21,12 @@ def supporting_loss_cache(graph_solved: "StructData"):
     )
     edge_apply_node = head.unsqueeze(0) + offsets.unsqueeze(1)
     kwargs["edge_apply_node"] = edge_apply_node
-
-    edge_index = (
-        (torch.arange(head.numel(), device=head.device) // 2)
-        .unsqueeze(0)
-        .expand_as(edge_apply_node)
-    )
+    
+    edge_index = torch.zeros_like(edge_apply_node)
+    
+    _edge_index =  torch.arange(n_edges_directed, dtype=torch.long, device=DEVICE).unsqueeze(0)
+    edge_index[:, graph_solved.directed_mask.squeeze(1)] = _edge_index
+    edge_index[:,~graph_solved.directed_mask.squeeze(1)] = _edge_index
     kwargs["edge_index"] = edge_index
 
     return kwargs
@@ -73,8 +74,11 @@ def _eval_auxiliary_forces(
 
     for step in steps:
         # Find active edges
-        active_edges_mask_directed = (graph_solved.assembly_sequence <= step).squeeze()
-        active_edges_mask = active_edges_mask_directed[::2]
+        supported_nodes = graph_solved.is_support.squeeze()
+        both_supported = torch.all(supported_nodes[graph_solved.edge_index], dim=0)
+        active_sequence = (graph_solved.assembly_sequence <= step).squeeze()
+        active_edges_mask_directed = active_sequence & ~both_supported
+        active_edges_mask = active_edges_mask_directed[graph_solved.directed_mask.squeeze(1)]
         # Find active nodes
         active_nodes_mask = torch.zeros(
             n_nodes_full, dtype=torch.bool, device=graph_solved.edge_index.device
@@ -82,7 +86,7 @@ def _eval_auxiliary_forces(
         active_nodes_mask[
             graph_solved.edge_index[:, active_edges_mask_directed].reshape(-1)
         ] = True
-        active_nodes_mask[graph_solved.is_support.squeeze()] = False
+        active_nodes_mask[supported_nodes] = False
 
         active_nodes_mask_full = active_nodes_mask.repeat(3)
 

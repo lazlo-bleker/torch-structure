@@ -184,3 +184,7 @@ cython_debug/
 
 # WandB
 /wandb
+
+# Test Files
+**test.json
+**test.img
