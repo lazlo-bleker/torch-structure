@@ -5,6 +5,7 @@ from torch_structure.generators import (
     CableNetGenerator,
 )
 
+
 @pytest.fixture
 def cablenet_data(request):
     generator = CableNetGenerator(seed=request.param)

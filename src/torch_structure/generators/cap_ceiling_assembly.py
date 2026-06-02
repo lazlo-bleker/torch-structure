@@ -6,36 +6,32 @@ from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 from config import TORCH_FLOAT, DEVICE
 
-def sample_surface(u, v, weights, phases):    
-    r = np.sqrt(u ** 2 + v ** 2)
+
+def sample_surface(u, v, weights, phases):
+    r = np.sqrt(u**2 + v**2)
     theta = np.atan2(u, v)
 
     coords_hat = np.zeros([u.shape[0], u.shape[1], 3])
-    coords_hat[:,:,0] = u
-    coords_hat[:,:,1] = v
+    coords_hat[:, :, 0] = u
+    coords_hat[:, :, 1] = v
     for n, weight in enumerate(weights):
-        coords_hat[:,:,2] += weight * np.pow(r, n) * np.cos(n * theta + phases[n])
+        coords_hat[:, :, 2] += weight * np.pow(r, n) * np.cos(n * theta + phases[n])
 
     return coords_hat
 
-def compute_gravitational_load(coords_hat, force_per_area = -1.0):
+
+def compute_gravitational_load(coords_hat, force_per_area=-1.0):
     # coords_hat: (n_u, n_v, 3)
     n_u, n_v, _ = coords_hat.shape
 
     # quad corners
     p00 = coords_hat[:-1, :-1]
-    p10 = coords_hat[1:,  :-1]
-    p11 = coords_hat[1:,  1:]
+    p10 = coords_hat[1:, :-1]
+    p11 = coords_hat[1:, 1:]
     p01 = coords_hat[:-1, 1:]
 
-    area_1 = 0.5 * torch.linalg.norm(
-        torch.cross(p10 - p00, p11 - p00, dim=-1),
-        dim=-1
-    )
-    area_2 = 0.5 * torch.linalg.norm(
-        torch.cross(p11 - p00, p01 - p00, dim=-1),
-        dim=-1
-    )
+    area_1 = 0.5 * torch.linalg.norm(torch.cross(p10 - p00, p11 - p00, dim=-1), dim=-1)
+    area_2 = 0.5 * torch.linalg.norm(torch.cross(p11 - p00, p01 - p00, dim=-1), dim=-1)
 
     quad_area = area_1 + area_2
 
@@ -43,14 +39,15 @@ def compute_gravitational_load(coords_hat, force_per_area = -1.0):
 
     share = 0.25 * quad_area
     node_area[:-1, :-1] += share
-    node_area[1:,  :-1] += share
-    node_area[1:,  1:]  += share
-    node_area[:-1, 1:]  += share
+    node_area[1:, :-1] += share
+    node_area[1:, 1:] += share
+    node_area[:-1, 1:] += share
 
     # --- compute gravitational load ---
     load = torch.zeros((n_u, n_v, 3), device=coords_hat.device)
-    load[...,2] = force_per_area * node_area
+    load[..., 2] = force_per_area * node_area
     return load
+
 
 class CapCeilingAssemblyGenerator(BaseGenerator):
     def __init__(self, **overrides):
@@ -89,11 +86,11 @@ class CapCeilingAssemblyGenerator(BaseGenerator):
         self,
         n_u: int | None = None,
         n_v: int | None = None,
-        surface_function = None,
-        support_sides : list = None,
-        fd_init = None,
-        fd_boundary_init = None,
-        seed = None,
+        surface_function=None,
+        support_sides: list = None,
+        fd_init=None,
+        fd_boundary_init=None,
+        seed=None,
     ) -> dict:
         if seed is not None:
             torch.manual_seed(seed)
@@ -109,13 +106,15 @@ class CapCeilingAssemblyGenerator(BaseGenerator):
             n_modes = 4
             alpha = 0.2
             decay_weights = np.exp(-alpha * n_modes)
-            weights =  decay_weights * np.random.sample(n_modes)
-            phases =  2 * np.pi * np.random.sample(n_modes)
-            surface_function = lambda u,v : sample_surface(u,v, weights, phases)
-        
-        u = np.linspace(-1.0,+1.0, n_u)[:, np.newaxis].repeat(n_v, axis=1)
-        v = np.linspace(-1.0,+1.0, n_v)[np.newaxis, :].repeat(n_u, axis=0)
-        coords_hat = torch.tensor(surface_function(u,v), dtype=TORCH_FLOAT, device=DEVICE)
+            weights = decay_weights * np.random.sample(n_modes)
+            phases = 2 * np.pi * np.random.sample(n_modes)
+            surface_function = lambda u, v: sample_surface(u, v, weights, phases)
+
+        u = np.linspace(-1.0, +1.0, n_u)[:, np.newaxis].repeat(n_v, axis=1)
+        v = np.linspace(-1.0, +1.0, n_v)[np.newaxis, :].repeat(n_u, axis=0)
+        coords_hat = torch.tensor(
+            surface_function(u, v), dtype=TORCH_FLOAT, device=DEVICE
+        )
 
         # Handle support conditions
         if support_sides is None:
@@ -130,9 +129,9 @@ class CapCeilingAssemblyGenerator(BaseGenerator):
         if support_sides[1]:
             support_mask[-1] = True
         if support_sides[2]:
-            support_mask[:,0] = True
+            support_mask[:, 0] = True
         if support_sides[3]:
-            support_mask[:,-1] = True
+            support_mask[:, -1] = True
 
         load = compute_gravitational_load(coords_hat)
 
@@ -147,9 +146,9 @@ class CapCeilingAssemblyGenerator(BaseGenerator):
             "n_v": n_v,
             "coords_hat": coords_hat,
             "support_mask": support_mask,
-            "load" : load,
-            "fd_init" : fd_init,
-            "fd_boundary_init" : fd_boundary_init,
+            "load": load,
+            "fd_init": fd_init,
+            "fd_boundary_init": fd_boundary_init,
         }
 
     def generate(
@@ -172,14 +171,15 @@ class CapCeilingAssemblyGenerator(BaseGenerator):
         # Generate nodes
         for v in range(n_v):
             for u in range(n_u):
-                uv_coords = torch.tensor([u/(n_u-1), v/(n_v-1)])
+                uv_coords = torch.tensor([u / (n_u - 1), v / (n_v - 1)])
                 data.add_node(
                     f"{u}_{v}",
                     uv_coords=uv_coords,
-                    coords = coords_hat[u,v],
-                    coords_hat = coords_hat[u,v],
-                    load = load[u,v],
-                    support_condition = torch.tensor([True, True, True]) * support_mask[u,v],
+                    coords=coords_hat[u, v],
+                    coords_hat=coords_hat[u, v],
+                    load=load[u, v],
+                    support_condition=torch.tensor([True, True, True])
+                    * support_mask[u, v],
                 )
 
         # Generate edges
@@ -188,12 +188,12 @@ class CapCeilingAssemblyGenerator(BaseGenerator):
                 if u < n_u - 1:
                     data.add_edge(
                         f"{u}_{v}",
-                        f"{u+1}_{v}",
+                        f"{u + 1}_{v}",
                     )
                 if v < n_v - 1:
                     data.add_edge(
                         f"{u}_{v}",
-                        f"{u}_{v+1}",
+                        f"{u}_{v + 1}",
                     )
         # Populate force densities of inner edges
         data.force_density = fd_init * torch.ones_like(data.force_density)

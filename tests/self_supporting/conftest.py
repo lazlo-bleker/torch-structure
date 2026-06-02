@@ -10,10 +10,8 @@ PLOT_DIR.mkdir(exist_ok=True)
 
 ALL_CASES = sorted(DATA_DIR.glob("*.json"))
 
-@pytest.fixture(
-    params=ALL_CASES,
-    ids=lambda p: p.stem
-)
+
+@pytest.fixture(params=ALL_CASES, ids=lambda p: p.stem)
 def struc_data(request):
     json_path = request.param
 

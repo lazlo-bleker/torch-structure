@@ -21,12 +21,14 @@ def supporting_loss_cache(graph_solved: "StructData"):
     )
     edge_apply_node = head.unsqueeze(0) + offsets.unsqueeze(1)
     kwargs["edge_apply_node"] = edge_apply_node
-    
+
     edge_index = torch.zeros_like(edge_apply_node)
-    
-    _edge_index =  torch.arange(n_edges_directed, dtype=torch.long, device=DEVICE).unsqueeze(0)
+
+    _edge_index = torch.arange(
+        n_edges_directed, dtype=torch.long, device=DEVICE
+    ).unsqueeze(0)
     edge_index[:, graph_solved.directed_mask.squeeze(1)] = _edge_index
-    edge_index[:,~graph_solved.directed_mask.squeeze(1)] = _edge_index
+    edge_index[:, ~graph_solved.directed_mask.squeeze(1)] = _edge_index
     kwargs["edge_index"] = edge_index
 
     return kwargs
@@ -78,7 +80,9 @@ def _eval_auxiliary_forces(
         both_supported = torch.all(supported_nodes[graph_solved.edge_index], dim=0)
         active_sequence = (graph_solved.assembly_sequence <= step).squeeze()
         active_edges_mask_directed = active_sequence & ~both_supported
-        active_edges_mask = active_edges_mask_directed[graph_solved.directed_mask.squeeze(1)]
+        active_edges_mask = active_edges_mask_directed[
+            graph_solved.directed_mask.squeeze(1)
+        ]
         # Find active nodes
         active_nodes_mask = torch.zeros(
             n_nodes_full, dtype=torch.bool, device=graph_solved.edge_index.device

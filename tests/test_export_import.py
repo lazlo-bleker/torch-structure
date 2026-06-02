@@ -2,7 +2,8 @@ import json
 import torch
 from torch_structure.data import StructData
 
-def test_structdata_export_import_equivalence(tmp_path, dome_data_alt:StructData):
+
+def test_structdata_export_import_equivalence(tmp_path, dome_data_alt: StructData):
     """
     Test that:
       StructData -> to_log -> JSON -> from_log -> StructData
