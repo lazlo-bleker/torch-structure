@@ -12,6 +12,7 @@ from .dome_assembly import DomeAssemblyGenerator
 from .mixed_dome import MixedDomeGenerator
 from .truss_bridge import TrussBridgeGenerator
 from .single_trail import SingleTrailGenerator
+from .cap_ceiling_assembly import CapCeilingAssemblyGenerator
 
 __all__ = [
     "ArchSuspensionBridgeGenerator",
@@ -28,4 +29,5 @@ __all__ = [
     "MixedDomeGenerator",
     "TrussBridgeGenerator",
     "SingleTrailGenerator",
+    "CapCeilingAssemblyGenerator",
 ]
