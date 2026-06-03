@@ -294,26 +294,72 @@ class StructData(TSMixin, pyg.data.Data):
 
             if value.dim() == 0:
                 value = value.unsqueeze(0)
+
             setattr(
                 self,
                 attr,
                 torch.cat([getattr(self, attr), value.unsqueeze(0)], dim=0),
             )
-    
 
-    #???add empty nodes as extra function?
+    def add_n_empty_nodes(self, n):
+        """
+        Adds n new nodes initialized to their default values or to zero if there exists no default value.
+
+        Args:
+            n (int): number of nodes to add. ``n`` must be at least 1.
+
+        Raises:
+            ValueError: if ``n`` is less than or equal to zero.
+        """
+
+        if n <= 0:
+            raise ValueError("Invalid number of nodes provided. n must at least be 1.")
+
+        self.num_nodes += n
+
+        # Add default node attributes
+        for attr in self.metadata["node_attr_list"]:
+
+            # If attribute is not provided, set it to default value
+            if attr in self.metadata["default_attrs"]:
+                value = self.metadata["default_attrs"][attr].repeat(n, 1)
+
+            # If attribute has no default value, set it to zero
+            else:
+                attr_shape = getattr(self, attr).shape[1:]
+                value = getattr(self, attr).new_zeros(attr_shape).repeat(n, 1)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            setattr(
+                self,
+                attr,
+                torch.cat([getattr(self, attr), value], dim=0),
+            )
+
+
     @requires_metadata
     def add_nodes(self, **kwargs):
         """
-        Adds new nodes
+        Adds new nodes with the given attribute values.
+
+        Args:
+            **kwargs (dict[str, torch.Tensor]): mapping of registered node attribute
+                names to tensors. The first dimension of each tensor must equal the
+                number of nodes to add. Attributes omitted from ``kwargs`` are
+                initialized to their default values or to zero if no default value
+                exists.
+
+        Raises:
+            ValueError: if no keyword arguments are provided. If you want to add nodes without any attributes use add_n_empty_nodes()
+            ValueError: if any provided attribute name is not a registered node
+                attribute.
         """
 
         if not kwargs:
             raise ValueError("No node attributes provided for new nodes. At least one attribute must be provided.")
         
-
-
-        #also check if all kwargs have same length?
 
         num_new_nodes = len(next(iter(kwargs.values())))
 
@@ -365,9 +411,22 @@ class StructData(TSMixin, pyg.data.Data):
 
     @requires_metadata
     def add_edges(self, edge_indices, **kwargs):
-
         """
-        Adds new edges
+        Adds new edges.
+
+        Args:
+            edge_indices (torch.Tensor): source and destination node
+                indices for each of the ``E`` edges to add. Shape [2, E]. All indices must refer to
+                existing nodes.
+            **kwargs (dict[str, torch.Tensor]): mapping of registered edge attribute
+                names to tensors. The first dimension of each tensor must equal ``E``.
+                Attributes omitted from ``kwargs`` are initialized to their default
+                values or to zero if no default value exists. 
+
+        Raises:
+            ValueError: if any index in ``edge_indices`` is out of range.
+            ValueError: if any provided attribute name is not a registered edge
+                attribute.
         """
         
         if torch.any(edge_indices >= self.num_nodes) or torch.any(edge_indices < 0):
@@ -527,9 +586,43 @@ class StructData(TSMixin, pyg.data.Data):
         raise NotImplementedError
 
     
-    #???should warning be given always when nodes withh different attrs are merged? does that work with vectorized logic?
-    #???should we additionally give functions that can be thrown on node_priority_attribute, edge_priority_attribute or is interface to convoluted?
+    #should warning be given always when nodes with different attrs are merged? 
     def merge(self, merge_group_id = None, node_priority_attribute: str = None, edge_priority_attribute: str = None):
+        """
+        Merges nodes into groups and updates edges accordingly.
+
+        Each node is assigned a group id via merge_group_id. Within each group
+        the surviving node is the one with the lowest original index, or, if provided, the one with
+        the highest value of ``node_priority_attribute`` (ties broken by
+        lowest index). 
+        
+        Merged nodes appear first in the new node ordering, followed
+        by the unmerged nodes in their original relative order.
+
+        After merging, edges between nodes that now map to the same merged node are
+        dropped. When multiple edges connect the same pair of new nodes, the one with
+        the lowest original index is kept, or, if provided, the one with the highest value of
+        ``edge_priority_attribute`` (ties again broken by lowest index).
+
+        If ``merge_group_id`` is not passed, the method falls back to a
+        ``merge_group_id`` node attribute on the graph.
+
+        Args:
+            merge_group_id (torch.Tensor, optional): shape [N] integer tensor
+                assigning each node to a merge group. Use ``-1`` to leave a node
+                unmerged.
+            node_priority_attribute (str, optional): name of a scalar node attribute
+                (float or int) used to select the surviving node in case of merge conflict.
+                The node with the highest value is kept.
+            edge_priority_attribute (str, optional): name of a scalar edge attribute
+                (float or int) used to select the surviving edge in case of merge conflict. The edge with the highest value is kept.
+
+        Raises:
+            ValueError: if no ``merge_group_id`` is passed and no ``merge_group_id``
+                node attribute exists on the graph.
+            ValueError: if ``node_priority_attribute`` or ``edge_priority_attribute``
+                is not a registered attribute or has an unsupported dtype.
+        """
         
         if merge_group_id is None:
             if "merge_group_id" in self.metadata["node_attr_list"]:
@@ -558,7 +651,7 @@ class StructData(TSMixin, pyg.data.Data):
                 priority_attribute = getattr(self, node_priority_attribute)
 
                 if priority_attribute.dim() > 1 and priority_attribute.shape[1] > 1:
-                    raise ValueError(f"node_priority_attribute '{node_priority_attribute}' must be scalar (shape (n,) or (n,1)), got {tuple(priority_attribute.shape)}.")
+                    raise ValueError(f"node_priority_attribute '{node_priority_attribute}' must be scalar (shape (n,) or (n,1)), got {priority_attribute.shape}.")
                 if priority_attribute.dtype == torch.bool or priority_attribute.is_complex():
                     raise ValueError(f"node_priority_attribute '{node_priority_attribute}' must be float or int, got {priority_attribute.dtype}.")
 
@@ -640,7 +733,7 @@ class StructData(TSMixin, pyg.data.Data):
             priority_attribute = getattr(self, edge_priority_attribute)
 
             if priority_attribute.dim() > 1 and priority_attribute.shape[1] > 1:
-                raise ValueError(f"edge_priority_attribute '{edge_priority_attribute}' must be scalar (shape (n,) or (n,1)), got {tuple(priority_attribute.shape)}.")
+                raise ValueError(f"edge_priority_attribute '{edge_priority_attribute}' must be scalar (shape (n,) or (n,1)), got {priority_attribute.shape}.")
             if priority_attribute.dtype == torch.bool or priority_attribute.is_complex():
                 raise ValueError(f"edge_priority_attribute '{edge_priority_attribute}' must be float or int, got {priority_attribute.dtype}.")
 
@@ -737,23 +830,44 @@ class StructData(TSMixin, pyg.data.Data):
         return f"{self.__class__.__name__}({attr_str})"
 
 
-    #if attr is boolean, only true is merged
     def merge_based_on_attributes(self, attr: str, eps = 10e-4, f = None):
+        """
+        Merges nodes that share the same value of a node attribute.
+
+        Nodes are grouped by the value of ``attr``. For float attributes, values are rounded to
+        the nearest multiple of ``eps`` before comparison. For boolean attributes,
+        only ``True`` nodes are merged together, ``False`` nodes are left as
+        independent unmerged nodes.
+
+        Args:
+            attr (str): name of a registered node attribute to group by. Must be a boolean, int, or float attribute.
+            eps (float, optional): rounding tolerance applied before comparing float
+                attribute values. Defaults to ``10e-4``.
+            f (callable, optional): optional transformation applied to the attribute
+                tensor before grouping. Useful for grouping by a derived quantity
+                without storing it as a separate attribute.
+
+        Raises:
+            ValueError: if ``attr`` is not a registered node attribute.
+            ValueError: if the attribute dtype is not boolean, int, or float.
+        """
 
         if attr not in self.metadata["node_attr_list"]:
             raise ValueError(f"Unexpected node attribute '{attr}' for merging. Expected an attribute in: {list(self.metadata['node_attr_list'])}")
 
         value = getattr(self, attr)
 
+        #explain with comment
         if f is not None:
             value = f(value)
 
         if value.dtype in (torch.float32, torch.float64):            
             value = torch.round(value / eps)
 
+        #comment, check if = -1 is working
         elif value.dtype == torch.bool:
             group_id = torch.zeros_like(value)
-            group_id[~value] *= -1
+            group_id[~value] = -1
 
         elif value.dtype not in (torch.int8, torch.int16, torch.int32, torch.int64):
             raise ValueError(f"Unexpected data-type. Merge based on attributes requires a torch boolean, float or int.")
@@ -765,20 +879,53 @@ class StructData(TSMixin, pyg.data.Data):
 
         return
 
-   
-    #??? unfinished
-    def add_radial_grid(self, res_normal: int, res_radial: int, node_attrs: dict = {}, edge_attrs: dict = {}):
-    
-        #save old_num_nodes to later shift edge indices 
-        old_num_nodes = self.num_nodes
 
-        u_nodes = torch.arange(res_normal).repeat_interleave(res_radial).unsqueeze(1)
-        v_nodes = torch.arange(res_radial).repeat(res_normal).unsqueeze(1)
-
-        return
-
-    #option for diagonal edges?  
     def add_grid(self, n: int, m: int, node_attrs: dict = {}, edge_attrs: dict = {}):
+        """
+        Adds a rectangular grid of ``N = n × m`` nodes to the graph.
+        The grid has ``E = n(m-1) + m(n-1)`` edges.
+
+        When a value in ``node_attrs`` or ``edge_attrs`` is a callable, it is invoked
+        with the subset of node or edge attributes whose names match its parameter names.
+        Available inputs are the default grid attributes listed below as well as any
+        other attributes already defined earlier in the same ``node_attrs`` or
+        ``edge_attrs`` dict. The following default attributes are available as callable
+        arguments:
+
+
+        Node defaults:
+            - ``u`` (torch.Tensor [N, 1]): row index of each node.
+            - ``v`` (torch.Tensor [N, 1]): column index of each node.
+            - ``is_boundary`` (torch.Tensor [N, 1], bool): ``True`` for nodes on
+              the outer border of the grid (``u == 0``, ``u == n-1``, ``v == 0``,
+              or ``v == m-1``).
+            - ``is_corner`` (torch.Tensor [N, 1], bool): ``True`` for nodes at the
+              four corners of the grid.
+
+        Edge defaults:
+            - ``u_ind`` (torch.Tensor [E, 1]): row index of the source node.
+            - ``v_ind`` (torch.Tensor [E, 1]): column index of the source node.
+            - ``u_coord`` (torch.Tensor [E, 1]): mean row index of source and
+              destination node.
+            - ``v_coord`` (torch.Tensor [E, 1]): mean column index of source and
+              destination node.
+            - ``edge_direction`` (torch.Tensor [E]): ``1`` for horizontal edges,
+              ``0`` for vertical edges. Horizontal edges connect ``(u, v) → (u, v+1)`` and vertical edges connect ``(u, v) → (u+1, v)``.
+
+            - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both
+              endpoint nodes are boundary nodes.
+
+        Args:
+            n (int): number of rows.
+            m (int): number of columns.
+            node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
+                node attribute names to either a tensor of shape ``[N, *]`` or
+                ``[1, *]`` (broadcast over all nodes), or a callable whose
+                parameter names are resolved from the node defaults listed above.
+            edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
+                edge attribute names to either a tensor or a callable whose
+                parameter names are resolved from the edge defaults listed above.
+        """
 
         #save old_num_nodes to later shift edge indices 
         old_num_nodes = self.num_nodes
@@ -818,30 +965,47 @@ class StructData(TSMixin, pyg.data.Data):
         u_ind = u_nodes[edge_indices[0]]
         v_ind = v_nodes[edge_indices[0]]
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0])], dim=0)
+        edge_direction = torch.cat([torch.ones(row_h.shape[0]), torch.zeros(row_v.shape[0])], dim=0)
 
         default_edge_attrs = {"u_ind": u_ind, "v_ind": v_ind, "u_coord": u_coord, "v_coord": v_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
         #resolve node attributes and add to graph
-        kwargs_nodes = {}
-        for attr in node_attrs:
+
+        if not node_attrs:
+            self.add_n_empty_nodes(n*m)
+
+        else:
+            kwargs_nodes = {}
+            for attr in node_attrs:
+                    
+                f = node_attrs[attr]
+
+                if isinstance(f, torch.Tensor):
+                    
+                    if f.size(0) == 1:
+
+                        kwargs_nodes[attr] = f.repeat(n*m, 1)
+                    
+                    elif f.size(0) == n*m:
+
+                        kwargs_nodes[attr] = f
+
+                    else: 
+                        raise ValueError(f"Node attribute '{attr}' must have one or '{n*m}' rows, but has '{attr.size(0)}' rows (Pass a node attribute with one row to have a constant value over all newly added nodes).")
+
+
+                elif callable(f):
+
+                    f_kwargs = resolve_attrs(f, default_node_attrs, node_attrs)
+
+                    kwargs_nodes[attr] = f(**f_kwargs)
                 
-            f = node_attrs[attr]
+                else:
 
-            if isinstance(f, torch.Tensor):
-                
-                kwargs_nodes[attr] = f
+                    raise ValueError(f"Node attribute '{attr}' must be a tensor or a callable")
 
-                continue
 
-            if not callable(f):
-                raise ValueError(f"Node attribute '{attr}' must be a tensor or a callable")
-
-            f_kwargs = resolve_attrs(f, default_node_attrs, node_attrs)
-
-            kwargs_nodes[attr] = f(**f_kwargs)
-
-        self.add_nodes(**kwargs_nodes)
+            self.add_nodes(**kwargs_nodes)
 
         #resolve edge attributes and add to graph
         kwargs_edges = {}
@@ -862,7 +1026,6 @@ class StructData(TSMixin, pyg.data.Data):
             kwargs_edges[attr] = f(**f_kwargs)
         
         self.add_edges(edge_indices + old_num_nodes, **kwargs_edges) 
-
 
 
 def resolve_attrs(f, default_attrs, custom_attrs):

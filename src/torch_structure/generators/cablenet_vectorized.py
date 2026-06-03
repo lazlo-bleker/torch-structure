@@ -19,9 +19,6 @@ class CableNetGeneratorVectorized(BaseGenerator):
             "force_density": torch.empty((0), dtype=torch.float),
         }
 
-
-
-    #???which inputs do we want specifically? uniform height or more customizable? same for x,y of support?
     def generate_merge_with_index(
         self,
         n,
@@ -40,60 +37,68 @@ class CableNetGeneratorVectorized(BaseGenerator):
         #higher force densities at boundary
         def force_densities(u_ind, v_ind):
 
-            res =  torch.ones_like(u_ind, dtype=torch.float) * force_density
+            fd =  torch.ones_like(u_ind, dtype=torch.float) * force_density
 
-            res[(u_ind == grid_res-1) | (v_ind ==grid_res-1)] *= force_density_at_boundary / force_density
+            cablenet_boundary = (u_ind == grid_res-1) | (v_ind == grid_res-1)
+            fd[cablenet_boundary] *= force_density_at_boundary / force_density
             
-            return res
+            return fd
         
         
         edge_attrs = {
             "force_density": force_densities,
-   
         }
+ 
+
+         # create a tensor of shape (1,3) for a constant load that is later automatically applied to all nodes.
+        load = torch.tensor([[0, 0, -1]])   
 
 
-        def load(v):
+        # add one support of the cablenet for each grid
+        def support(u,v):
             
-            return torch.hstack([torch.zeros_like(v), torch.zeros_like(v), -torch.ones_like(v)])            
+            support = torch.zeros_like(u, dtype=torch.bool)
 
+            cablenet_support = (u == grid_res-1) & (v == grid_res-1)
+            support[cablenet_support] = torch.ones(1, dtype=torch.bool)
 
+            return support
+            
+
+        #create n grids that are merged together to form a cablenet
         for i in range(n):
 
+
+            # interpret u and v indices of grid as coordinates and rotate them such that the supports of all grids form a regular n-gon (One corner of each grid is taken as a support of the cablenet).
             def coords(u,v):
-
+                
                 angle = i/n * 2 * math.pi
-
+                                
                 x_coord = u * math.cos(angle) - v * math.sin(angle) 
                 y_coord = u * math.sin(angle) + v * math.cos(angle) 
                                 
                 z_coord = torch.zeros_like(u)
-                z_coord[(u == grid_res-1) & (v == grid_res-1)] += support_height[i]
+
+                cablenet_support = (u == grid_res-1) & (v == grid_res-1)
+                z_coord[cablenet_support] += support_height[i]
 
                 return torch.hstack([x_coord, y_coord, z_coord])            
 
 
+            #assign identical merge ids to grid nodes that should be merged together.
             def merge_group_id(u,v):
 
-                res = - torch.ones_like(u)
+                id = - torch.ones_like(u)
 
-                res[v == 0] = (torch.arange(grid_res) + grid_res * i) % (grid_res * n)                
-                res[u == 0] = (torch.arange(grid_res) + grid_res * ((i + 1) % n)) % (grid_res * n)
+                #assign merge ids for two neighbouring sides of the grid. The [u == 0] side of grid i will be merged with the [v == 0] side of grid (i + 1) % n
+                id[v == 0] = (torch.arange(grid_res) + grid_res * i) % (grid_res * n)                
+                id[u == 0] = (torch.arange(grid_res) + grid_res * ((i + 1) % n)) % (grid_res * n)
 
-                #centroid
-                res[(u == 0) & (v == 0)] = grid_res * n
+                #assign the same merge id for all corners that will form the centroid of the cable net (The opposite corner of the support corner of each grid will be the centroid).
+                centroid = (u == 0) & (v == 0)
+                id[centroid] = grid_res * n
 
-                return res
-            
-
-            def support(u,v):
-                
-                res = torch.zeros_like(u, dtype=torch.bool)
-
-                res[(u == grid_res-1) & (v == grid_res-1)] = torch.ones(1, dtype=torch.bool)
-
-                return res
-            
+                return id
 
             node_attrs = {
                 "coords": coords,
@@ -112,7 +117,7 @@ class CableNetGeneratorVectorized(BaseGenerator):
 
     def generate(
         self,
-        n,
+        n, 
         grid_res,
         support_height,
         force_density,
@@ -128,11 +133,12 @@ class CableNetGeneratorVectorized(BaseGenerator):
         #higher force densities at boundary
         def force_densities(u_ind, v_ind):
 
-            res =  torch.ones_like(u_ind, dtype=torch.float) * force_density
+            fd =  torch.ones_like(u_ind, dtype=torch.float) * force_density
 
-            res[(u_ind == grid_res-1) | (v_ind ==grid_res-1)] *= force_density_at_boundary / force_density
-            
-            return res
+            cablenet_boundary = (u_ind == grid_res-1) | (v_ind == grid_res-1)
+            fd[cablenet_boundary] *= force_density_at_boundary / force_density  
+
+            return fd
         
         
         edge_attrs = {
@@ -140,42 +146,50 @@ class CableNetGeneratorVectorized(BaseGenerator):
    
         }
 
+        # create a tensor of shape (1,3) for a constant load that is later automatically applied to all nodes.
+        load = torch.tensor([[0, 0, -1]])            
 
-        def load(v):
+
+        # add one support of the cablenet for each grid
+        def support(u,v):
             
-            return torch.hstack([torch.zeros_like(v), torch.zeros_like(v), -torch.ones_like(v)])            
+            support = torch.zeros_like(u, dtype=torch.bool)
 
+            cablenet_support = (u == grid_res-1) & (v == grid_res-1)
+            support[cablenet_support] = torch.ones(1, dtype=torch.bool)
+
+            return support
+        
 
         for i in range(n):
 
+            # Merge will be based on geometrically identical nodes. Thus interpret u and v indices of grid as coordinates and transform them to a wedge s.t. sides of neighbouring grids align.
             def coords(u, v):
-
+                
+                # create angles that are i/n-th and (i+1)%n)/n-th fraction of 360°.
                 theta_i = (i / n) * 2 * math.pi
                 theta_j = ((i + 1) / n) * 2 * math.pi
 
+                # create direction vectors (a0, a1) and (b0, b1) on the unit cycle
                 a0 = math.cos(theta_i)
                 a1 = math.sin(theta_i)
 
                 b0 = math.cos(theta_j)
                 b1 = math.sin(theta_j)
+                
 
+                # create a wedge-like grid through expressing u,v in terms of the new basis (a0, a1) and (b0, b1)
                 x_coord = u * a0 + v * b0
                 y_coord = u * a1 + v * b1
 
+                
                 z_coord = torch.zeros_like(u)
-                is_corner = (u == grid_res - 1) & (v == grid_res - 1)
-                z_coord = z_coord.masked_fill(is_corner, support_height[i])
+
+                # set support height
+                corner = (u == grid_res - 1) & (v == grid_res - 1)
+                z_coord[corner] = support_height[i]
 
                 return torch.hstack([x_coord, y_coord, z_coord])
-            
-
-            def support(u,v):
-                
-                res = torch.zeros_like(u, dtype=torch.bool)
-
-                res[(u == grid_res-1) & (v == grid_res-1)] = torch.ones(1, dtype=torch.bool)
-
-                return res
             
 
             node_attrs = {
@@ -188,6 +202,7 @@ class CableNetGeneratorVectorized(BaseGenerator):
 
 
         data.merge_based_on_attributes("coords")
+
         data = data.fdm()
 
         return data
