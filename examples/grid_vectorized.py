@@ -18,15 +18,13 @@ default_attrs = {
 
 }
 
-#default_attrs = {}
-
 data = StructData(
     node_attrs=node_attrs,
     edge_attrs=edge_attrs,
     default_attrs=default_attrs
 )
 
-def f(u,v, is_boundary, is_corner):
+def f(u,v):
 
     height = (u**2+v**2)/10
 
@@ -37,7 +35,7 @@ def f_2(u,v):
     return torch.hstack([u, v, torch.zeros_like(u)])
     
 
-def g_2(u_ind, v_ind, edge_direction, is_boundary):
+def g_2(u_ind, is_boundary):
 
     res = torch.ones_like(u_ind)
     res[is_boundary] = -10
@@ -45,7 +43,7 @@ def g_2(u_ind, v_ind, edge_direction, is_boundary):
     return res
 
 
-def g(u_coord, v_coord, edge_direction, is_boundary):
+def g(u_coord, v_coord):
 
     res = u_coord**2 + v_coord**2
     
@@ -67,10 +65,3 @@ data.plot(load=True)
 
 plt.show()
 
-
-# should we check for input edge attrs that depend on direction of node?
-
-# functions for edges as average functions? (e.g. averge coords, any average vals?) should the user be able to specify a to-be-averaged node attr that is used as input?
-
-#merging?
-#problem 1: merging based on attributes can not take grid specific attributes into account (e.g. "left side")
