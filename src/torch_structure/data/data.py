@@ -857,14 +857,12 @@ class StructData(TSMixin, pyg.data.Data):
 
         value = getattr(self, attr)
 
-        #explain with comment
         if f is not None:
             value = f(value)
 
         if value.dtype in (torch.float32, torch.float64):            
             value = torch.round(value / eps)
 
-        #comment, check if = -1 is working
         elif value.dtype == torch.bool:
             group_id = torch.zeros_like(value)
             group_id[~value] = -1
@@ -878,9 +876,97 @@ class StructData(TSMixin, pyg.data.Data):
         self.merge(group_id)
 
         return
+    
+
+    def _create_topology(self, n, edge_indices, node_attrs: dict = {}, edge_attrs: dict = {}, default_node_attrs: dict = {}, default_edge_attrs: dict = {}):
+
+        #save old_num_nodes to later shift edge indices 
+        old_num_nodes = self.num_nodes
+
+        #resolve node attributes and add to graph
+        if not node_attrs:
+            self.add_n_empty_nodes(n)
+
+        else:
+            kwargs_nodes = {}
+            for attr in node_attrs:
+                    
+                f = node_attrs[attr]
+
+                if isinstance(f, torch.Tensor):
+                    
+                    if f.size(0) == 1:
+
+                        kwargs_nodes[attr] = f.repeat(n, 1)
+                    
+                    elif f.size(0) == n:
+
+                        kwargs_nodes[attr] = f
+
+                    else: 
+                        raise ValueError(f"Node attribute '{attr}' must have one or '{n}' rows, but has '{attr.size(0)}' rows (Pass a node attribute with one row to have a constant value over all newly added nodes).")
+
+
+                elif callable(f):
+
+                    f_kwargs = resolve_attrs(f, default_node_attrs, node_attrs)
+
+                    kwargs_nodes[attr] = f(**f_kwargs)
+                
+                else:
+
+                    raise ValueError(f"Node attribute '{attr}' must be a tensor or a callable")
+
+
+            self.add_nodes(**kwargs_nodes)
+
+        #resolve edge attributes and add to graph
+        kwargs_edges = {}
+        for attr in edge_attrs:
+                
+            f = edge_attrs[attr]
+
+            if isinstance(f, torch.Tensor):
+
+                kwargs_edges[attr] = f
+                continue
+
+            if not callable(f):
+                raise ValueError(f"Edge attribute '{attr}' must be a tensor or a callable")
+
+            f_kwargs = resolve_attrs(f, default_edge_attrs, edge_attrs)
+
+            kwargs_edges[attr] = f(**f_kwargs)
+        
+        self.add_edges(edge_indices + old_num_nodes, **kwargs_edges) 
+
+
+    def add_chain(self, n: int, node_attrs: dict = {}, edge_attrs: dict = {}):
+
+        #create default node attributes
+        u_nodes = torch.arange(n).unsqueeze(1)
+        is_boundary_node = (u_nodes == 0) | (u_nodes == n-1)
+        default_node_attrs = {"u": u_nodes, "is_boundary": is_boundary_node}
+
+        #create edge indices
+        row = torch.arange(n-1)
+        col = torch.arange(1, n)
+        edge_indices = torch.stack([row, col], dim=0)
+
+        #create default edge attributes
+        u_src = u_nodes[edge_indices[0]]
+        u_dest = u_nodes[edge_indices[1]]
+        u_coord = (u_src + u_dest) / 2
+
+        u_ind = u_nodes[edge_indices[0]]
+
+        default_edge_attrs = {"u_ind": u_ind, "u_coord": u_coord}
+
+        self._create_topology(n, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
     def add_grid(self, n: int, m: int, node_attrs: dict = {}, edge_attrs: dict = {}):
+
         """
         Adds a rectangular grid of ``N = n × m`` nodes to the graph.
         The grid has ``E = n(m-1) + m(n-1)`` edges.
@@ -927,9 +1013,6 @@ class StructData(TSMixin, pyg.data.Data):
                 parameter names are resolved from the edge defaults listed above.
         """
 
-        #save old_num_nodes to later shift edge indices 
-        old_num_nodes = self.num_nodes
-
         #create default node attributes
         u_nodes = torch.arange(n).repeat_interleave(m).unsqueeze(1)
         v_nodes = torch.arange(m).repeat(n).unsqueeze(1)
@@ -969,63 +1052,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         default_edge_attrs = {"u_ind": u_ind, "v_ind": v_ind, "u_coord": u_coord, "v_coord": v_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
-        #resolve node attributes and add to graph
-
-        if not node_attrs:
-            self.add_n_empty_nodes(n*m)
-
-        else:
-            kwargs_nodes = {}
-            for attr in node_attrs:
-                    
-                f = node_attrs[attr]
-
-                if isinstance(f, torch.Tensor):
-                    
-                    if f.size(0) == 1:
-
-                        kwargs_nodes[attr] = f.repeat(n*m, 1)
-                    
-                    elif f.size(0) == n*m:
-
-                        kwargs_nodes[attr] = f
-
-                    else: 
-                        raise ValueError(f"Node attribute '{attr}' must have one or '{n*m}' rows, but has '{attr.size(0)}' rows (Pass a node attribute with one row to have a constant value over all newly added nodes).")
-
-
-                elif callable(f):
-
-                    f_kwargs = resolve_attrs(f, default_node_attrs, node_attrs)
-
-                    kwargs_nodes[attr] = f(**f_kwargs)
-                
-                else:
-
-                    raise ValueError(f"Node attribute '{attr}' must be a tensor or a callable")
-
-
-            self.add_nodes(**kwargs_nodes)
-
-        #resolve edge attributes and add to graph
-        kwargs_edges = {}
-        for attr in edge_attrs:
-                
-            f = edge_attrs[attr]
-
-            if isinstance(f, torch.Tensor):
-
-                kwargs_edges[attr] = f
-                continue
-
-            if not callable(f):
-                raise ValueError(f"Edge attribute '{attr}' must be a tensor or a callable")
-
-            f_kwargs = resolve_attrs(f, default_edge_attrs, edge_attrs)
-
-            kwargs_edges[attr] = f(**f_kwargs)
-        
-        self.add_edges(edge_indices + old_num_nodes, **kwargs_edges) 
+        self._create_topology(n, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
 def resolve_attrs(f, default_attrs, custom_attrs):
