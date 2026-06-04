@@ -20,7 +20,6 @@ __all__ = [
     "GridShellGenerator",
     "DomeGenerator",
     "CableNetGenerator",
-    "CableNetGeneratorVectorized"
     "CableStayedBridge",
     "NerviDome",
     "NetworkArchBridge",
