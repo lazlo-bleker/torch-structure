@@ -19,7 +19,6 @@ def test_merge_with_changed_edge_priority():
     print("test_merge_with_changed_edge_priority is not yet implemented")
 
 
-@pytest.fixture
 def test_merge_two_grids_attribute_based():
         
     node_attrs = {
@@ -31,9 +30,9 @@ def test_merge_two_grids_attribute_based():
     )
 
     #prepare and add first grid
-    def coords_first_grid(u,v):
-        
-        return torch.hstack([u,v,torch.zeros_like(u)])
+    def coords_first_grid(u_ind, v_ind):
+
+        return torch.hstack([u_ind,v_ind,torch.zeros_like(u_ind)])
 
 
     node_attrs_first_grid = {
@@ -44,9 +43,9 @@ def test_merge_two_grids_attribute_based():
 
 
     #prepare and add second grid
-    def coords_second_grid(u,v):
-        
-        return torch.hstack([u+1,v,torch.zeros_like(u)])
+    def coords_second_grid(u_ind, v_ind):
+
+        return torch.hstack([u_ind+1,v_ind,torch.zeros_like(u_ind)])
     
 
     node_attrs_second_grid = {
@@ -72,7 +71,6 @@ def test_merge_two_grids_attribute_based():
     assert torch.equal(data.reciprocal_edge, reciprocal_edge_expected)
 
 
-@pytest.fixture
 def test_merge_two_grids_id_based():
 
     node_attrs = {
@@ -84,9 +82,9 @@ def test_merge_two_grids_id_based():
     )
 
     #prepare and add first grid
-    def coords_first_grid(u,v):
-        
-        return torch.hstack([u,v,torch.zeros_like(u)])
+    def coords_first_grid(u_ind, v_ind):
+
+        return torch.hstack([u_ind,v_ind,torch.zeros_like(u_ind)])
 
 
     node_attrs_first_grid = {
@@ -97,9 +95,9 @@ def test_merge_two_grids_id_based():
 
 
     #prepare and add second grid
-    def coords_second_grid(u,v):
-        
-        return torch.hstack([u+5,v,torch.zeros_like(u)])
+    def coords_second_grid(u_ind, v_ind):
+
+        return torch.hstack([u_ind+5,v_ind,torch.zeros_like(u_ind)])
     
 
     node_attrs_second_grid = {

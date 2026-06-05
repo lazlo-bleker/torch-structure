@@ -13,15 +13,30 @@ data = StructData(
     node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
 )
 
-def f(u, v):
-    height = (u**2 + v**2) / 10
-    return torch.hstack([u, v, height])
+def f(u_ind, v_ind):
 
-def f_2(u, v):
-    return torch.hstack([u, v, torch.zeros_like(u)])
+    height = (u_ind**2+v_ind**2)/10
 
-def g(u_coord, v_coord):
-    res = u_coord**2 + v_coord**2
+    return torch.hstack([u_ind,v_ind,height])
+
+
+def f_2(u_ind, v_ind):
+
+    return torch.hstack([u_ind, v_ind, torch.zeros_like(u_ind)])
+
+
+def g_2(u_ind, is_boundary):
+
+    res = torch.ones_like(u_ind)
+    res[is_boundary] = -10
+
+    return res
+
+
+def g(x_unit_coord, y_unit_coord):
+
+    res = x_unit_coord**2 + y_unit_coord**2
+
     return res
 
 def g_2(u_ind, is_boundary):

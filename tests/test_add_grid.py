@@ -3,7 +3,6 @@ import torch
 from torch_structure.data.data import StructData
 
 
-@pytest.fixture
 def test_grid_with_only_node_attributes():
 
     node_attrs = {
@@ -14,9 +13,9 @@ def test_grid_with_only_node_attributes():
         node_attrs=node_attrs,
     )
 
-    def coords(u,v):
+    def coords(u_ind, v_ind):
 
-        return torch.hstack([u,v,torch.zeros_like(u)])
+        return torch.hstack([u_ind,v_ind,torch.zeros_like(u_ind)])
 
 
     node_attrs_grid = {
@@ -38,7 +37,6 @@ def test_grid_with_only_node_attributes():
     assert torch.equal(getattr(data, "coords"), coords_expected)
 
 
-@pytest.fixture
 def test_grid_with_only_edge_attributes():
 
     edge_attrs = {
@@ -52,7 +50,6 @@ def test_grid_with_only_edge_attributes():
     def force(u_ind):
 
         return torch.hstack([u_ind])
-
 
     edge_attrs_grid = {
         "force": force
@@ -73,7 +70,6 @@ def test_grid_with_only_edge_attributes():
     assert torch.equal(getattr(data, "force"), force_expected)
 
 
-@pytest.fixture
 def test_grid_with_node_and_edge_attributes():
 
     node_attrs = {
@@ -95,9 +91,9 @@ def test_grid_with_node_and_edge_attributes():
 
         return torch.hstack([u_ind])
 
-    def coords(u,v):
+    def coords(u_ind, v_ind):
 
-        return torch.hstack([u,v,torch.zeros_like(u)])
+        return torch.hstack([u_ind,v_ind,torch.zeros_like(u_ind)])
 
     node_attrs_grid = {
         "coords": coords

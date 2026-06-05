@@ -2,7 +2,6 @@ import pytest
 import torch
 from torch_structure.data.data import StructData
 
-@pytest.fixture
 def test_add_n_empty_nodes():
 
     data = StructData()
