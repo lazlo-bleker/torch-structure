@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import torch
+from matplotlib.ticker import MaxNLocator
 from torch_structure.data import StructData
 from torch_geometric.utils import to_networkx
 from post.export_vtp import export_graph_to_vtp
-from post.export_img import save_as_gif
+from post.export_img import save_as_gif, save_as_video
 
 
 def export_aggragate_vtp(post_data: StructData, export_dir, base_name, cache_dict_vtp):
@@ -54,6 +55,33 @@ def export_assembly_states_vtp(
 def export_assembly_states_img(
     post_data: StructData, export_dir, base_name, cache_dict_img, to_gif=True
 ):
+    aux_forces_mag = torch.linalg.norm(post_data.aux_force_steps, dim=2)
+    residuals = torch.sum(aux_forces_mag, dim=0)
+    steps = torch.arange(post_data.aux_force_steps.shape[1])
+    n_bricks = torch.zeros_like(steps)
+    for i in range(len(steps)):
+        mask = post_data.assembly_sequence <= i
+        n_bricks[i] = torch.sum(mask)
+    plt.rcParams["font.size"] = 16
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(n_bricks, residuals, marker="o", color="darkorange")
+    plt.xlabel("Active Element Count")
+    plt.ylabel("Auxiliary Forces Norm")
+    # plt.yscale('log')  # Residuals are often best on a log scale
+    plt.grid(True, which="both", linestyle="--", alpha=0.4)
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.title("Support Auxiliary Forces")
+    plt.tight_layout()
+
+    # Save (or show) the figure
+    filename = f"loss_profile.png"
+    # Implement image rendering
+    filepath = export_dir / filename
+
+    plt.savefig(filepath, dpi=150)
+
     n_steps = post_data.aux_force_steps.shape[1]
     for step in range(n_steps):
         filename = base_name + f"state_{step:05d}.png"
@@ -67,11 +95,11 @@ def export_assembly_states_img(
             force=post_data.internal_force,
             load=post_data.aux_force,
             show_load=True,
-            force_scale=1e1,
+            force_scale=1e0,
         )
         plt.close()
 
     if to_gif:
         # image-to-gif conversion
-        save_as_gif(export_dir / "img", base_name)
+        save_as_gif(export_dir, base_name)
         pass

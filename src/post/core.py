@@ -55,7 +55,7 @@ def post_process(config: PostProcessConfig) -> None:
     # --------------------------------------------------------------
     # Prepare export directories
     # --------------------------------------------------------------
-    export_dir = base_dir / config.label
+    export_dir = base_dir
 
     if config.export_vtp:
         (export_dir / "paraview").mkdir(parents=True, exist_ok=True)

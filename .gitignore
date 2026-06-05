@@ -188,3 +188,4 @@ cython_debug/
 # Test Files
 **test.json
 **test.img
+**.mp4
