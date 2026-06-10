@@ -909,17 +909,20 @@ class StructData(TSMixin, pyg.data.Data):
             f = attrs[attr]
 
             if isinstance(f, torch.Tensor):
-                
+
+                if f.dim() == 0:
+                    f = f.unsqueeze(0)
+
                 if f.size(0) == 1:
 
                     kwargs[attr] = f.repeat(num_new_entries, 1)
-                
+
                 elif f.size(0) == num_new_entries:
 
                     kwargs[attr] = f
 
-                else: 
-                    raise ValueError(f"Node/Edge attribute '{attr}' must have one or '{num_new_entries}' rows, but has '{attr.size(0)}' rows (Pass a node/edge attribute with one row to have a constant value over all newly added nodes/edges).")
+                else:
+                    raise ValueError(f"Node/Edge attribute '{attr}' must have one or '{num_new_entries}' rows, but has '{f.size(0)}' rows (Pass a node/edge attribute with one row to have a constant value over all newly added nodes/edges).")
 
 
             elif callable(f):
