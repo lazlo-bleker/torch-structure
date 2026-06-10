@@ -20,7 +20,6 @@ data = StructData(
 def f(r_ind, a_ind, is_boundary):
 
     height = torch.ones_like(r_ind)
-    height[is_boundary] *= 5
     angle = a_ind/5 * 2 * math.pi
     coords = torch.hstack([r_ind * torch.cos(angle), r_ind * torch.sin(angle), height])
     

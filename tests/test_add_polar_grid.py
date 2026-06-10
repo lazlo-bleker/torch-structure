@@ -41,3 +41,5 @@ def test_polar_grid_structure():
     assert torch.equal(torch.tensor(data.num_nodes), num_nodes_expected)
     assert torch.equal(data.coords, coords_expected)
     assert torch.allclose(data.force, force_expected)
+
+

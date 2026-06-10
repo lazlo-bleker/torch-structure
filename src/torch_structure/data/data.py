@@ -878,69 +878,65 @@ class StructData(TSMixin, pyg.data.Data):
         return
     
 
-    def _create_topology(self, n, edge_indices, node_attrs: dict = {}, edge_attrs: dict = {}, default_node_attrs: dict = {}, default_edge_attrs: dict = {}):
+    def _create_topology(self, num_nodes, num_edges, edge_indices, node_attrs: dict = {}, edge_attrs: dict = {}, default_node_attrs: dict = {}, default_edge_attrs: dict = {}):
 
         #save old_num_nodes to later shift edge indices 
         old_num_nodes = self.num_nodes
 
-        #resolve node attributes and add to graph
         if not node_attrs:
-            self.add_n_empty_nodes(n)
+            self.add_n_empty_nodes(num_nodes)
 
+
+        #resolve node kwargs and add to graph
         else:
-            kwargs_nodes = {}
-            for attr in node_attrs:
-                    
-                f = node_attrs[attr]
-
-                if isinstance(f, torch.Tensor):
-                    
-                    if f.size(0) == 1:
-
-                        kwargs_nodes[attr] = f.repeat(n, 1)
-                    
-                    elif f.size(0) == n:
-
-                        kwargs_nodes[attr] = f
-
-                    else: 
-                        raise ValueError(f"Node attribute '{attr}' must have one or '{n}' rows, but has '{attr.size(0)}' rows (Pass a node attribute with one row to have a constant value over all newly added nodes).")
-
-
-                elif callable(f):
-
-                    f_kwargs = resolve_attrs(f, default_node_attrs, node_attrs)
-
-                    kwargs_nodes[attr] = f(**f_kwargs)
-                
-                else:
-
-                    raise ValueError(f"Node attribute '{attr}' must be a tensor or a callable")
-
-
+            
+            kwargs_nodes = self._construct_kwargs(node_attrs, num_nodes, default_node_attrs)
             self.add_nodes(**kwargs_nodes)
 
-        #resolve edge attributes and add to graph
-        kwargs_edges = {}
-        for attr in edge_attrs:
-                
-            f = edge_attrs[attr]
 
-            if isinstance(f, torch.Tensor):
-
-                kwargs_edges[attr] = f
-                continue
-
-            if not callable(f):
-                raise ValueError(f"Edge attribute '{attr}' must be a tensor or a callable")
-
-            f_kwargs = resolve_attrs(f, default_edge_attrs, edge_attrs)
-
-            kwargs_edges[attr] = f(**f_kwargs)
-        
+        #resolve edge kwargs and add to graph        
+        kwargs_edges = self._construct_kwargs(edge_attrs, num_edges, default_edge_attrs)
         self.add_edges(edge_indices + old_num_nodes, **kwargs_edges) 
 
     
+
+    def _construct_kwargs(self, attrs, num_new_entries, default_attrs):
+
+        kwargs = {}
+
+        for attr in attrs:
+                
+            f = attrs[attr]
+
+            if isinstance(f, torch.Tensor):
+                
+                if f.size(0) == 1:
+
+                    kwargs[attr] = f.repeat(num_new_entries, 1)
+                
+                elif f.size(0) == num_new_entries:
+
+                    kwargs[attr] = f
+
+                else: 
+                    raise ValueError(f"Node/Edge attribute '{attr}' must have one or '{num_new_entries}' rows, but has '{attr.size(0)}' rows (Pass a node/edge attribute with one row to have a constant value over all newly added nodes/edges).")
+
+
+            elif callable(f):
+
+                f_kwargs = resolve_attrs(f, default_attrs, attrs)
+
+                kwargs[attr] = f(**f_kwargs)
+            
+            else:
+
+                raise ValueError(f"Node/Edge attribute '{attr}' must be a tensor or a callable")
+            
+
+        return kwargs
+
+
+
     def _get_edge_unit_coords(self, x, y, edge_indices):
 
         x_src = x[edge_indices[0]]
@@ -984,10 +980,13 @@ class StructData(TSMixin, pyg.data.Data):
             node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
                 node attribute names to either a tensor of shape ``[N, *]`` or
                 ``[1, *]`` (broadcast over all nodes), or a callable whose
-                parameter names are resolved from the node defaults listed above.
+                parameter names are resolved from the node defaults listed above as well as any
+                other node attributes already defined earlier.
             edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
-                edge attribute names to either a tensor or a callable whose
-                parameter names are resolved from the edge defaults listed above.
+                edge attribute names to either a tensor of shape ``[E, *]`` or
+                ``[1, *]`` (broadcast over all edges), or a callable whose
+                parameter names are resolved from the edge defaults listed above or any
+                other edge attributes already defined earlier.
         """
 
         #create default node attributes
@@ -1014,7 +1013,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord}
 
-        self._create_topology(n, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
+        self._create_topology(num_nodes = n, num_edges = n-1, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
     def add_triangular_grid(self, n, node_attrs: dict = {}, edge_attrs: dict = {}):
@@ -1059,10 +1058,13 @@ class StructData(TSMixin, pyg.data.Data):
             node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
                 node attribute names to either a tensor of shape ``[N, *]`` or
                 ``[1, *]`` (broadcast over all nodes), or a callable whose
-                parameter names are resolved from the node defaults listed above.
+                parameter names are resolved from the node defaults listed above as well as any
+                other node attributes already defined earlier.
             edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
-                edge attribute names to either a tensor or a callable whose
-                parameter names are resolved from the edge defaults listed above.
+                edge attribute names to either a tensor of shape ``[E, *]`` or
+                ``[1, *]`` (broadcast over all edges), or a callable whose
+                parameter names are resolved from the edge defaults listed above or any
+                other edge attributes already defined earlier.
         """
 
         #create default node attributes
@@ -1073,8 +1075,8 @@ class StructData(TSMixin, pyg.data.Data):
 
         x_node_unit_coord = u_node_ind / (n-1)
         y_node_unit_coord = v_node_ind / (n-1)
-
-        is_boundary_node = (u_node_ind == 0) | (u_node_ind == n-1) | (v_node_ind == 0) | (v_node_ind == n-1)
+        
+        is_boundary_node = (u_node_ind == 0) | (u_node_ind == n-1) | (v_node_ind == 0) | (v_node_ind == n-1) | (u_node_ind + v_node_ind == n-1)
         is_corner_node = ((u_node_ind == 0) | (u_node_ind == n - 1)) & ((v_node_ind == 0) | (v_node_ind == n - 1))
         default_node_attrs = {"u_ind": u_node_ind, "v_ind": v_node_ind, "x_unit_coord": x_node_unit_coord, "y_unit_coord": y_node_unit_coord , "is_boundary": is_boundary_node, "is_corner": is_corner_node}
 
@@ -1090,15 +1092,15 @@ class StructData(TSMixin, pyg.data.Data):
         start_rep = torch.repeat_interleave(start_v, row_sizes)
         v_rep = torch.repeat_interleave(v_idx, row_sizes)
 
-        # horizontal: (u, v) → (u+1, v)
+        # horizontal: (u, v) → (u, v+1)
         row_h = start_rep + offset
         col_h = row_h + 1
 
-        # vertical: (u, v) → (u, v+1)
+        # vertical: (u, v) → (u+1, v)
         row_v = start_rep + offset
         col_v = row_v + (n - v_rep)
 
-        # diagonal: (u+1, v) → (u, v+1)
+        # diagonal: (u, v+1) → (u+1, v)
         row_d = start_rep + offset + 1
         col_d = row_d + (n - v_rep - 1)
 
@@ -1119,7 +1121,10 @@ class StructData(TSMixin, pyg.data.Data):
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
-        self._create_topology(n * (n + 1) // 2, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
+        num_nodes = n * (n + 1) // 2
+        num_edges = 3 * n * (n-1) // 2
+
+        self._create_topology(num_nodes = num_nodes, num_edges = num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
     def add_polar_grid(self, n_rings, n_sectors, node_attrs: dict = {}, edge_attrs: dict = {}):
@@ -1151,7 +1156,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for angular edges, ``1`` for radial edges.
+            - ``edge_direction`` (torch.Tensor [E]): ``0`` for radial edges, ``1`` for angular edges.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
               boundary nodes.
 
@@ -1161,10 +1166,13 @@ class StructData(TSMixin, pyg.data.Data):
             node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
                 node attribute names to either a tensor of shape ``[N, *]`` or
                 ``[1, *]`` (broadcast over all nodes), or a callable whose
-                parameter names are resolved from the node defaults listed above.
+                parameter names are resolved from the node defaults listed above as well as any
+                other node attributes already defined earlier.
             edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
-                edge attribute names to either a tensor or a callable whose
-                parameter names are resolved from the edge defaults listed above.
+                edge attribute names to either a tensor of shape ``[E, *]`` or
+                ``[1, *]`` (broadcast over all edges), or a callable whose
+                parameter names are resolved from the edge defaults listed above or any
+                other edge attributes already defined earlier.
         """
 
         r_node_ind = torch.cat([torch.tensor([0]), torch.arange(1, n_rings+1).repeat(n_sectors)]).unsqueeze(1)
@@ -1209,11 +1217,14 @@ class StructData(TSMixin, pyg.data.Data):
         a_edge_ind = a_node_ind[edge_indices[0]]
 
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.ones(row_r.shape[0]), torch.zeros(row_a.shape[0])])
+        edge_direction = torch.cat([torch.zeros(row_r.shape[0]), torch.ones(row_a.shape[0])])
 
         default_edge_attrs = {"r_ind": r_edge_ind, "a_ind": a_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
+        
+        num_nodes = n_rings * n_sectors + 1
+        num_edges = 2 * n_rings * n_sectors
 
-        self._create_topology(n_rings * n_sectors + 1, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
+        self._create_topology(num_nodes = num_nodes, num_edges=num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
     def add_grid(self, n: int, m: int, node_attrs: dict = {}, edge_attrs: dict = {}):
@@ -1258,10 +1269,13 @@ class StructData(TSMixin, pyg.data.Data):
             node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
                 node attribute names to either a tensor of shape ``[N, *]`` or
                 ``[1, *]`` (broadcast over all nodes), or a callable whose
-                parameter names are resolved from the node defaults listed above.
+                parameter names are resolved from the node defaults listed above as well as any
+                other node attributes already defined earlier.
             edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
-                edge attribute names to either a tensor or a callable whose
-                parameter names are resolved from the edge defaults listed above.
+                edge attribute names to either a tensor of shape ``[E, *]`` or
+                ``[1, *]`` (broadcast over all edges), or a callable whose
+                parameter names are resolved from the edge defaults listed above or any
+                other edge attributes already defined earlier.
         """
 
         #create default node attributes
@@ -1301,7 +1315,10 @@ class StructData(TSMixin, pyg.data.Data):
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
-        self._create_topology(n*m, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
+        num_nodes = n * m
+        num_edges = (n-1)*m + n * (m-1)
+
+        self._create_topology(num_nodes = num_nodes, num_edges = num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
 def resolve_attrs(f, default_attrs, custom_attrs):

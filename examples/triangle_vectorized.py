@@ -19,7 +19,7 @@ data = StructData(
 
 def f(u_ind, v_ind):
 
-    height = torch.zeros_like(u_ind)
+    height = torch.ones_like(u_ind)
 
     return torch.hstack([u_ind,v_ind,height])
 
