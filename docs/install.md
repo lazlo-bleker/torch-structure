@@ -40,12 +40,14 @@ Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/previous-
 For example, if using CUDA 12.8:
 
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu129
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 ```
 
 ### 3. Install PyTorch Geometric
 
-Visit the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) and install PyTorch Geometric and its optional dependencies using the correct command for your system and installed PyTorch version, e.g.:
+Visit the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) and install PyTorch Geometric and its optional dependencies using the correct command for your system and installed PyTorch version.
+
+For example, if using PyTorch 2.8.0 and CUDA 12.8:
 
 ```bash
 pip install torch_geometric
