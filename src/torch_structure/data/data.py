@@ -37,11 +37,8 @@ class StructData(TSMixin, pyg.data.Data):
                 "'name' is always a default node attribute key and cannot be defined as a new default attribute."
             )
 
-        node_names = {"name": torch.empty(0, dtype=torch.long)}
-        node_name_default = {"name": torch.tensor(0, dtype=torch.long)}
-        
-        node_attrs.update(node_names)
-        default_attrs.update(node_name_default)
+        node_attrs = {**node_attrs, "name": torch.empty(0, dtype=torch.long)}
+        default_attrs = {**default_attrs, "name": torch.tensor(0, dtype=torch.long)}
 
         super().__init__(
             edge_index=edge_index,
