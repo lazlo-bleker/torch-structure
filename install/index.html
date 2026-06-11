@@ -2526,10 +2526,11 @@ conda<span class="w"> </span>install<span class="w"> </span>pip
 <h3 id="2-install-pytorch">2. Install PyTorch</h3>
 <p>Visit the <a href="https://pytorch.org/get-started/previous-versions/#v251">PyTorch Installation Guide</a> to find the correct command for your system. We recommend installing the latest stable version.</p>
 <p>For example, if using CUDA 12.8:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu129
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu128
 </code></pre></div>
 <h3 id="3-install-pytorch-geometric">3. Install PyTorch Geometric</h3>
-<p>Visit the <a href="https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html">PyTorch Geometric Installation Guide</a> and install PyTorch Geometric and its optional dependencies using the correct command for your system and installed PyTorch version, e.g.:</p>
+<p>Visit the <a href="https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html">PyTorch Geometric Installation Guide</a> and install PyTorch Geometric and its optional dependencies using the correct command for your system and installed PyTorch version.</p>
+<p>For example, if using PyTorch 2.8.0 and CUDA 12.8:</p>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>torch_geometric
 pip<span class="w"> </span>install<span class="w"> </span>pyg_lib<span class="w"> </span>torch_scatter<span class="w"> </span>torch_sparse<span class="w"> </span>torch_cluster<span class="w"> </span>torch_spline_conv<span class="w"> </span>-f<span class="w"> </span>https://data.pyg.org/whl/torch-2.8.0+cu128.html<span class="w"> </span>
 </code></pre></div>
