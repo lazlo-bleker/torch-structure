@@ -7,4 +7,6 @@
   </picture>
 </p>
 
-A python package for graph-based autodifferentiable structural design and engineering.
+A Python package for graph-based autodifferentiable structural design and engineering.
+
+🚧 TorchStructure is in an early stage of development. It may contain bugs and undergo API changes. 🚧
