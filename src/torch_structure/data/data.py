@@ -23,6 +23,23 @@ class StructData(TSMixin, pyg.data.Data):
                  default_attrs={},
                  **kwargs,
     ):
+        
+        if "name" in node_attrs:
+            
+            raise ValueError(
+                "'name' is always a default node attribute key and cannot be defined as a new attribute."
+            )
+        
+        if "name" in default_attrs:
+            
+            raise ValueError(
+                "'name' is always a default node attribute key and cannot be defined as a new default attribute."
+            )
+
+        node_attrs = {**node_attrs, "name": torch.empty(0, dtype=torch.long)}
+        default_attrs = {**default_attrs, "name": torch.tensor(0, dtype=torch.long)}
+
+        
         super().__init__(
             edge_index=edge_index,
             directed_mask=directed_mask,
@@ -301,7 +318,8 @@ class StructData(TSMixin, pyg.data.Data):
                 torch.cat([getattr(self, attr), value.unsqueeze(0)], dim=0),
             )
 
-    def add_n_empty_nodes(self, n):
+    @requires_metadata
+    def add_n_empty_nodes(self, n, names = None):
         """
         Adds n new nodes initialized to their default values or to zero if there exists no default value.
 
@@ -317,12 +335,25 @@ class StructData(TSMixin, pyg.data.Data):
 
         self.num_nodes += n
 
+        if names is not None:
+            if len(names) != n:
+                raise ValueError(f"Number {len(names)} of names {names} does not match the given number {n} of new nodes to add.")
+
+            encoded_names = torch.tensor([encode(name) for name in names], dtype=torch.long)
+
         # Add default node attributes
         for attr in self.metadata["node_attr_list"]:
 
+            if names is not None and attr == "name":
+                value = encoded_names
+
             # If attribute is not provided, set it to default value
-            if attr in self.metadata["default_attrs"]:
-                value = self.metadata["default_attrs"][attr].repeat(n, 1)
+            elif attr in self.metadata["default_attrs"]:
+                default = self.metadata["default_attrs"][attr]
+                if default.dim() <= 1:
+                    value = default.repeat(n)
+                else:
+                    value = default.repeat(n, 1)
 
             # If attribute has no default value, set it to zero
             else:
@@ -340,7 +371,7 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     @requires_metadata
-    def add_nodes(self, **kwargs):
+    def add_nodes(self, names = None, **kwargs):
         """
         Adds new nodes with the given attribute values.
 
@@ -366,7 +397,11 @@ class StructData(TSMixin, pyg.data.Data):
         if num_new_nodes == 0:
             raise ValueError("No node attribute values provided. There must be at least one attribute value")
 
+        if names:
+            if len(names) != num_new_nodes:
+                raise ValueError(f"Number {len(names)} of names {names} does not match the length {num_new_nodes} of the given attributes {kwargs}")
 
+            kwargs["name"] = torch.tensor([encode(name) for name in names], dtype=torch.long)
 
         # Check for unexpected attributes
         unexpected_attrs = set(kwargs.keys()) - set(self.metadata["node_attr_list"])
@@ -390,9 +425,13 @@ class StructData(TSMixin, pyg.data.Data):
 
             # If attribute is not provided, set it to default value
             elif attr in self.metadata["default_attrs"]:
-                value = self.metadata["default_attrs"][attr].repeat(num_new_nodes, 1)
 
-            
+                default = self.metadata["default_attrs"][attr]
+                if default.dim() <= 1:
+                    value = default.repeat(num_new_nodes)
+                else:
+                    value = default.repeat(num_new_nodes, 1)
+
             # If attribute has no default value, set it to zero
             else:
                 attr_shape = getattr(self, attr).shape[1:]
@@ -476,7 +515,11 @@ class StructData(TSMixin, pyg.data.Data):
 
             # If attribute is not provided, set it to default value
             elif attr in self.metadata["default_attrs"]:
-                value = self.metadata["default_attrs"][attr].repeat(num_new_edges, 1)
+                default = self.metadata["default_attrs"][attr]
+                if default.dim() <= 1:
+                    value = default.repeat(num_new_edges)
+                else:
+                    value = default.repeat(num_new_edges, 1)
 
             # If attribute has no default value, set it to zero
             else:
@@ -496,6 +539,20 @@ class StructData(TSMixin, pyg.data.Data):
                 ),
             )
        
+
+    def add_edges_by_names(self, src_names, dest_names, **kwargs):
+
+        src_indices = torch.tensor([self.get_node_index_from_name(src) for src in src_names])
+        dest_indices = torch.tensor([self.get_node_index_from_name(dest) for dest in dest_names])
+        edge_indices = torch.stack([src_indices, dest_indices], dim=0)
+
+        self.add_edges(edge_indices=edge_indices, **kwargs)
+
+
+    def get_node_index_from_name(self, name):
+
+        return int((self.name == encode(name)).nonzero(as_tuple=True)[0])
+
 
     @requires_metadata
     def add_edge(self, src: str, dst: str, name=None, **kwargs):
@@ -1324,6 +1381,22 @@ class StructData(TSMixin, pyg.data.Data):
         self._create_topology(num_nodes = num_nodes, num_edges = num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
+    def name_nodes(self, names: list, mask: torch.Tensor):
+
+        if len(names) != mask.sum().item():
+
+            raise ValueError(f"Length of names does not match the number of 'True' values in the mask.")
+
+        encoded_names = torch.empty(0, dtype=torch.long)
+
+        for i in range(len(names)):
+
+            encoded_name = encode(names[i])
+            encoded_names = torch.cat([encoded_names, torch.tensor([encoded_name], dtype=torch.long)])
+
+        self.name[mask] = encoded_names
+
+
 def resolve_attrs(f, default_attrs, custom_attrs):
 
     resolve_attrs = {}
@@ -1337,7 +1410,20 @@ def resolve_attrs(f, default_attrs, custom_attrs):
             resolve_attrs[param_name] = default_attrs[param_name]
         else:
             raise ValueError(f"Attribute '{param_name}' required for function '{f.__name__}' could not be found in the custom attributes or '{default_attrs}'. If '{param_name}' is in the custom_attributes, make sure it is defined before the function that requires it. Custom attributes are either node_attrs or edge_attrs.")
-        
+
     return resolve_attrs
+
+
+def encode(string: str):
+
+    encoded = string.encode("utf-8")
+    if len(encoded) > 8:
+        raise ValueError(f"String '{string}' encodes to {len(encoded)} bytes, which exceeds the 8-byte limit.")
+
+    return int.from_bytes(encoded, "big")
+
+def decode(integer: int):
+
+    return integer.to_bytes(8, "big").decode("utf-8").lstrip("\x00")
 
     
