@@ -548,6 +548,25 @@ class StructData(TSMixin, pyg.data.Data):
 
         self.add_edges(edge_indices=edge_indices, **kwargs)
 
+    def delete_edges(self, mask: torch.Tensor):
+        """
+        Deletes edges where ``mask`` is ``True``.
+
+        Args:
+            mask (torch.Tensor): boolean tensor of shape ``[num_edges]``. Edges
+                where the mask is ``True`` are removed.
+        """
+        keep = ~mask.view(-1)
+        old_to_new = torch.full((keep.shape[0],), -1, dtype=torch.long)
+        old_to_new[keep] = torch.arange(keep.sum())
+
+        self.reciprocal_edge = old_to_new[self.reciprocal_edge[keep]]
+        self.edge_index = self.edge_index[:, keep]
+        self.directed_mask = self.directed_mask[keep]
+
+        for attr in self.metadata["edge_attr_list"]:
+            setattr(self, attr, getattr(self, attr)[keep])
+
 
     def get_node_index_from_name(self, name):
 
