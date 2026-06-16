@@ -1,4 +1,4 @@
-from torch_structure.plot import plot_data
+from torch_structure.plot import plot_data_vectorized
 from torch_structure.mixins.utils import OverrideResolveMixin
 
 class PlotMixin(OverrideResolveMixin):
@@ -17,7 +17,7 @@ class PlotMixin(OverrideResolveMixin):
         force = self._resolve_override("force", force, required=False)
         load = self._resolve_override("load", load, required=False)
 
-        plot_data(
+        plot_data_vectorized(
             coords=coords,
             edge_index=edge_index,
             is_support=is_support,

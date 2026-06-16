@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.lines import Line2D
+from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
 
 from torch_structure.message_passing import ResidualForce
 
@@ -250,6 +251,177 @@ def plot_data(
         plt.savefig((f"{path}.png"), bbox_inches="tight")
 
     # Show plot
+    if show:
+        plt.show()
+
+
+def plot_data_vectorized(
+    coords,
+    edge_index,
+    is_support=None,
+    force=None,
+    load=None,
+    show_supports=False,
+    show_load=False,
+    show_residual_forces=False,
+    show_axes=False,
+    legend=True,
+    equal_axes=True,
+    lw_constant=False,
+    force_scale=1.0,
+    lw_scale=1.0,
+    support_marker_size=6,
+    support_marker_offset=0.02,
+    title=None,
+    ax=None,
+    path=None,
+    show=False,
+    show_edge_indices=False,
+    show_deck=False,
+    is_deck_node=None
+):
+    force = force.view(-1) if force is not None else force
+    is_support = is_support.view(-1) if is_support is not None else is_support
+
+    colors = {
+        "red": "#E40714",
+        "blue": "#0578BF",
+        "green": "#007F00",
+    }
+
+    coords_np = coords.detach().cpu().numpy()
+    x = coords_np[:, 0]
+    y = coords_np[:, 1]
+    z = coords_np[:, 2]
+    num_nodes = coords.size(dim=0)
+    num_edges = edge_index.size(dim=1)
+
+    if force is not None:
+        force_np = force.detach().cpu().numpy()
+        edge_color = np.where(force_np > 0, colors["red"], colors["blue"])
+        lw = np.sqrt(np.abs(force_np)) if not lw_constant else np.ones(num_edges)
+        lw = lw * lw_scale
+    else:
+        edge_color = np.array(["gray"] * num_edges)
+        lw = np.ones(num_edges) * lw_scale
+
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection="3d")
+
+    # Plot supports
+    if show_supports:
+        if is_support is None:
+            raise ValueError("For showing supports is_support is a required input.")
+        for node in range(num_nodes):
+            if is_support[node]:
+                if node in edge_index[0].cpu().numpy():
+                    ax.plot(
+                        [x[node]], [y[node]], [z[node] - support_marker_offset],
+                        marker="^", markersize=support_marker_size,
+                        color="black", linestyle="None",
+                    )
+
+    if show_deck:
+        if is_deck_node is None:
+            raise ValueError("For showing deck is_deck_node is a required input.")
+        deck_coords = coords[is_deck_node.view(-1)].detach().cpu().numpy()
+        deck_coords = deck_coords[np.argsort(deck_coords[:, 0])]
+        if len(deck_coords) % 2 != 0:
+            raise ValueError("Expected an even number of deck coordinates (strict pairs).")
+        for i in range(0, len(deck_coords), 2):
+            if deck_coords[i, 1] > deck_coords[i+1, 1]:
+                deck_coords[[i, i+1]] = deck_coords[[i+1, i]]
+        pairs = deck_coords.reshape(-1, 2, 3)
+        quads = []
+        for k in range(pairs.shape[0] - 1):
+            left_low, left_high = pairs[k, 0], pairs[k, 1]
+            right_low, right_high = pairs[k+1, 0], pairs[k+1, 1]
+            quads.append([left_low, left_high, right_high, right_low])
+        coll = Poly3DCollection(quads, facecolors='grey', edgecolors='k', linewidths=0.5, alpha=0.4)
+        ax.add_collection3d(coll)
+
+    # Plot all edges in a single vectorized call
+    src = edge_index[0].cpu().numpy()
+    dst = edge_index[1].cpu().numpy()
+    segments = np.stack([coords_np[src], coords_np[dst]], axis=1)  # (E, 2, 3)
+    lc = Line3DCollection(segments, colors=edge_color, linewidths=lw)
+    ax.add_collection3d(lc)
+    ax.auto_scale_xyz(x, y, z)
+
+    if show_edge_indices:
+        for i, (s, d) in enumerate(zip(src, dst)):
+            ax.text(
+                (x[s]+x[d])/2, (y[s]+y[d])/2, (z[s]+z[d])/2,
+                str(i), color="black", fontsize=8,
+            )
+
+    # Plot external load
+    if show_load:
+        if load is None:
+            raise ValueError("For showing external forces load is a required input.")
+        load_np = load.detach().cpu().numpy()
+        for node in range(num_nodes):
+            ax.quiver(
+                x[node], y[node], z[node],
+                force_scale * load_np[node, 0],
+                force_scale * load_np[node, 1],
+                force_scale * load_np[node, 2],
+                color=colors["green"], length=1.5, normalize=False, arrow_length_ratio=0.5,
+            )
+
+    # Plot residual forces
+    if show_residual_forces:
+        if load is None:
+            raise ValueError("For showing residual forces load is a required input.")
+        calculate_residual_force = ResidualForce()
+        residual_forces = (
+            calculate_residual_force(coords, force, edge_index, load).detach().cpu().numpy()
+        )
+        for node in range(num_nodes):
+            ax.plot(
+                [x[node], x[node] + force_scale * residual_forces[node, 0]],
+                [y[node], y[node] + force_scale * residual_forces[node, 1]],
+                [z[node], z[node] + force_scale * residual_forces[node, 2]],
+                color="purple", label="Residual Force",
+            )
+
+    if not show_axes:
+        ax.set_axis_off()
+
+    if equal_axes:
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+        plot_radius = 0.5 * max([x_range, y_range, z_range])
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+        ax.set_box_aspect([1, 1, 1])
+        ax.set_proj_type("ortho")
+
+    if legend:
+        if force is not None:
+            handles = [
+                Line2D([0], [0], color=colors["red"],  label="Tension (Predicted Equilibrium Geometry)"),
+                Line2D([0], [0], color=colors["blue"], label="Compression (Predicted Equilibrium Geometry)"),
+            ]
+        else:
+            handles = [Line2D([0], [0], color="gray", label="Target Geometry")]
+        ax.legend(handles=handles, frameon=False)
+
+    if title is not None:
+        ax.set_title(title)
+
+    if path is not None:
+        plt.savefig((f"{path}.png"), bbox_inches="tight")
+
     if show:
         plt.show()
 
