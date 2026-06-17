@@ -1125,7 +1125,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for horizontal edges connecting
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for horizontal edges connecting
               ``(u_ind, v_ind) → (u_ind, v_ind+1)``, ``1`` for vertical edges connecting
               ``(u_ind, v_ind) → (u_ind+1, v_ind)``, ``2`` for diagonal edges connecting
               ``(u_ind, v_ind+1) → (u_ind+1, v_ind)``.
@@ -1196,7 +1196,7 @@ class StructData(TSMixin, pyg.data.Data):
         
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
 
-        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0]), torch.full((row_d.shape[0],), 2.0)], dim=0)
+        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0]), torch.full((row_d.shape[0],), 2.0)], dim=0).unsqueeze(1)
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
@@ -1235,7 +1235,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for radial edges, ``1`` for angular edges.
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for radial edges, ``1`` for angular edges.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
               boundary nodes.
 
@@ -1296,7 +1296,7 @@ class StructData(TSMixin, pyg.data.Data):
         r_edge_ind = r_node_ind[edge_indices[0]]
 
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_r.shape[0]), torch.ones(row_a.shape[0])])
+        edge_direction = torch.cat([torch.zeros(row_r.shape[0]), torch.ones(row_a.shape[0])]).unsqueeze(1)
 
         default_edge_attrs = {"a_ind": a_edge_ind, "r_ind": r_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
         
@@ -1336,7 +1336,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for horizontal edges connecting
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for horizontal edges connecting
               ``(u_ind, v_ind) → (u_ind, v_ind+1)``, ``1`` for vertical edges connecting
               ``(u_ind, v_ind) → (u_ind+1, v_ind)``.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both
@@ -1390,7 +1390,7 @@ class StructData(TSMixin, pyg.data.Data):
         u_edge_ind = u_node_ind[edge_indices[0]]
         v_edge_ind = v_node_ind[edge_indices[0]]
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0])], dim=0)
+        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0])], dim=0).unsqueeze(1)
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
@@ -1446,7 +1446,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``z_unit_coord`` (torch.Tensor [E, 1]): mean unit ``z`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for axial edges connecting
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for axial edges connecting
               ``(a_ind, r_ind) → (a_ind, r_ind+1)``, ``1`` for angular edges connecting
               ``(a_ind, r_ind) → ((a_ind+1) % n_sectors, r_ind)``.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
@@ -1503,7 +1503,7 @@ class StructData(TSMixin, pyg.data.Data):
         a_edge_ind = a_node_ind[edge_indices[0]]
         r_edge_ind = r_node_ind[edge_indices[0]]
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_ax.shape[0]), torch.ones(row_ang.shape[0])])
+        edge_direction = torch.cat([torch.zeros(row_ax.shape[0]), torch.ones(row_ang.shape[0])]).unsqueeze(1)
 
         default_edge_attrs = {"a_ind": a_edge_ind, "r_ind": r_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "z_unit_coord": z_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
 
@@ -1548,7 +1548,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``z_unit_coord`` (torch.Tensor [E, 1]): mean unit ``z`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for meridional edges, ``1`` for angular
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for meridional edges, ``1`` for angular
               edges connecting ``(a_ind, r_ind) → ((a_ind+1) % n_sectors, r_ind)``.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
               boundary nodes.
@@ -1616,7 +1616,7 @@ class StructData(TSMixin, pyg.data.Data):
         a_edge_ind = a_node_ind[edge_indices[0]]
         r_edge_ind = r_node_ind[edge_indices[0]]
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_mer.shape[0]), torch.ones(row_ang.shape[0])])
+        edge_direction = torch.cat([torch.zeros(row_mer.shape[0]), torch.ones(row_ang.shape[0])]).unsqueeze(1)
 
         default_edge_attrs = {"a_ind": a_edge_ind, "r_ind": r_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "z_unit_coord": z_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
 
