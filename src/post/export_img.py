@@ -4,17 +4,18 @@ import os
 import imageio
 
 
-def save_as_gif(dir, base_name, total_duration=2.0):
-    output_gif = dir / "animation.gif"
+def save_as_gif(img_dir, out_name=None, base_name="", total_duration=2.0):
+    if out_name is None:
+        out_name = "animation"
+    output_gif = img_dir.parent / f"{out_name}.gif"
 
     images = []
-    dir_img = dir / "img"
 
-    for filename in sorted(os.listdir(dir_img)):
+    for filename in sorted(os.listdir(img_dir)):
         if filename.startswith(base_name) and filename.lower().endswith(
             (".png", ".jpg", ".jpeg")
         ):
-            path = dir_img / filename
+            path = img_dir / filename
             images.append(imageio.imread(path))
 
     if len(images) == 0:

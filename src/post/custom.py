@@ -53,7 +53,7 @@ def export_assembly_states_vtp(
 
 
 def export_assembly_states_img(
-    post_data: StructData, export_dir, base_name, cache_dict_img, to_gif=True
+    post_data: StructData, export_dir, base_name="", to_gif=True
 ):
     aux_forces_mag = torch.linalg.norm(post_data.aux_force_steps, dim=2)
     residuals = torch.sum(aux_forces_mag, dim=0)
@@ -101,5 +101,5 @@ def export_assembly_states_img(
 
     if to_gif:
         # image-to-gif conversion
-        save_as_gif(export_dir, base_name)
+        save_as_gif(export_dir / "img", base_name + f"animation.gif")
         pass
