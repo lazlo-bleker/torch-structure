@@ -1,6 +1,6 @@
 import torch
 import scipy.linalg
-
+from ..config import TORCH_FLOAT
 
 def create_branch_node_matrix(edge_index):
     """
@@ -20,7 +20,7 @@ def create_branch_node_matrix(edge_index):
     col_indices = edge_index.view(-1)
     indices = torch.stack([row_indices, col_indices])
     values = torch.cat(
-        [torch.ones(num_edges, device=device), -torch.ones(num_edges, device=device)]
+        [torch.ones(num_edges, device=device, dtype=TORCH_FLOAT), -torch.ones(num_edges, device=device, dtype=TORCH_FLOAT)]
     )
     branch_node_matrix = torch.sparse_coo_tensor(
         indices, values, size=(num_edges, num_nodes)

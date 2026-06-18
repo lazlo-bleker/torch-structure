@@ -5,6 +5,8 @@ import numpy as np
 from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 
+from ..config import TORCH_FLOAT
+
 
 class DomeGenerator(BaseGenerator):
     def __init__(self, **overrides):
@@ -12,23 +14,23 @@ class DomeGenerator(BaseGenerator):
         self.max_attempts = 100
 
         self.node_attrs = {
-            "coords": torch.empty((0, 3), dtype=torch.float),
-            "load": torch.empty((0, 3), dtype=torch.float),
+            "coords": torch.empty((0, 3), dtype=TORCH_FLOAT),
+            "load": torch.empty((0, 3), dtype=TORCH_FLOAT),
             "support_condition": torch.empty((0, 3), dtype=torch.long),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
         }
         self.edge_attrs = {
-            "force": torch.empty((0, 1), dtype=torch.float),
-            "length": torch.empty((0, 1), dtype=torch.float),
+            "force": torch.empty((0, 1), dtype=TORCH_FLOAT),
+            "length": torch.empty((0, 1), dtype=TORCH_FLOAT),
             "is_trail_edge": torch.empty((0, 1), dtype=torch.bool),
-            "force_sign": torch.empty((0, 1), dtype=torch.float),
+            "force_sign": torch.empty((0, 1), dtype=TORCH_FLOAT),
         }
         self.default_attrs = {
             "force": torch.tensor([torch.nan]),
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
-            "load": torch.zeros(3, dtype=torch.float),
+            "load": torch.zeros(3, dtype=TORCH_FLOAT),
             "support_condition": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
@@ -46,11 +48,16 @@ class DomeGenerator(BaseGenerator):
         trail_length=None,
         center_deviation_force=None,
         opening=False,
+        seed=None,
     ):
+        if seed is not None:
+            torch.manual_seed(seed)
+            # random.seed(seed)
+            np.random.seed(seed)
         if n_trails is None:
             n_trails = 2 * np.random.randint(5, 15)
         if n_rings is None:
-            n_rings = np.random.randint(3, 6)
+            n_rings = np.random.randint(6, 24)
         if trail_length is None:
             trail_length = np.random.uniform(0.05, 0.2)
         if center_deviation_force is None:
@@ -101,11 +108,23 @@ class DomeGenerator(BaseGenerator):
                 trail_length=trail_length,
             )
 
-        # Add ring deviations
+        lower_bound = -2.0
+        upper_bound = 2.0
+        alpha = 0.6  # closer to 1 = smoother
+
+        prev_force = None
+
         for i in range(1, n_rings):
-            force_sign = torch.randint(2, (1,)) * 2 - 1
-            force_magnitude = torch.rand(1) * 2 + 1
-            force = force_sign * force_magnitude
+            u = torch.rand(1)
+            raw_force = u * lower_bound + (1.0 - u) * upper_bound
+
+            if prev_force is None:
+                force = raw_force
+            else:
+                force = alpha * prev_force + (1.0 - alpha) * raw_force
+
+            prev_force = force
+
             for j in range(n_trails):
                 data.add_edge(
                     f"trail_{j}_node_{i}",
@@ -126,11 +145,8 @@ class DomeGenerator(BaseGenerator):
 
         # Formfinding
         data = data.mpcem()
-        if not opening:
-            self.fix_graph(data, n_trails)
-
-        if self.filter(data):
-            raise RuntimeError("Negative inclination detected.")
+        # if not opening:
+        #     self.fix_graph(data, n_trails)
 
         # Scale to unit length
         radius = torch.norm(data.coords[:, 0:2], dim=1).max()
@@ -141,9 +157,6 @@ class DomeGenerator(BaseGenerator):
 
         # Set support
         data.is_support = data.is_support
-
-        if data.bbox[0, 2] < 0 or data.bbox[1, 2] > 3.0:
-            raise RuntimeError("Z out of bounds:", data.bbox[0, 2], data.bbox[1, 2])
 
         return data
 
@@ -179,12 +192,15 @@ class DomeGenerator(BaseGenerator):
             )
 
     def fix_graph(self, data, n_trails):
+        merge_nodes = [f"trail_{i}_node_0" for i in range(n_trails)]
+        origin_load = data.load[data.metadata["node_name_to_index"][merge_nodes[0]]]
         data.add_node(
             "centroid",
             coords=torch.tensor([0.0, 0.0, 0.0]),
-            load=torch.tensor([0.0, 0.0, -1.0]),
+            is_origin_node=torch.tensor(True),
+            sequence=torch.tensor(0),
+            load=origin_load,
         )
-        merge_nodes = [f"trail_{i}_node_0" for i in range(n_trails)]
         data.merge_nodes("centroid", merge_nodes)
 
     def filter(self, data):

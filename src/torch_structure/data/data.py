@@ -61,7 +61,13 @@ class StructData(TSMixin, pyg.data.Data):
                 "node_attr_list": [kwarg for kwarg in node_attrs.keys()],
                 "edge_attr_list": [kwarg for kwarg in edge_attrs.keys()],
                 "graph_attr_list": [kwarg for kwarg in graph_attrs.keys()],
+                "attr_dtype": {},
             }
+
+            # Fill dtype info for all attributes:
+            for name, value in {**node_attrs, **edge_attrs, **graph_attrs}.items():
+                if isinstance(value, torch.Tensor):
+                    self.metadata["attr_dtype"][name] = str(value.dtype)
 
     @classmethod
     def from_rhino(cls, points, lines, tolerance=1e-6):
