@@ -255,6 +255,13 @@ def plot_data(
         plt.show()
 
 
+_VIEW_ANGLES = {
+    "x": (0, 90),    # camera along +X, sees Y-Z plane
+    "y": (0, 0),     # camera along +Y, sees X-Z plane
+    "z": (90, -90),  # camera along +Z, top-down, sees X-Y plane
+}
+
+
 def plot_data_vectorized(
     coords,
     edge_index,
@@ -278,7 +285,8 @@ def plot_data_vectorized(
     show=False,
     show_edge_indices=False,
     show_deck=False,
-    is_deck_node=None
+    is_deck_node=None,
+    view=None,
 ):
     force = force.view(-1) if force is not None else force
     is_support = is_support.view(-1) if is_support is not None else is_support
@@ -405,6 +413,10 @@ def plot_data_vectorized(
         ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
         ax.set_box_aspect([1, 1, 1])
         ax.set_proj_type("ortho")
+
+    if view is not None:
+        elev, azim = _VIEW_ANGLES[view]
+        ax.view_init(elev=elev, azim=azim)
 
     if legend:
         if force is not None:
