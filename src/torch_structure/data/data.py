@@ -8,6 +8,7 @@ import json
 from torch_structure.data.view import NodeView
 from torch_structure.data.utils import requires_metadata
 from torch_structure.loss import ResidualForceLoss
+from torch_structure.message_passing import ResidualForce
 from torch_structure.geometry import graph_edge_lengths
 from torch_structure.mixins import TSMixin
 from torch_scatter import scatter
@@ -65,7 +66,7 @@ class StructData(TSMixin, pyg.data.Data):
             }
 
     @classmethod
-    def from_rhino(cls, points, lines, tolerance=1e-6):
+    def from_rhino(cls, points, lines, tolerance=1e-6, **kwargs):
         coords_list = []
         index_map = {}
         for pt in points:
@@ -113,9 +114,37 @@ class StructData(TSMixin, pyg.data.Data):
             coords=coords,
         )
 
+        if kwargs:
+            num_nodes = obj.num_nodes
+            num_directed = int(obj.directed_mask.sum())
+
+            if num_nodes == num_directed:
+                raise ValueError(
+                    f"num_nodes == num_directed_edges == {num_nodes}: cannot "
+                    "disambiguate node vs edge attributes by length. Pass attrs manually."
+                )
+
+            for name, values in kwargs.items():
+                first = values[0] if values else None
+                pt = getattr(first, 'Value', first) if first is not None else None
+                if pt is not None and hasattr(pt, 'X'):
+                    t = torch.tensor([[getattr(v, 'Value', v).X, getattr(v, 'Value', v).Y, getattr(v, 'Value', v).Z] for v in values], dtype=torch.float)
+                else:
+                    t = torch.tensor(values).unsqueeze(1)
+                n = t.shape[0]
+                if n == num_nodes:
+                    setattr(obj, name, t)
+                elif n == num_directed:
+                    setattr(obj, name, obj.edge_attr_to_undirected(t, obj.directed_mask))
+                else:
+                    raise ValueError(
+                        f"Attribute '{name}' has {n} values but expected "
+                        f"{num_nodes} (nodes) or {num_directed} (directed edges)."
+                    )
+
         return obj
-    
-    def to_rhino(self):
+
+    def to_rhino(self, attrs=None):
         import Rhino.Geometry as rg
 
         xyz = self.coords.detach().cpu().numpy()
@@ -129,7 +158,34 @@ class StructData(TSMixin, pyg.data.Data):
         points = [rg.Point3d(float(x), float(y), float(z)) for x, y, z in xyz]
         lines = [rg.Line(points[int(s)], points[int(d)]) for s, d in zip(src, dst)]
 
-        return points, lines
+        attr_dict = {}
+        if attrs is not None:
+            num_nodes = self.num_nodes
+            num_edges = self.num_edges
+            directed_mask = self.directed_mask.view(-1)
+            for name in attrs:
+                t = getattr(self, name).detach().cpu()
+                if t.shape[0] == num_nodes:
+                    arr = t
+                elif t.shape[0] == num_edges:
+                    arr = t[directed_mask]
+                else:
+                    raise ValueError(
+                        f"Attribute '{name}' has shape {t.shape}, expected "
+                        f"first dim {num_nodes} (nodes) or {num_edges} (edges)."
+                    )
+                trailing = arr.shape[1:] if arr.dim() > 1 else ()
+                if not trailing or trailing == (1,):
+                    attr_dict[name] = arr.view(-1).tolist()
+                elif trailing == (3,):
+                    attr_dict[name] = [rg.Point3d(float(x), float(y), float(z)) for x, y, z in arr.numpy()]
+                else:
+                    raise ValueError(
+                        f"Attribute '{name}' has unsupported trailing shape {tuple(trailing)}. "
+                        "Only (N, 1) and (N, 3) are supported for Rhino export."
+                    )
+
+        return points, lines, attr_dict
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == "reciprocal_edge":
@@ -160,6 +216,21 @@ class StructData(TSMixin, pyg.data.Data):
 
         return equilibrium
     
+    def update_reaction_force(self, inplace=False, coords=None, force=None, load=None, is_support=None):
+        coords     = self._resolve_override("coords", coords)
+        force      = self._resolve_override("force", force)
+        load       = self._resolve_override("load", load)
+        is_support = self._resolve_override("is_support", is_support)
+
+        residual = ResidualForce()(x=coords, force=force, edge_index=self.edge_index, load=load)
+
+        reaction_force = torch.full_like(residual, float("nan"))
+        reaction_force[is_support.view(-1)] = -residual[is_support.view(-1)]
+
+        new_data = self if inplace else self.clone()
+        new_data.reaction_force = reaction_force
+        return new_data
+
     def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
         mask = mask.view(-1)
         device = edge_attr.device
