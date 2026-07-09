@@ -1003,7 +1003,7 @@ class StructData(TSMixin, pyg.data.Data):
 
             elif callable(f):
 
-                f_kwargs = resolve_attrs(f, default_attrs, attrs)
+                f_kwargs = resolve_attrs(f, default_attrs, kwargs)
 
                 kwargs[attr] = f(**f_kwargs)
             

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
-edge_attrs = {"force": torch.empty((0, 1), dtype=torch.long)}
+edge_attrs = {"forcea": torch.empty((0, 1), dtype=torch.long)}
 data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 num_nodes = 10
@@ -16,7 +16,7 @@ def f(x_unit_coord):
     return torch.hstack([x_unit_coord, torch.zeros_like(x_unit_coord), height])
 
 node_attrs = {"coords": f}
-edge_attrs = {"force": force}
+edge_attrs = {"forcea": force}
 
 data.add_chain(num_nodes, node_attrs=node_attrs, edge_attrs=edge_attrs)
 

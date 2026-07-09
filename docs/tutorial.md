@@ -9,7 +9,7 @@ TorchStructure's topology functions all follow the same template. First, we will
 
 ## A simple chain
 
-We start by creating an empty `StructData` graph. Node and edge attributes are registered as dictionaries of empty tensors, where the tensor shape defines the attribute's dimension. In this example, nodes carry 3D coordinates and edges carry a scalar force.
+We start by creating an empty `StructData` graph. Node and edge attributes are registered as dictionaries of empty tensors, where the tensor shape defines the attribute's dimension. In this example, nodes carry 3D coordinates and edges have a material id.
 
 ```python
 import torch
@@ -17,28 +17,28 @@ from torch_structure.data.data import StructData
 import matplotlib.pyplot as plt
 
 node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
-edge_attrs = {"force": torch.empty((0,1), dtype=torch.long)}
+edge_attrs = {"material_id": torch.empty((0,1), dtype=torch.long)}
 data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 ```
-Values for node and edge attributes are also assigned via dictionaries, with attribute names as keys and either tensors or callables as values. The details of how the callables work are explained below. For now, it suffices to understand that node coordinates are computed by callable `f` that takes unit coordinates in x-direction as an input and maps them to a parabolic arch. Uniform edge forces are set directly with a tensor.
+Values for node and edge attributes are also assigned via dictionaries, with attribute names as keys and either tensors or callables as values. The details of how the callables work are explained below. For now, it suffices to understand that node coordinates are computed by callable `compute_coordinates` that takes unit coordinates in x-direction as an input and maps them to a parabolic arch. A uniform edge material id is set directly with a tensor.
 
 ```python
 
 num_nodes = 10
 
-force = 10 * torch.ones(num_nodes - 1, 1, dtype=torch.long)
+material_id = torch.ones(num_nodes - 1, 1, dtype=torch.long)
 
-def f(x_unit_coord):
+def compute_coordinates(x_unit_coord):
     height = 3 * x_unit_coord * (1 - x_unit_coord)
     return torch.hstack([x_unit_coord, torch.zeros_like(x_unit_coord), height])
 
-node_attrs = {"coords": f}
-edge_attrs = {"force": force}
+node_attrs = {"coords": compute_coordinates}
+edge_attrs = {"material_id": material_id}
 
 data.add_chain(num_nodes, node_attrs=node_attrs, edge_attrs=edge_attrs)
 ```
 
-Visualize the result.
+Visualize the result. The plot function automatically recognizes the `coords` attributes and realizes the graph based on it. The `material_id` attribute has no impact on the plot, as it is just information stored on the graph.
 ```python
 data.plot()
 plt.show()
@@ -59,24 +59,24 @@ from torch_structure.data.data import StructData
 import matplotlib.pyplot as plt
 
 node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
-edge_attrs = {"force": torch.empty((0, 1), dtype=torch.long)}
+edge_attrs = {"material_id": torch.empty((0, 1), dtype=torch.long)}
 data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 ```
 
-In a similar fashion as before, node coordinates are set with a callable that uses both `x_unit_coord` and `y_unit_coord`, mapping the unit square to a tonne (barrel vault) shape: arched along `x` with a shallow curve, and straight along `y`. Edge forces are again a constant tensor.
+In a similar fashion as before, node coordinates are set with a callable that uses both `x_unit_coord` and `y_unit_coord`, mapping the unit square to a tonne (barrel vault) shape: arched along `x` with a shallow curve, and straight along `y`. Edge attributes are again a constant tensor.
 
 ```python
 num_rows, num_cols = 10, 10
 num_edges = num_rows * (num_cols - 1) + num_cols * (num_rows - 1)
 
-force = 10 * torch.ones(num_edges, 1, dtype=torch.long)
+material_id = torch.ones(num_edges, 1, dtype=torch.long)
 
-def f(x_unit_coord, y_unit_coord):
+def compute_coordinates(x_unit_coord, y_unit_coord):
     height = 1.2 * x_unit_coord * (1 - x_unit_coord)
     return torch.hstack([x_unit_coord, y_unit_coord, height])
 
-node_attrs = {"coords": f}
-edge_attrs = {"force": force}
+node_attrs = {"coords": compute_coordinates}
+edge_attrs = {"material_id": material_id}
 
 data.add_grid(num_rows, num_cols, node_attrs=node_attrs, edge_attrs=edge_attrs)
 ```
