@@ -318,6 +318,129 @@ class StructData(TSMixin, pyg.data.Data):
                 torch.cat([getattr(self, attr), value.unsqueeze(0)], dim=0),
             )
 
+    def add_node_with_symmetry(self, **kwargs):
+        """
+        Adds one node per symmetry group element (``self.metadata["symmetry"]``,
+        set via `add_symmetry`). Floating-point attributes whose last
+        dimension is 3 (e.g. ``coords``, ``load``) are rotated by every group
+        element in turn; every other attribute is copied unchanged to each
+        copy. 
+        """
+        symmetry = self.metadata.get("symmetry")
+        if symmetry is None:
+            raise ValueError("No symmetry group set. Call add_symmetry() first.")
+
+        num_new_nodes = symmetry.shape[0]
+
+        # Check for unexpected attributes
+        unexpected_attrs = set(kwargs.keys()) - set(self.metadata["node_attr_list"])
+        if unexpected_attrs:
+            raise ValueError(
+                f"Unexpected node attributes: {unexpected_attrs}. Expected: {list(self.metadata['node_attr_list'])}"
+            )
+
+        self.num_nodes += num_new_nodes  # Increment number of nodes
+
+        # Assign a fresh orbit id (one higher than any used so far) and this
+        # orbit's cyclic position (0..num_new_nodes-1) to each copy, so
+        # add_edge_with_symmetry can later look them up.
+        next_group_id = int(self.sym_group_id.max().item()) + 1 if self.sym_group_id.numel() > 0 else 0
+        self.sym_group_id = torch.cat(
+            [self.sym_group_id, torch.full((num_new_nodes, 1), next_group_id, dtype=torch.long)], dim=0
+        )
+        self.sym_index = torch.cat(
+            [self.sym_index, torch.arange(num_new_nodes, dtype=torch.long).unsqueeze(1)], dim=0
+        )
+
+        # Add node attributes
+        for attr in self.metadata["node_attr_list"]:
+            if attr in ("sym_group_id", "sym_index"):
+                continue
+
+            if attr in kwargs:
+                value = kwargs[attr]
+
+                # Cast non-tensor attributes to tensor
+                if not isinstance(value, torch.Tensor):
+                    value = torch.tensor(value, dtype=getattr(self, attr).dtype)
+
+            # If attribute is not provided, set it to default value
+            elif attr in self.metadata["default_attrs"]:
+                value = self.metadata["default_attrs"][attr]
+
+            # If attribute has no default value, set it to zero
+            else:
+                attr_shape = getattr(self, attr).shape[1:]
+                value = getattr(self, attr).new_zeros(attr_shape)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            # 3-vector float attrs (e.g. coords, load) are rotated per group
+            # element; everything else is copied unchanged to each copy.
+            if torch.is_floating_point(value) and value.shape[-1] == 3:
+                value_batch = torch.einsum("kij,...j->k...i", symmetry, value)
+            else:
+                value_batch = value.unsqueeze(0).expand(num_new_nodes, *value.shape).clone()
+
+            setattr(
+                self,
+                attr,
+                torch.cat([getattr(self, attr), value_batch], dim=0),
+            )
+
+    @requires_metadata
+    def add_edge_with_symmetry(self, src: int, dst: int, **kwargs):
+        """
+        Adds one edge per symmetry group element (``self.metadata["symmetry"]``,
+        set via :meth:`add_symmetry`): group element ``m`` connects node
+        ``src + m`` to node ``dst + m``. Floating-point kwargs whose last
+        dimension is 3 are rotated by every group element in turn; every
+        other kwarg is copied unchanged to each copy. Delegates to
+        :meth:`add_edges` for the actual bookkeeping, so like that method
+        this does not touch ``edge_name_to_index``.
+        """
+        symmetry = self.metadata.get("symmetry")
+        if symmetry is None:
+            raise ValueError("No symmetry group set. Call add_symmetry() first.")
+
+        k = symmetry.shape[0]
+        sym_group_id = self.sym_group_id.view(-1)
+        sym_index = self.sym_index.view(-1)
+
+        def orbit_nodes(node):
+            group = sym_group_id[node]
+            if group == -1:
+                raise ValueError(
+                    f"Node {node} has no symmetry orbit (sym_group_id == -1); "
+                    "it must have been added via add_node_with_symmetry."
+                )
+            members = torch.arange(sym_group_id.numel())[sym_group_id == group]
+            if members.numel() != k:
+                raise ValueError(
+                    f"Orbit {group.item()} of node {node} has {members.numel()} surviving "
+                    f"member(s), expected {k}. Its nodes may have been merged or removed."
+                )
+            return members[torch.argsort(sym_index[members])]
+
+        edge_indices = torch.stack([orbit_nodes(src), orbit_nodes(dst)], dim=0)
+
+        symmetrized_kwargs = {}
+        for attr, value in kwargs.items():
+            if not isinstance(value, torch.Tensor):
+                value = torch.tensor(value, dtype=getattr(self, attr).dtype)
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            # 3-vector float attrs are rotated per group element; everything
+            # else is copied unchanged to each copy.
+            if torch.is_floating_point(value) and value.shape[-1] == 3:
+                symmetrized_kwargs[attr] = torch.einsum("kij,...j->k...i", symmetry, value)
+            else:
+                symmetrized_kwargs[attr] = value.unsqueeze(0).expand(k, *value.shape).clone()
+
+        self.add_edges(edge_indices, **symmetrized_kwargs)
+
     @requires_metadata
     def add_n_empty_nodes(self, n, names = None):
         """
@@ -1027,6 +1150,51 @@ class StructData(TSMixin, pyg.data.Data):
 
         return x_edge, y_edge
 
+    def add_symmetry(self, n: int = 4):
+        """
+        Stores an n-fold rotational symmetry group as
+        ``self.metadata["symmetry"]``: a tensor of shape ``[n, 3, 3]`` of
+        rotation matrices about the z-axis. Group element ``k`` rotates by ``k * 2π/n`` radians about z; z
+        itself is left unchanged.
+
+        Apply it to any ``[N, 3]`` attribute.
+
+        Args:
+            n (int, optional): number of rotational symmetry steps. Defaults to 4.
+
+        Raises:
+            ValueError: if ``n`` is less than 1.
+        """
+
+        if n < 1:
+            raise ValueError(f"n must be at least 1, got {n}.")
+
+        if not hasattr(self, "metadata"):
+            self.metadata = {}
+
+        angles = torch.arange(n, dtype=torch.float) * (2 * torch.pi / n)
+        cos, sin = torch.cos(angles), torch.sin(angles)
+        zeros, ones = torch.zeros(n), torch.ones(n)
+
+        self.metadata["symmetry"] = torch.stack([
+            torch.stack([cos, -sin, zeros], dim=-1),
+            torch.stack([sin,  cos, zeros], dim=-1),
+            torch.stack([zeros, zeros, ones], dim=-1),
+        ], dim=-2)
+        
+        # Orbit bookkeeping for nodes added via add_node_with_symmetry:
+        # sym_group_id[i] is which orbit node i belongs to (-1 = not
+        # tracked, treated by add_edge_with_symmetry as its own fixed
+        # point), sym_index[i] is its cyclic position within that orbit.
+        if "sym_group_id" not in self.metadata["node_attr_list"]:
+            self.metadata["node_attr_list"].append("sym_group_id")
+            self.metadata["node_attr_list"].append("sym_index")
+            self.metadata["default_attrs"]["sym_group_id"] = torch.tensor(-1, dtype=torch.long)
+            self.metadata["default_attrs"]["sym_index"] = torch.tensor(-1, dtype=torch.long)
+            self.sym_group_id = torch.empty((0, 1), dtype=torch.long)
+            self.sym_index = torch.empty((0, 1), dtype=torch.long)
+
+
     def add_chain(self, n: int, node_attrs: dict = {}, edge_attrs: dict = {}):
 
         """
@@ -1094,6 +1262,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         self._create_topology(num_nodes = n, num_edges = n-1, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
+    
 
     def add_triangular_grid(self, n, node_attrs: dict = {}, edge_attrs: dict = {}):
 
