@@ -26,6 +26,7 @@ theme:
   icon:
     repo: fontawesome/brands/github
 markdown_extensions:
+  - attr_list
   - admonition
   - pymdownx.details
   - pymdownx.superfences

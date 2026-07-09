@@ -1015,7 +1015,6 @@ class StructData(TSMixin, pyg.data.Data):
         return kwargs
 
 
-
     def _get_edge_unit_coords(self, x, y, edge_indices):
 
         x_src = x[edge_indices[0]]
@@ -1026,6 +1025,7 @@ class StructData(TSMixin, pyg.data.Data):
         y_edge = (y_src + y_dest) / 2
 
         return x_edge, y_edge
+
 
     def add_chain(self, n: int, node_attrs: dict = {}, edge_attrs: dict = {}):
 
@@ -1230,7 +1230,9 @@ class StructData(TSMixin, pyg.data.Data):
 
         Edge defaults:
             - ``r_ind`` (torch.Tensor [E, 1]): radial index of the source node.
-            - ``a_ind`` (torch.Tensor [E, 1]): angular index of the source node.
+            - ``a_ind`` (torch.Tensor [E, 1]): angular index of the source node. For radial
+              edges from the center node, this is instead the sector (angular index) the
+              edge points into, since they all share the center node as their source.
             - ``x_unit_coord`` (torch.Tensor [E, 1]): mean unit ``x`` coordinate of source and
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
@@ -1293,7 +1295,12 @@ class StructData(TSMixin, pyg.data.Data):
         x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
 
         r_edge_ind = r_node_ind[edge_indices[0]]
-        a_edge_ind = a_node_ind[edge_indices[0]]
+        # a_ind is the source node's angular index, except for radial edges
+        # from the center: the center node has no angular position of its
+        # own (a_ind == 0 for all sectors), so those edges would otherwise
+        # all collapse to the same a_ind. Use the sector each spoke points
+        # into instead, so every radial edge gets a unique (r_ind, a_ind).
+        a_edge_ind = torch.cat([a_center, a_radial, a_angular]).unsqueeze(1)
 
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
         edge_direction = torch.cat([torch.zeros(row_r.shape[0]), torch.ones(row_a.shape[0])])
