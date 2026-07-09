@@ -479,6 +479,101 @@ class StructData(TSMixin, pyg.data.Data):
             )
 
     @requires_metadata
+    def add_nodes_with_symmetry(self, **kwargs):
+        """
+        Adds ``S`` nodes, each expanded into one copy per symmetry group
+        element (``self.metadata["symmetry"]``, set via `add_symmetry`).
+        Floating-point attributes whose last dimension is 3 (e.g. ``coords``,
+        ``load``) are rotated by every group element; every other attribute
+        is copied unchanged to each copy. 
+
+        Args:
+            **kwargs (dict[str, torch.Tensor]): mapping of registered node
+                attribute names to tensors of shape ``[S, *]``, one row per
+                node. Attributes omitted from ``kwargs`` are initialized to
+                their default values or to zero, broadcast to all ``S``
+                nodes before being expanded per group element.
+
+        Raises:
+            ValueError: if no symmetry group has been set via `add_symmetry`.
+            ValueError: if no keyword arguments are provided, or the provided
+                attribute tensors are empty.
+            ValueError: if any provided attribute name is not a registered
+                node attribute.
+        """
+        symmetry = self.metadata.get("symmetry")
+        if symmetry is None:
+            raise ValueError("No symmetry group set. Call add_symmetry() first.")
+
+        if not kwargs:
+            raise ValueError("No node attributes provided for new nodes. At least one attribute must be provided.")
+
+        n = symmetry.shape[0]
+        num_seeds = len(next(iter(kwargs.values())))
+
+        if num_seeds == 0:
+            raise ValueError("No node attribute values provided. There must be at least one attribute value")
+
+        # Check for unexpected attributes
+        unexpected_attrs = set(kwargs.keys()) - set(self.metadata["node_attr_list"])
+        if unexpected_attrs:
+            raise ValueError(
+                f"Unexpected node attributes: {unexpected_attrs}. Expected: {list(self.metadata['node_attr_list'])}"
+            )
+
+        num_new_nodes = num_seeds * n
+        self.num_nodes += num_new_nodes
+
+        base_group_id = int(self.sym_group_id.max().item()) + 1 if self.sym_group_id.numel() > 0 else 0
+        group_ids = (base_group_id + torch.arange(num_seeds)).repeat_interleave(n).unsqueeze(1)
+        cyclic_idx = torch.arange(n).repeat(num_seeds).unsqueeze(1)
+        self.sym_group_id = torch.cat([self.sym_group_id, group_ids], dim=0)
+        self.sym_index = torch.cat([self.sym_index, cyclic_idx], dim=0)
+
+        # Add node attributes
+        for attr in self.metadata["node_attr_list"]:
+            if attr in ("sym_group_id", "sym_index"):
+                continue
+
+            if attr in kwargs:
+                value = kwargs[attr]
+
+                # Cast non-tensor attributes to tensor
+                if not isinstance(value, torch.Tensor):
+                    value = torch.tensor(value, dtype=getattr(self, attr).dtype)
+
+            # If attribute is not provided, set it to default value
+            elif attr in self.metadata["default_attrs"]:
+                default = self.metadata["default_attrs"][attr]
+                if default.dim() <= 1:
+                    value = default.repeat(num_seeds)
+                else:
+                    value = default.repeat(num_seeds, 1)
+
+            # If attribute has no default value, set it to zero
+            else:
+                attr_shape = getattr(self, attr).shape[1:]
+                value = getattr(self, attr).new_zeros(attr_shape).repeat(num_seeds, 1)
+
+            if value.dim() == 0:
+                value = value.unsqueeze(0)
+
+            if torch.is_floating_point(value) and value.shape[-1] == 3:
+                value_batch = torch.einsum("kij,sj->ski", symmetry, value)
+            else:
+                value_batch = value.unsqueeze(1).expand(num_seeds, n, *value.shape[1:]).clone()
+
+            setattr(
+                self,
+                attr,
+                torch.cat(
+                    [getattr(self, attr), value_batch.reshape(num_new_nodes, *value_batch.shape[2:])],
+                    dim=0,
+                ),
+            )
+
+
+    @requires_metadata
     def add_edge_with_symmetry(self, src: int, dst: int, **kwargs):
         """
         Adds one edge per symmetry group element (``self.metadata["symmetry"]``,
@@ -498,19 +593,39 @@ class StructData(TSMixin, pyg.data.Data):
         sym_index = self.sym_index.view(-1)
 
         def orbit_nodes(node):
-            group = sym_group_id[node]
-            if group == -1:
+            idx = sym_index[node]
+            if idx == -1:
                 raise ValueError(
                     f"Node {node} has no symmetry orbit (sym_group_id == -1); "
                     "it must have been added via add_node_with_symmetry."
                 )
-            members = torch.arange(sym_group_id.numel())[sym_group_id == group]
-            if members.numel() != k:
+            # Orbits are always written as one contiguous block of k nodes
+            # (add_node_with_symmetry/add_nodes_with_symmetry append all k
+            # copies of a group at once), so the orbit's members can be
+            # recovered by arithmetic instead of an O(num_nodes) mask scan
+            # over sym_group_id.
+            base = node - int(idx)
+            if base < 0 or base + k > sym_group_id.numel():
                 raise ValueError(
-                    f"Orbit {group.item()} of node {node} has {members.numel()} surviving "
-                    f"member(s), expected {k}. Its nodes may have been merged or removed."
+                    f"Orbit of node {node} does not fit within the current node range; "
+                    "its nodes may have been merged or removed."
                 )
-            return members[torch.argsort(sym_index[members])]
+            members = torch.arange(base, base + k, device=sym_group_id.device)
+            group = sym_group_id[node]
+            if not torch.all(sym_group_id[members] == group) or not torch.equal(
+                sym_index[members], torch.arange(k, device=sym_index.device, dtype=sym_index.dtype)
+            ):
+                raise ValueError(
+                    f"Orbit {group.item()} of node {node} is not contiguous or intact; "
+                    "its nodes may have been merged or removed."
+                )
+            # Roll so position 0 is `node` itself and position g is "g
+            # rotations from node" -- this preserves the cyclic offset
+            # between src and dst (rather than discarding it by always
+            # returning members in absolute sym_index order), so e.g.
+            # orbit_nodes(dst) vs. orbit_nodes(dst + 1) produce genuinely
+            # different (diagonally offset) pairings with orbit_nodes(src).
+            return torch.roll(members, shifts=-int(idx))
 
         edge_indices = torch.stack([orbit_nodes(src), orbit_nodes(dst)], dim=0)
 
@@ -527,6 +642,113 @@ class StructData(TSMixin, pyg.data.Data):
                 symmetrized_kwargs[attr] = torch.einsum("kij,...j->k...i", symmetry, value)
             else:
                 symmetrized_kwargs[attr] = value.unsqueeze(0).expand(k, *value.shape).clone()
+
+        self.add_edges(edge_indices, **symmetrized_kwargs)
+
+    @requires_metadata
+    def add_edges_with_symmetry(self, src, dst, **kwargs):
+        """
+        Adds ``S`` seed edges, each expanded into one edge per symmetry
+        group element (``self.metadata["symmetry"]``, set via
+        `add_symmetry`): seed edge ``s`` connects group element ``g`` of
+        ``src[s]``'s orbit to group element ``g`` of ``dst[s]``'s orbit, for
+        every ``g``. Floating-point kwargs whose last dimension is 3 are
+        rotated by every group element; every other kwarg is copied
+        unchanged to each copy. Vectorized counterpart of
+        :meth:`add_edge_with_symmetry`: orbit lookup and rotation are done
+        for the whole seed batch in one set of tensor ops (no Python loop
+        over seeds or group elements), then delegated to :meth:`add_edges`
+        in a single call.
+
+        Args:
+            src (torch.Tensor | list[int]): ``[S]`` node indices, one
+                representative per seed edge's source orbit (any orbit
+                member works, not just the group-element-0 copy).
+            dst (torch.Tensor | list[int]): ``[S]`` node indices, one
+                representative per seed edge's destination orbit.
+            **kwargs (dict[str, torch.Tensor]): mapping of registered edge
+                attribute names to tensors of shape ``[S, *]``, one row per
+                seed edge. Attributes omitted are filled in by
+                :meth:`add_edges` as usual (default value, or zero).
+
+        Raises:
+            ValueError: if no symmetry group has been set via `add_symmetry`.
+            ValueError: if ``src`` and ``dst`` have different lengths.
+            ValueError: if any node has no symmetry orbit, or its orbit is
+                not contiguous/intact (see :meth:`add_edge_with_symmetry`).
+        """
+        symmetry = self.metadata.get("symmetry")
+        if symmetry is None:
+            raise ValueError("No symmetry group set. Call add_symmetry() first.")
+
+        src = src if isinstance(src, torch.Tensor) else torch.tensor(src, dtype=torch.long)
+        dst = dst if isinstance(dst, torch.Tensor) else torch.tensor(dst, dtype=torch.long)
+        src, dst = src.view(-1), dst.view(-1)
+
+        if src.shape[0] != dst.shape[0]:
+            raise ValueError(f"src and dst must have the same length, got {src.shape[0]} and {dst.shape[0]}.")
+
+        num_seeds = src.shape[0]
+        k = symmetry.shape[0]
+        sym_group_id = self.sym_group_id.view(-1)
+        sym_index = self.sym_index.view(-1)
+
+        def orbit_members(nodes):
+            idx = sym_index[nodes]
+            if torch.any(idx == -1):
+                bad = nodes[idx == -1]
+                raise ValueError(
+                    f"Node(s) {bad.tolist()} have no symmetry orbit (sym_group_id == -1); "
+                    "they must have been added via add_node_with_symmetry/add_nodes_with_symmetry."
+                )
+
+            # Same contiguous-block arithmetic as add_edge_with_symmetry,
+            # applied to all S seeds at once instead of one node at a time.
+            base = nodes - idx
+            if torch.any(base < 0) or torch.any(base + k > sym_group_id.numel()):
+                raise ValueError(
+                    "Orbit of some node(s) does not fit within the current node range; "
+                    "its nodes may have been merged or removed."
+                )
+
+            members = base.unsqueeze(1) + torch.arange(k, device=nodes.device)  # [S, k]
+            group = sym_group_id[nodes].unsqueeze(1)
+            expected_index = torch.arange(k, device=nodes.device, dtype=sym_index.dtype).unsqueeze(0).expand(num_seeds, k)
+            if not torch.all(sym_group_id[members] == group) or not torch.equal(sym_index[members], expected_index):
+                raise ValueError(
+                    "Some orbit(s) are not contiguous or intact; their nodes may have been merged or removed."
+                )
+
+            # Roll each row so position 0 is that seed's own node and
+            # position g is "g rotations from it" -- vectorized per-row
+            # roll via gather, since torch.roll only supports one shift for
+            # the whole tensor. This preserves each seed's cyclic offset
+            # between src and dst instead of discarding it (see
+            # add_edge_with_symmetry's orbit_nodes for the single-node case).
+            gather_idx = (idx.unsqueeze(1) + torch.arange(k, device=nodes.device)) % k
+            return torch.gather(members, 1, gather_idx)
+
+        src_orbits = orbit_members(src)  # [S, k]
+        dst_orbits = orbit_members(dst)  # [S, k]
+
+        edge_indices = torch.stack([src_orbits.reshape(-1), dst_orbits.reshape(-1)], dim=0)  # [2, S*k]
+
+        symmetrized_kwargs = {}
+        for attr, value in kwargs.items():
+            if not isinstance(value, torch.Tensor):
+                value = torch.tensor(value, dtype=getattr(self, attr).dtype)
+
+            # 3-vector float attrs are rotated per group element; everything
+            # else is copied unchanged to each copy. Both branches expand
+            # the whole [S, *] seed batch to [S, k, *] in one vectorized op,
+            # then flatten to [S*k, *] matching edge_indices' seed-major,
+            # group-minor order.
+            if torch.is_floating_point(value) and value.shape[-1] == 3:
+                value_batch = torch.einsum("kij,sj->ski", symmetry, value)
+            else:
+                value_batch = value.unsqueeze(1).expand(num_seeds, k, *value.shape[1:]).clone()
+
+            symmetrized_kwargs[attr] = value_batch.reshape(num_seeds * k, *value_batch.shape[2:])
 
         self.add_edges(edge_indices, **symmetrized_kwargs)
 
