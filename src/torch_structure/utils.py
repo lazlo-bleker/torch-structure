@@ -1,17 +1,35 @@
 import torch
 import numpy as np
 from torch_structure.message_passing import StiffnessAggregator
+from .config import NUMPY_FLOAT, TORCH_FLOAT, DEVICE
 
+
+def torch_to_numpy_float(x):
+    """
+    Converts a torch tensor to a numpy array of floating point variables
+    """
+    if not isinstance(x, torch.Tensor):
+        raise TypeError(f"Expected torch.Tensor, got {type(x)}")
+    return x.detach().cpu().numpy().astype(NUMPY_FLOAT, copy=False)
+
+
+def numpy_to_torch_float(x, device=DEVICE):
+    """
+    Converts a numpy array to a torch tensor of floating point variables
+    """
+    x = np.asarray(x, dtype=NUMPY_FLOAT)
+    return torch.as_tensor(x, dtype=TORCH_FLOAT, device=device)
 
 def scipy_jacobian(func):
     func_grad_and_value = torch.func.grad_and_value(func)
 
     def func_scipy(x_np, *args):
-        x = torch.tensor(x_np, dtype=torch.float64)
-        grad_val, loss_val = func_grad_and_value(x, *args)
-        loss, grad = loss_val.item(), grad_val.detach().numpy()
-        func_scipy.best_loss = min(loss, func_scipy.best_loss)
-        return loss, grad
+        x_torch = numpy_to_torch_float(x_np)
+        grad_torch, loss_torch = func_grad_and_value(x_torch, *args)
+        loss_np = torch_to_numpy_float(loss_torch)
+        grad_np = torch_to_numpy_float(grad_torch)
+        func_scipy.best_loss = min(loss_np, func_scipy.best_loss)
+        return loss_np, grad_np
 
     func_scipy.best_loss = np.inf
     return func_scipy

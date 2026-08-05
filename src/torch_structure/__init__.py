@@ -31,3 +31,7 @@ __all__ = [
     "transforms",
     "utils",
 ]
+
+from .config import DEVICE
+import torch
+torch.set_default_device(DEVICE)
