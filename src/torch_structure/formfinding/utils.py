@@ -18,15 +18,16 @@ def create_branch_node_matrix(edge_index):
     num_nodes = torch.max(edge_index) + 1
     row_indices = torch.arange(num_edges, device=device).repeat(2)
     col_indices = edge_index.view(-1)
-    indices = torch.stack([row_indices, col_indices])
     values = torch.cat(
-        [torch.ones(num_edges, device=device), -torch.ones(num_edges, device=device)]
+        [
+            torch.ones(num_edges, device=device),
+            -torch.ones(num_edges, device=device),
+        ]
     )
-    branch_node_matrix = torch.sparse_coo_tensor(
-        indices, values, size=(num_edges, num_nodes)
-    ).to_dense()
-    return branch_node_matrix
+    branch_node_matrix = torch.zeros([num_edges, num_nodes], device=device)
+    branch_node_matrix.index_put_((row_indices, col_indices), values, accumulate=True)
 
+    return branch_node_matrix
 
 def create_xy_equilibrium_space(coords, is_support, edge_index):
     coords = torch.clone(coords)  # check if this is necessary
