@@ -2,29 +2,82 @@ import torch
 from torch_structure.data.data import StructData
 import matplotlib.pyplot as plt
 
-n = 25 # n-fold rotational symmetry about the z-axis
+n = 6  # n-fold rotational symmetry about the z-axis
 
 node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
-data = StructData(node_attrs=node_attrs)
+edge_attrs = {"force": torch.empty((0, 1), dtype=torch.float)}
+data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-data.add_symmetry(n=n)
+symmetry = data.create_rotational_symmetry(n)
+#addmirror symmetry
+#combine symmetry
+#special case for adding edge between no symmetry and n-fold symmetry. 
+#docstring
+#tests
 
-# three ring seeds (top, middle, bottom), all rotated n times about z in a
-# single vectorized call. Seeds' copies are appended as contiguous n-blocks
-# in seed order: top ring -> nodes 0..n-1, middle ring -> nodes n..2n-1,
-# bottom ring -> nodes 2n..3n-1.
-data.add_nodes_with_symmetry(coords=torch.stack([
-    torch.tensor([1.3, 0.0, 0.0]),  # top ring, tapered inward
+data.add_symmetry({"n_fold": symmetry}, transform_attrs=["coords"])
+
+
+data.add_nodes(symmetry="n_fold", coords=torch.stack([
+    torch.tensor([1.3, 0.0, 0.0]),  # bottom ring
     torch.tensor([1.0, 0.0, 1.0]),  # middle ring
-    torch.tensor([.3, 0.0, 2.0]),  # bottom ring, flared outward
+    torch.tensor([.3, 0.0, 2.0]),  # top ring
 ]))
 
-# vertical struts: two seed edges (top-to-middle, middle-to-bottom), each
-# replicated across every rotation, added in a single vectorized call.
-data.add_edges_with_symmetry(
-    src=torch.tensor([0, n, 0, n, 2 * n, 0, n]),
-    dst=torch.tensor([n, 2 * n, 1, n + 1, 2 * n + 1, n+1, 2*n+1])
+data.add_edges(
+    consider_symmetry=True,
+    edge_indices=torch.tensor([
+        [0, n, 0, n, 2*n],
+        [n, 2 * n, 1, n + 1, 2*n + 1],
+    ]),
+    force=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0]]),
 )
+
+data.add_nodes(coords=torch.tensor([[0.0, 0.0, -1.0]]))
+assym_ind = data.num_nodes - 1
+
+data.add_edges(consider_symmetry=False, edge_indices=torch.tensor([[assym_ind], [0]]), force=torch.tensor([[1.0]]))
 
 data.plot()
 plt.show()
+
+
+
+k = 3  # k-fold rotational symmetry, k divides n so it can connect to the n-ring
+symmetry_k = data.create_rotational_symmetry(k)
+data.add_symmetry({"k_fold": symmetry_k}, transform_attrs=["coords"])
+
+num_nodes_before = data.num_nodes
+data.add_nodes(symmetry="k_fold", coords=torch.tensor([[0.6, 0.0, 3.0]]))
+
+data.add_edges(
+    consider_symmetry=True,
+    edge_indices=torch.tensor([[num_nodes_before + 1], [num_nodes_before]]),
+    force=torch.tensor([[1.0]])
+)
+
+
+data.add_edges(
+    consider_symmetry=True,
+    edge_indices=torch.tensor([[num_nodes_before - 2], [num_nodes_before]]),
+    force=torch.tensor([[1.0]])
+)
+
+
+data.plot()
+plt.show()
+
+mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+mask[assym_ind] = True
+new_value = data.coords[assym_ind:assym_ind + 1].clone()
+new_value[:, 2] -= 10
+data.set_node_attr_with_symmetry("coords", mask, new_value)
+
+edge_mask = (data.edge_index[0] == assym_ind) & (data.edge_index[1] == 0) & data.directed_mask.view(-1)
+data.set_edge_attr_with_symmetry("force", edge_mask, torch.tensor([[5.0]]))
+
+data.plot()
+plt.show()
+
+
+#delete nodes: remove node triggers removal of the corresonding matrix? or break symmetry (with warning)?
