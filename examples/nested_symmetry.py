@@ -13,6 +13,8 @@ data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 rotation_matrices, rotation_cyclic = data.create_rotational_symmetry(n, origin=torch.tensor([tower_spacing, 0.0, 0.0]))
 rotation2_matrices, rotation2_cyclic = data.create_rotational_symmetry(k, origin=torch.tensor([0, 0.0, 0.0]))
+
+#is this order of matrices intuitive? maybe symmetries should be applied from left to right, not right to left.
 symmetry_matrices, symmetry_cyclic = data.combine_symmetry(rotation2_matrices, rotation_matrices, rotation2_cyclic, rotation_cyclic)
 
 data.add_symmetry({"n_fold_k_fold": (symmetry_matrices, symmetry_cyclic)}, transform_attrs=["coords"])
@@ -22,6 +24,7 @@ data.add_nodes(symmetry="n_fold_k_fold", coords=torch.stack([
     torch.tensor([radius + tower_spacing, 0.0, 1.0])
 ]))
 
+#adding edges should not rely on indices, but rather on orbit position?
 data.add_edges(
     consider_symmetry=True,
     edge_indices=torch.tensor([
