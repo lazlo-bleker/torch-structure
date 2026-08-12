@@ -445,7 +445,6 @@ class StructData(TSMixin, pyg.data.Data):
     def _orbit_members(self, nodes, full_group_size, stride):
         orbit_id = self.orbit_id.view(-1)
         orbit_index = self.orbit_index.view(-1)
-        symmetry_id = self.symmetry_id.view(-1)
         num_nodes = nodes.shape[0]
 
         idx = orbit_index[nodes]
@@ -464,24 +463,7 @@ class StructData(TSMixin, pyg.data.Data):
                 "Some orbit(s) are not contiguous or intact; their nodes may have been merged or removed."
             )
 
-        # Positions within a symmetry group are laid out block-major (flat = block * n + inner),
-        # with cyclic_subgroup constant within each block. Deriving k (block count) and n (block
-        # length) from cyclic_subgroup lets us apply the same relative group element to any queried
-        # node via coordinate-wise mod addition, instead of assuming the whole group is one flat
-        # cyclic sequence (which only holds for a single, uncombined rotation).
-        group_id = int(symmetry_id[nodes[0]])
-        group_cyclic = self.cyclic_subgroup[self.symmetry_matrix_ind == group_id]
-        block_of_position = group_cyclic - group_cyclic.min()
-        k = int(block_of_position.max().item()) + 1
-        n = full_group_size // k
-
-        block_local = block_of_position[idx]
-        inner_local = idx % n
-
-        new_block = (block_local.unsqueeze(1) + block_of_position.unsqueeze(0)) % k
-        new_inner = (inner_local.unsqueeze(1) + (torch.arange(full_group_size, device=nodes.device) % n).unsqueeze(0)) % n
-        gather_idx = new_block * n + new_inner
-
+        gather_idx = (idx.unsqueeze(1) + torch.arange(full_group_size, device=nodes.device)) % full_group_size
         rolled = torch.gather(members, 1, gather_idx)
         return rolled[:, ::stride]
 
