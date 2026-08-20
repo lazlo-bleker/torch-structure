@@ -1,5 +1,11 @@
 from ..data.data import StructData
-
+from dataclasses import dataclass
+@dataclass
+class ConstraintConfig:
+    """
+    Data container to initialize a Constraint object
+    """
+    name: str
 class Constraint():
     def __init__(self):
         self.function = None

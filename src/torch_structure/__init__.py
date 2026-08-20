@@ -14,6 +14,7 @@ from . import loss
 from . import plot
 from . import transforms
 from . import utils
+from . import optimizer
 
 try:
     __version__ = version(__name__)
@@ -30,6 +31,7 @@ __all__ = [
     "plot",
     "transforms",
     "utils",
+    "optimizer",
 ]
 
 from .config import DEVICE
