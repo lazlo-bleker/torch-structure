@@ -4,7 +4,7 @@ from scipy.optimize import minimize, Bounds
 from torch_structure.data import StructData
 from torch_structure.mixins import solver_names
 from .design_variables import DesignVariableHandler
-from .objective_function import ObjectiveHandler
+from .objectives import ObjectiveHandler
 from .constraints import ConstraintHandler
 from .logger import Logger
 

@@ -1,6 +1,6 @@
 from .core import Optimizer
 from .design_variables import VariableConfig, SolverConfig
-from .objective_function import ObjectiveConfig
+from .objectives import ObjectiveConfig
 from .constraints import ConstraintConfig
 from .logger import LoggerConfig
 

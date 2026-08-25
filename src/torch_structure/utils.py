@@ -2,6 +2,11 @@ import torch
 import numpy as np
 from torch_structure.message_passing import StiffnessAggregator
 from .config import NUMPY_FLOAT, TORCH_FLOAT, DEVICE
+from scipy.optimize import NonlinearConstraint
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .optimizer.constraints import Constraint
 
 
 def torch_to_numpy_float(x):
@@ -18,21 +23,55 @@ def numpy_to_torch_float(x, device=DEVICE):
     Converts a numpy array to a torch tensor of floating point variables
     """
     x = np.asarray(x, dtype=NUMPY_FLOAT)
+    if not x.flags.writeable:
+        x = x.copy()
     return torch.as_tensor(x, dtype=TORCH_FLOAT, device=device)
+
 
 def scipy_jacobian(func):
     func_grad_and_value = torch.func.grad_and_value(func)
 
     def func_scipy(x_np, *args):
-        x_torch = numpy_to_torch_float(x_np)
-        grad_torch, loss_torch = func_grad_and_value(x_torch, *args)
-        loss_np = torch_to_numpy_float(loss_torch)
-        grad_np = torch_to_numpy_float(grad_torch)
-        func_scipy.best_loss = min(loss_np, func_scipy.best_loss)
-        return loss_np, grad_np
+        x = torch.tensor(x_np, dtype=torch.float64)
+        grad_val, loss_val = func_grad_and_value(x, *args)
+        loss, grad = loss_val.item(), grad_val.detach().numpy()
+        func_scipy.best_loss = min(loss, func_scipy.best_loss)
+        return loss, grad
 
     func_scipy.best_loss = np.inf
     return func_scipy
+
+
+def scipy_objective(func):
+    grad_and_value = torch.func.grad_and_value(func)
+
+    def wrapped(x_np, *args):
+        grad, loss = grad_and_value(
+            numpy_to_torch_float(x_np),
+        )
+
+        return (
+            torch_to_numpy_float(loss),
+            torch_to_numpy_float(grad),
+        )
+
+    return wrapped
+
+
+def scipy_function(func):
+    def wrapped(x_np):
+        return torch_to_numpy_float(func(numpy_to_torch_float(x_np)))
+
+    return wrapped
+
+
+def scipy_constraint(constraint: "Constraint"):
+    return NonlinearConstraint(
+        fun=scipy_function(constraint.forward),
+        jac=scipy_function(torch.func.jacrev(constraint.forward)),
+        lb=torch_to_numpy_float(constraint.lower_bound),
+        ub=torch_to_numpy_float(constraint.upper_bound),
+    )
 
 
 def edge_direction(edge_index, x, return_length=False):
