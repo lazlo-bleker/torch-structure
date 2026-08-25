@@ -40,7 +40,6 @@ class Optimizer:
         """
         # Get initial values
         x0 = torch_to_numpy_float(self.dv_handler.x)
-        x0 = torch.ones(self.dv_handler.n_vars)
         # Use the method from child Objective_Function_Handler
         obj_func = scipy_objective(self.obj_handler.forward)
         # Use the constraints defined inside constr_handler

@@ -9,7 +9,3 @@ class TSMixin(CEMMixin, FDMMixin, LaplacianSmoothingMixin, PlotMixin, TNAMixin):
     pass
 
 __all__ = ["TSMixin", "CEMMixin", "FDMMixin", "LaplacianSmoothingMixin", "PlotMixin", "TNAMixin", "OverrideResolveMixin"]
-
-solver_names = [
-    m for m in dir(TSMixin) if callable(getattr(TSMixin, m)) and not m.startswith("__")
-]
