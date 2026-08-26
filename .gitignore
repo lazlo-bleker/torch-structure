@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Log files
+**events.out.tfevents**
+**log.json
+**.png
+**data.pt
+
 # Distribution / packaging
 .Python
 build/

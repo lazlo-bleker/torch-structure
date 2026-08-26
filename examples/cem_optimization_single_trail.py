@@ -10,6 +10,7 @@ from torch_structure.data import StructData
 from scipy.optimize import minimize, Bounds
 import numpy as np
 import matplotlib.pyplot as plt
+from torch_structure.utils import torch_to_numpy_float
 
 # ------------------------------
 # 1. Create initial setup
@@ -50,10 +51,6 @@ target_mask = trail.is_support
 # -------------------------------
 @ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
 def obj_func(trail_lengths, struc_data: StructData):
-    trail_lengths = (
-        trail_lengths.float()
-    )  # Cast to 32-bit float (ToDo: add easy 64-bit support)
-
     # Update the force vector with optimization variables
     full_trail_lengths = struc_data.length.clone()
     full_trail_lengths[trail_element_mask] = trail_lengths
@@ -95,7 +92,7 @@ bounds = Bounds(eps, np.inf)
 result = minimize(
     fun=obj_func,
     args=(trail),
-    x0=initial_values.detach().numpy(),
+    x0=torch_to_numpy_float(initial_values),
     method="SLSQP",
     jac=True,
     callback=make_callback(),

@@ -9,6 +9,7 @@ import torch
 import torch_structure as ts
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+from torch_structure.utils import torch_to_numpy_float
 
 # ------------------------------
 # 1. Create initial bridge setup
@@ -101,7 +102,7 @@ initial_force_values = torch.ones(torch.sum(force_mask), dtype=torch.float64)
 result = minimize(
     fun=deck_flatness,
     args=(data, force_mask, reciprocal_force_mask, deck_mask),
-    x0=initial_force_values.detach().numpy(),
+    x0=torch_to_numpy_float(initial_force_values),
     method="SLSQP",
     jac=True,
     callback=make_callback(),

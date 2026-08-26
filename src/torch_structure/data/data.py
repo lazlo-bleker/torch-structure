@@ -13,33 +13,50 @@ from torch_structure.mixins import TSMixin
 from torch_scatter import scatter
 
 class StructData(TSMixin, pyg.data.Data):
-    def __init__(self,
-                 edge_index=torch.empty((2, 0), dtype=torch.long),
-                 directed_mask=torch.empty((0, 1), dtype=torch.bool),
-                 reciprocal_edge=torch.empty((0, 1), dtype=torch.long),
-                 node_attrs={},
-                 edge_attrs={},
-                 graph_attrs={},
-                 default_attrs={},
-                 **kwargs,
+    def __init__(
+        self,
+        edge_index=None,
+        directed_mask=None,
+        reciprocal_edge=None,
+        node_attrs={},
+        edge_attrs={},
+        graph_attrs={},
+        default_attrs={},
+        **kwargs,
     ):
-        
-        if "name" in node_attrs:
-            
-            raise ValueError(
-                "'name' is always a default node attribute key and cannot be defined as a new attribute."
+        if edge_index is None:
+            edge_index = torch.empty(
+                (2, 0),
+                dtype=torch.long,
             )
-        
-        if "name" in default_attrs:
-            
+
+        if directed_mask is None:
+            directed_mask = torch.empty(
+                (0, 1),
+                dtype=torch.bool,
+            )
+
+        if reciprocal_edge is None:
+            reciprocal_edge = torch.empty(
+                (0, 1),
+                dtype=torch.long,
+            )
+
+        if "name" in node_attrs:
             raise ValueError(
-                "'name' is always a default node attribute key and cannot be defined as a new default attribute."
+                "'name' is always a default node attribute key and cannot "
+                "be defined as a new attribute."
+            )
+
+        if "name" in default_attrs:
+            raise ValueError(
+                "'name' is always a default node attribute key and cannot "
+                "be defined as a new default attribute."
             )
 
         node_attrs = {**node_attrs, "name": torch.empty(0, dtype=torch.long)}
         default_attrs = {**default_attrs, "name": torch.tensor(0, dtype=torch.long)}
 
-        
         super().__init__(
             edge_index=edge_index,
             directed_mask=directed_mask,
