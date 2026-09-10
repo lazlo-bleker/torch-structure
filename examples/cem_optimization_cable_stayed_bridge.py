@@ -7,6 +7,7 @@ in a cable-stayed bridge so that the bridge deck is as flat as possible.
 
 import torch
 import torch_structure as ts
+from torch_structure.plot import Plotter
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
@@ -120,5 +121,5 @@ data.force[reciprocal_force_mask] = optimized_forces
 data = data.mpcem(max_iter=1000, verbose=True)
 
 # Plot the optimized structure
-data.plot(title="Optimized Cable-Stayed Bridge", legend=False)
+Plotter().plot(data, title="Optimized Cable-Stayed Bridge", legend=False)
 plt.show()

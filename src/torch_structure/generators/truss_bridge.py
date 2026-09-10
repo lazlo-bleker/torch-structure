@@ -341,8 +341,8 @@ class TrussBridgeGenerator(BaseGenerator):
             data = data.fdm()
             if (data.coords - prev_coords).abs().max() > 1e-4:
                 # print("Inconsistent geometry detected.")
-                # data.plot()
-                # data.plot(show=True, force=None, coords=prev_coords)
+                # Plotter().plot(data)
+                # Plotter().plot(data, show=True, force=None, coords=prev_coords)
                 raise InvalidSampleError("Inconsistent geometry.")
 
         

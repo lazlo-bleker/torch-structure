@@ -3,6 +3,7 @@ Example: Form-find a Cable Net with the Force Density Method (FDM)
 """
 
 import torch_structure as ts
+from torch_structure.plot import Plotter
 import matplotlib.pyplot as plt
 
 # --------------------------------
@@ -31,6 +32,6 @@ data = cable_net_generator()  # Main data object of TorchStructure we'll work wi
 # -------------------------------
 # 3. Plot the resulting structure
 # -------------------------------
-data.plot(title="Randomized Cable Net", legend=False)
+Plotter().plot(data, title="Randomized Cable Net", legend=False)
 
 plt.show()

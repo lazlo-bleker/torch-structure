@@ -1,5 +1,6 @@
 import torch
 from torch_structure.data.data import StructData
+from torch_structure.plot import Plotter
 import matplotlib.pyplot as plt
 
 
@@ -24,5 +25,5 @@ node_attrs = {"coords": f}
 edge_attrs = {"force": g}
 data.add_chain(10, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-data.plot()
+Plotter().plot(data)
 plt.show()

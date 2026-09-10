@@ -1,5 +1,6 @@
 import torch
 from torch_structure.data.data import StructData
+from torch_structure.plot import Plotter
 import matplotlib.pyplot as plt
 
 
@@ -43,7 +44,7 @@ edge_attrs = {
 data.add_triangular_grid(10, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 
-data.plot(load=True)
+Plotter().plot(data, load=True)
 
 
 plt.show()

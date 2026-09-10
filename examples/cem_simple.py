@@ -1,5 +1,6 @@
 import torch
 import torch_structure as ts
+from torch_structure.plot import Plotter
 import time
 
 # -------------------------
@@ -108,7 +109,7 @@ ff_graph = data.seqcem(max_iter=100, verbose=True)
 t1 = time.time()
 print(f"Sequential CEM took {t1 - t0:.5f} seconds")
 ff_graph.verify_equilibrium(verbose=True)
-ff_graph.plot(title="Sequential CEM")
+Plotter().plot(ff_graph, title="Sequential CEM")
 
 # or
 
@@ -118,7 +119,7 @@ ff_graph = data.cem(max_iter=100, verbose=True)
 t1 = time.time()
 print(f"CEM took {t1 - t0:.5f} seconds")
 ff_graph.verify_equilibrium(verbose=True)
-ff_graph.plot(title="CEM")
+Plotter().plot(ff_graph, title="CEM")
 
 # or
 
@@ -128,4 +129,4 @@ ff_graph = data.mpcem(max_iter=100, verbose=True, damping_factor=0.0)
 t1 = time.time()
 print(f"MP-CEM took {t1 - t0:.5f} seconds")
 ff_graph.verify_equilibrium(verbose=True)
-ff_graph.plot(title="MP-CEM", show=True)
+Plotter().plot(ff_graph, title="MP-CEM", show=True)

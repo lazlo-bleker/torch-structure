@@ -7,6 +7,7 @@ This is a minimal example of optimization with torch_structure
 import torch
 import torch_structure as ts
 from torch_structure.data import StructData
+from torch_structure.plot import Plotter
 from scipy.optimize import minimize, Bounds
 import numpy as np
 import matplotlib.pyplot as plt
@@ -116,6 +117,6 @@ trail.force[trail_element_mask_reciprocal] = optimized_lengths
 trail = trail.mpcem(max_iter=1000, verbose=True)
 
 # Plot the optimized structure
-trail.plot(title="Optimized Trail", legend=False)
+Plotter().plot(trail, title="Optimized Trail", legend=False)
 plt.show()
 print("Finish")

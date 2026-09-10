@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from torch_structure.message_passing import ResidualForce
 
 
-def plot_data(
+def _draw(
     coords,
     edge_index,
     is_support=None,
@@ -31,7 +31,7 @@ def plot_data(
     is_deck_node=None
 ):
     """
-    Plot a structure in 3D.
+    Draw a structure in 3D. Internal helper used by :class:`torch_structure.plot.Plotter`.
 
     Args:
         coords (torch.Tensor): Tensor of shape (num_nodes, 3) with the 3D coordinates of each node.
@@ -254,7 +254,7 @@ def plot_data(
         plt.show()
 
 
-def plot_data_xz(
+def _draw_xz(
     coords,
     edge_index,
     is_support=None,
@@ -279,7 +279,8 @@ def plot_data_xz(
     highlight_nodes=None,
 ):
     """
-    Plot a structure in 3D.
+    Draw a structure projected onto the XZ plane. Internal helper used by
+    :class:`torch_structure.plot.Plotter`.
 
     Args:
         coords (torch.Tensor): Tensor of shape (num_nodes, 3) with the 3D coordinates of each node.
