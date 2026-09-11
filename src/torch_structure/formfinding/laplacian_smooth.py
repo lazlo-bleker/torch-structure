@@ -1,6 +1,6 @@
 import torch
 
-from torch_structure.message_passing.laplacian_smooth import Laplacian
+from torch_structure.message_passing.laplace import Laplacian
 
 
 def laplacian_smoothing(

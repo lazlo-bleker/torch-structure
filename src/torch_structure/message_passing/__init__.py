@@ -1,5 +1,5 @@
 from .fem import FEM, StiffnessAggregator
-from .laplacian_smooth import Laplacian
+from .laplace import Laplacian
 from .lignn import LocalLogicLoss, WeightedMax
 from .residual_force import ResidualForce
 

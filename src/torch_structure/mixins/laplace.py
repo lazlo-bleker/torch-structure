@@ -1,11 +1,11 @@
 import torch
 
-from torch_structure.message_passing.laplacian_smooth import Laplacian
+from torch_structure.message_passing.laplace import Laplacian
 from torch_structure.formfinding import laplacian_smoothing
 from torch_structure.mixins.utils import OverrideResolveMixin
 
 
-class LaplacianSmoothingMixin(OverrideResolveMixin):
+class LaplacianMixin(OverrideResolveMixin):
     @property
     def laplacian(self):
         """Return the cached matrix-free Laplacian for this topology."""
