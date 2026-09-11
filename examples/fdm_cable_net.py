@@ -32,3 +32,4 @@ data = cable_net_generator()  # Main data object of TorchStructure we'll work wi
 # 3. Plot the resulting structure
 # -------------------------------
 Plotter().plot(data, title="Randomized Cable Net", legend=False, show=True)
+Plotter().plot_xz(data, title="Randomized Cable Net (XZ View)", legend=False, show=True)

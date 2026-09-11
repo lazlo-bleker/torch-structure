@@ -120,4 +120,4 @@ data.force[reciprocal_force_mask] = optimized_forces
 data = data.mpcem(max_iter=1000, verbose=True)
 
 # Plot the optimized structure
-Plotter().plot(data, title="Optimized Cable-Stayed Bridge", legend=False, show=True)
+Plotter().plot(data, title="Optimized Cable-Stayed Bridge", legend=True, show=True)

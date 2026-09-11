@@ -79,6 +79,7 @@ PLOT_CONFIG = {
     },
     'figure': {
         'figsize': (10, 8),
+        'zoom_3d': 1.3,   # shrinks the equalized 3D cube so it fills the canvas closer to plot_xz's level
     },
     'inset_axis': {
         'rect': [0.0, 0.0, 0.12, 0.12],   # [left, bottom, width, height], fraction of figure — bottom-left corner

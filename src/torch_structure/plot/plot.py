@@ -91,7 +91,7 @@ def _deck_quads(coords, is_deck_node):
     return quads
 
 
-def _equalize_3d(ax):
+def _equalize_3d(ax, zoom=1.0):
     """
     Force an equal-aspect orthographic cube around the current 3D data.
 
@@ -101,10 +101,12 @@ def _equalize_3d(ax):
 
     Args:
         ax (mpl_toolkits.mplot3d.axes3d.Axes3D): 3D axes to adjust in place.
+        zoom (float, optional): >= 1.0. 1.0 (default) keeps the tight,
+            unzoomed cube.
     """
     limits = [ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()]
     centers = [np.mean(lim) for lim in limits]
-    radius = 0.5 * max(abs(lim[1] - lim[0]) for lim in limits)
+    radius = 0.5 * max(abs(lim[1] - lim[0]) for lim in limits) / zoom
     ax.set_xlim3d(centers[0] - radius, centers[0] + radius)
     ax.set_ylim3d(centers[1] - radius, centers[1] + radius)
     ax.set_zlim3d(centers[2] - radius, centers[2] + radius)
@@ -357,7 +359,7 @@ def plot_3d(plot_data, title=None, legend=True):
         ax.set_axis_off()
 
     if show['equal_axes']:
-        _equalize_3d(ax)
+        _equalize_3d(ax, zoom=PLOT_CONFIG['figure']['zoom_3d'])
 
     if show['show_inset_axis']:
         plot_inset_axis_3d(fig, ax)
