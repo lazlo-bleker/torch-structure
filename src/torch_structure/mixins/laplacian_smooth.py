@@ -1,7 +1,30 @@
+from torch_structure.message_passing.laplacian_smooth import Laplacian
 from torch_structure.formfinding import laplacian_smoothing
 from torch_structure.mixins.utils import OverrideResolveMixin
 
+
 class LaplacianSmoothingMixin(OverrideResolveMixin):
+    @property
+    def laplacian(self):
+        """Return the cached matrix-free Laplacian for this topology."""
+        edge_index = self.edge_index
+        cache = getattr(self, "_laplacian_cache", None)
+        topology_version = (id(edge_index), edge_index._version, edge_index.device)
+
+        if cache is None or cache[0] != topology_version:
+            cache = (
+                topology_version,
+                Laplacian(edge_index, num_nodes=self.num_nodes),
+            )
+            self._laplacian_cache = cache
+
+        return cache[1]
+
+    def laplacian_coordinates(self, x=None):
+        """Compute matrix-free uniform Laplacian coordinates ``Lx``."""
+        x = self.coords if x is None else x
+        return self.laplacian(x)
+
     def xy_laplacian_smoothing(
         self,
         inplace: bool=False,
@@ -28,6 +51,7 @@ class LaplacianSmoothingMixin(OverrideResolveMixin):
             tolerance,
             max_iter,
             verbose,
+            laplacian=self.laplacian,
         )
 
         # Update data object

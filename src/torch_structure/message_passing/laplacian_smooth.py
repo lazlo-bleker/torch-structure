@@ -1,15 +1,22 @@
 from torch_geometric.nn import MessagePassing
 
 
-class LaplacianSmoothing(MessagePassing):
-    def __init__(self, damping_factor=0.5):
+class Laplacian(MessagePassing):
+    """Matrix-free uniform graph Laplacian.
+
+    The operator uses the random-walk form of the uniform Laplacian:
+    ``Lx = x - mean(neighbour_values)``.
+    """
+
+    def __init__(self, edge_index, num_nodes=None):
         super().__init__(aggr="mean")
-        self.damping_factor = damping_factor
+        self.register_buffer("edge_index", edge_index)
+        self.num_nodes = num_nodes
 
-    def forward(self, x, edge_index):
-        mean_neighbours = self.propagate(edge_index, x=x)
-        out = x + (1 - self.damping_factor) * (mean_neighbours - x)
-        return out
+    def forward(self, x):
+        mean_neighbours = self.propagate(self.edge_index, x=x, size=(self.num_nodes, self.num_nodes))
+        return x - mean_neighbours
 
-    def message(self, x_i, x_j):  # is x_i necessary?
+    def message(self, x_j):
         return x_j
+

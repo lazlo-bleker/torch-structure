@@ -253,6 +253,8 @@ def plot_data(
     if show:
         plt.show()
 
+    return ax
+
 
 def plot_data_xz(
     coords,
@@ -469,3 +471,5 @@ def plot_data_xz(
     # Show plot
     if show:
         plt.show()
+
+    return ax
