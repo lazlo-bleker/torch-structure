@@ -141,7 +141,7 @@ def draw_text(ax, points, texts, *, color="black", fontsize=8):
 
 
 def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_ratio=0.5,
-              normalize=False):
+              normalize=False, linewidth=None):
     """
     Draw a set of vector arrows with a single ``quiver`` call.
 
@@ -165,6 +165,8 @@ def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_
             arrow's length given to the arrowhead. Default is 0.5.
         normalize (bool, optional): 3D only — if True, every arrow is
             rescaled to unit length before `length` is applied. Default is False.
+        linewidth (float, optional): Shaft/outline stroke width. Default is
+            None (matplotlib's own default).
 
     Returns:
         matplotlib.quiver.Quiver: The quiver artist, or None if `origins` is empty.
@@ -181,6 +183,7 @@ def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_
             length=length,
             arrow_length_ratio=arrow_length_ratio,
             normalize=normalize,
+            linewidth=linewidth,
             clip_on=False,
         )
     return ax.quiver(
@@ -189,6 +192,7 @@ def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_
         color=color,
         angles="xy",
         scale_units="xy",
+        linewidth=linewidth,
         scale=1,
         clip_on=False,
     )

@@ -9,7 +9,12 @@ settings by concern. Change a value here and it changes every subsequent call;
 straight from here, not passed per call.
 """
 
+import matplotlib as mpl
+
 PLOT_CONFIG = {
+    'font': {
+        'family': 'Arial',
+    },
     'show': {
         'show_supports': False,
         'show_load': False,
@@ -19,6 +24,7 @@ PLOT_CONFIG = {
         'lw_constant': False,
         'show_edge_indices': False,           # plot_3d only
         'show_deck': False,                   # plot_3d only
+        'show_inset_axis': True,              # small XYZ / XZ orientation triad, bottom-left corner
     },
     'color': {
         'edge_tension': '#E40714',                    # Edges/legend entry for force > 0
@@ -74,8 +80,18 @@ PLOT_CONFIG = {
     'figure': {
         'figsize': (10, 8),
     },
+    'inset_axis': {
+        'rect': [0.0, 0.0, 0.12, 0.12],   # [left, bottom, width, height], fraction of figure — bottom-left corner
+        'color': 'grey',
+        'fontsize': 9,
+        'linewidth': 0.8,                 # quiver shaft/outline width (mpl's own default is ~1.5)
+        'arrow_length_ratio': 0.3,        # plot_inset_axis_3d only (2D quivers have no arrowhead length param)
+        'label_offset': 1.25,             # label position along each axis, as a multiple of the unit arrow length
+    },
     'save': {
         'file_format': '.png',
         'bbox_inches': 'tight',
     },
 }
+
+mpl.rcParams['font.family'] = PLOT_CONFIG['font']['family']

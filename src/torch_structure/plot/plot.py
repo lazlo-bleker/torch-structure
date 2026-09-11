@@ -158,6 +158,80 @@ def _connected_supports(is_support, edge_index_np, row):
     return support_idx[np.isin(support_idx, np.unique(edge_index_np[row]))]
 
 
+def plot_inset_axis_3d(fig, ax):
+    """
+    Draw a small XYZ orientation triad pinned to the bottom-left corner of
+    the figure, independent of `ax`'s own position/data limits, that stays
+    in sync with `ax` as it's rotated interactively.
+
+    Args:
+        fig (matplotlib.figure.Figure): Figure to attach the inset axes to.
+        ax (mpl_toolkits.mplot3d.axes3d.Axes3D): Main 3D axes whose view
+            angle (elev/azim/roll) the inset triad tracks.
+
+    Returns:
+        mpl_toolkits.mplot3d.axes3d.Axes3D: The inset axes.
+    """
+    cfg = PLOT_CONFIG['inset_axis']
+    color = cfg['color']
+
+    inset_ax = fig.add_axes(cfg['rect'], projection="3d")
+    inset_ax.disable_mouse_rotation()  # never rotate/pan/zoom from its own mouse events
+    inset_ax.set_navigate(False)       # excluded from toolbar pan/zoom too
+    inset_ax.set_facecolor("none")
+    inset_ax.set_xlim3d(-1, 1)
+    inset_ax.set_ylim3d(-1, 1)
+    inset_ax.set_zlim3d(-1, 1)
+    inset_ax.set_box_aspect([1, 1, 1])
+    inset_ax.set_axis_off()
+
+    axes_vectors = np.eye(3)
+    draw_arrow(inset_ax, np.zeros((3, 3)), axes_vectors,
+               color=color, arrow_length_ratio=cfg['arrow_length_ratio'],
+               linewidth=cfg['linewidth'])
+    draw_text(inset_ax, axes_vectors * cfg['label_offset'], ["X", "Y", "Z"],
+              color=color, fontsize=cfg['fontsize'])
+
+    def _sync_rotation(event=None):
+        if (inset_ax.elev, inset_ax.azim) != (ax.elev, ax.azim):
+            inset_ax.view_init(elev=ax.elev, azim=ax.azim, roll=ax.roll)
+            fig.canvas.draw_idle()
+
+    fig.canvas.mpl_connect("motion_notify_event", _sync_rotation)
+    _sync_rotation()
+    return inset_ax
+
+
+def plot_inset_axis_xz(fig):
+    """
+    Draw a small XZ orientation indicator pinned to the bottom-left corner
+    of the figure, independent of the main axes' position/data limits.
+    Static — `plot_xz`'s view never rotates, so there's nothing to track.
+
+    Args:
+        fig (matplotlib.figure.Figure): Figure to attach the inset axes to.
+
+    Returns:
+        matplotlib.axes.Axes: The inset axes.
+    """
+    cfg = PLOT_CONFIG['inset_axis']
+    color = cfg['color']
+
+    inset_ax = fig.add_axes(cfg['rect'])
+    inset_ax.set_navigate(False)  # excluded from toolbar pan/zoom
+    inset_ax.set_facecolor("none")
+    inset_ax.set_xlim(-1, 1)
+    inset_ax.set_ylim(-1, 1)
+    inset_ax.set_aspect("equal")
+    inset_ax.set_axis_off()
+
+    axes_vectors = np.eye(2)
+    draw_arrow(inset_ax, np.zeros((2, 2)), axes_vectors, color=color, linewidth=cfg['linewidth'])
+    draw_text(inset_ax, axes_vectors * cfg['label_offset'], ["X", "Z"],
+              color=color, fontsize=cfg['fontsize'])
+    return inset_ax
+
+
 def plot_3d(plot_data, title=None, legend=True):
     """
     Plot a structure in 3D. Internal helper used by :class:`torch_structure.plot.Plotter`.
@@ -284,6 +358,9 @@ def plot_3d(plot_data, title=None, legend=True):
 
     if show['equal_axes']:
         _equalize_3d(ax)
+
+    if show['show_inset_axis']:
+        plot_inset_axis_3d(fig, ax)
 
     if legend and legend_handles:
         ax.legend(handles=legend_handles, frameon=PLOT_CONFIG['legend']['frameon'])
@@ -425,6 +502,9 @@ def plot_xz(plot_data, title=None, legend=True):
 
     if show['equal_axes']:
         ax.set_aspect("equal", adjustable="box")
+
+    if show['show_inset_axis']:
+        plot_inset_axis_xz(fig)
 
     if legend and legend_handles:
         ax.legend(
