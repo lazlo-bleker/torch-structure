@@ -1,13 +1,8 @@
 import matplotlib.pyplot as plt
 import torch
-
 from torch_structure.message_passing import ResidualForce
 from torch_structure.plot.config import PLOT_CONFIG
 from torch_structure.plot.plot import plot_3d, plot_xz
-
-# ResidualForce has no parameters and no expensive init (just aggr="add"), so
-# there's nothing to gain from constructing it lazily — one shared instance.
-calculate_residual_force = ResidualForce()
 
 
 def _as_numpy(value):
@@ -124,31 +119,29 @@ class Plotter:
         Args:
             data: Structure data object to read fields from.
             kwargs (dict): The keyword arguments passed to :meth:`plot` /
-                :meth:`plot_xz` (with `path` / `show` already popped by the
-                caller). `coords`, `edge_index`, `is_support`, `force`,
-                `load`, `is_deck_node` and `highlight_nodes` are popped out
-                (mutating `kwargs` in place) and resolved; `title` / `legend`
-                are left for the caller to forward on to the drawing function.
+                :meth:`plot_xz` - `coords`, `edge_index`, `is_support`, `force`,
+                `load`, `is_deck_node` and `highlight_nodes` are popped out and resolved to numpy arrays;
+                `title` / `legend` are forwarded directly.
 
         Returns:
             dict: `plot_data`, ready to hand to `plot_3d` / `plot_xz` —
-            `coords`, `edge_index` (plain numpy arrays), `is_support`,
-            `force`, `load`, `is_deck_node` (numpy arrays or None),
-            `residual_force` (precomputed numpy array, or None unless both
-            `force` and `load` resolved to tensors) and `highlight_nodes`
-            (passed through as given, or None).
+            `coords`, `edge_index` (numpy arrays), `is_support`,
+            `force`, `load`, `is_deck_node`, `residual_force` (numpy arrays or None) 
+            and `highlight_nodes` (passed as given, or None).
         """
-        resolved = {
+        # Resolve overriden data fields from the data object, falling back to the data's attributes
+        resolved_overrides = {
             name: data._resolve_override(
                 name, kwargs.pop(name, None), required=name in self._REQUIRED
             )
             for name in self._FIELDS
         }
-        coords, edge_index = resolved["coords"], resolved["edge_index"]
-        force, load = resolved["force"], resolved["load"]
+        coords, edge_index = resolved_overrides["coords"], resolved_overrides["edge_index"]
+        force, load = resolved_overrides["force"], resolved_overrides["load"]
         is_deck_node = kwargs.pop("is_deck_node", None)
 
-        residual_force = None
+        residual_force = None        
+        calculate_residual_force = ResidualForce()
         if torch.is_tensor(force) and torch.is_tensor(load):
             residual_force = calculate_residual_force(
                 coords, force, edge_index, load
@@ -157,7 +150,7 @@ class Plotter:
         return {
             "coords": coords.detach().cpu().numpy(),
             "edge_index": edge_index.detach().cpu().numpy(),
-            "is_support": _flatten(_as_numpy(resolved["is_support"])),
+            "is_support": _flatten(_as_numpy(resolved_overrides["is_support"])),
             "force": _flatten(_as_numpy(force)),
             "load": _as_numpy(load),
             "residual_force": residual_force,

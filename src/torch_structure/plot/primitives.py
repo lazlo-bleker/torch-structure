@@ -41,6 +41,7 @@ def draw_node(ax, points, *, marker="o", size=6, color="black", zorder=None):
         color=color,
         linestyle="None",
         zorder=zorder,
+        clip_on=False,
     )
     return artist
 
@@ -73,7 +74,7 @@ def draw_edge(ax, segments, *, colors=None, linewidths=None, linestyles=None, zo
     style = {"colors": colors, "linewidths": linewidths}
     if linestyles is not None:
         style["linestyles"] = linestyles
-    collection = collection_cls(segments, **style)
+    collection = collection_cls(segments, clip_on=False, **style)
     if zorder is not None:
         collection.set_zorder(zorder)
     if three_d:
@@ -113,6 +114,7 @@ def draw_face(ax, polygons, *, facecolor="grey", edgecolor="k", linewidth=0.5, a
         edgecolors=edgecolor,
         linewidths=linewidth,
         alpha=alpha,
+        clip_on=False,
     )
     if three_d:
         ax.add_collection3d(collection)
@@ -135,7 +137,7 @@ def draw_text(ax, points, texts, *, color="black", fontsize=8):
         fontsize (float, optional): Font size in points. Default is 8.
     """
     for point, text in zip(np.asarray(points, dtype=float), texts):
-        ax.text(*point, text, color=color, fontsize=fontsize)
+        ax.text(*point, text, color=color, fontsize=fontsize, clip_on=False)
 
 
 def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_ratio=0.5,
@@ -179,6 +181,7 @@ def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_
             length=length,
             arrow_length_ratio=arrow_length_ratio,
             normalize=normalize,
+            clip_on=False,
         )
     return ax.quiver(
         origins[:, 0], origins[:, 1],
@@ -187,4 +190,5 @@ def draw_arrow(ax, origins, vectors, *, color="black", length=1.0, arrow_length_
         angles="xy",
         scale_units="xy",
         scale=1,
+        clip_on=False,
     )
