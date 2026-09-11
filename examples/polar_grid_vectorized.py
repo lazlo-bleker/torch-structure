@@ -1,7 +1,6 @@
 import torch
 from torch_structure.data.data import StructData
 from torch_structure.plot import Plotter
-import matplotlib.pyplot as plt
 import math
 
 node_attrs = {
@@ -49,6 +48,4 @@ edge_attrs = {
 
 data.add_polar_grid(5, 3, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-Plotter().plot(data, load=True)
-
-plt.show()
+Plotter().plot(data, show=True)

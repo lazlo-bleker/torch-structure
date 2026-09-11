@@ -1,7 +1,6 @@
 import torch
 from torch_structure.data.data import StructData
 from torch_structure.plot import Plotter
-import matplotlib.pyplot as plt
 N_SECTORS = 10
 N_RINGS = 7
 NUM_EDGES = (2 * N_RINGS + 1) * N_SECTORS
@@ -33,6 +32,4 @@ edge_attrs = {
 
 data.add_sphere(N_SECTORS, N_RINGS, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-Plotter().plot(data, load=True)
-
-plt.show()
+Plotter().plot(data, show=True)

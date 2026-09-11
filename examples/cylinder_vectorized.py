@@ -1,7 +1,6 @@
 import torch
 from torch_structure.data.data import StructData
 from torch_structure.plot import Plotter
-import matplotlib.pyplot as plt
 N_SECTORS = 8
 N_RINGS = 5
 
@@ -34,6 +33,4 @@ edge_attrs = {
 
 data.add_cylinder(N_SECTORS, N_RINGS, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-Plotter().plot(data, load=True)
-
-plt.show()
+Plotter().plot(data, show=True)

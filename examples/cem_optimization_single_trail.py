@@ -10,7 +10,6 @@ from torch_structure.data import StructData
 from torch_structure.plot import Plotter
 from scipy.optimize import minimize, Bounds
 import numpy as np
-import matplotlib.pyplot as plt
 
 # ------------------------------
 # 1. Create initial setup
@@ -117,6 +116,5 @@ trail.force[trail_element_mask_reciprocal] = optimized_lengths
 trail = trail.mpcem(max_iter=1000, verbose=True)
 
 # Plot the optimized structure
-Plotter().plot(trail, title="Optimized Trail", legend=False)
-plt.show()
+Plotter().plot(trail, title="Optimized Trail", legend=False, show=True)
 print("Finish")

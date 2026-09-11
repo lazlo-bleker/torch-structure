@@ -1,7 +1,6 @@
 import torch
 from torch_structure.data.data import StructData
 from torch_structure.plot import Plotter
-import matplotlib.pyplot as plt
 
 
 node_attrs = {
@@ -51,6 +50,4 @@ edge_attrs = {"force": g}
 
 data.add_grid(7, 7, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-Plotter().plot(data, load=True)
-
-plt.show()
+Plotter().plot(data, show=True)
