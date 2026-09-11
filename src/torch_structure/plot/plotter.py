@@ -1,4 +1,4 @@
-from torch_structure.plot.plot import _draw, _draw_xz
+from torch_structure.plot.plot import plot_3d, plot_xz
 
 
 class Plotter:
@@ -33,16 +33,62 @@ class Plotter:
     _REQUIRED = ("coords", "edge_index")
 
     def plot(self, data, **kwargs):
-        """Draw ``data`` in 3D. See the class docstring for keyword handling."""
+        """
+        Draw `data` in 3D.
+
+        Args:
+            data: Structure data object to draw. Must expose
+                `_resolve_override` (see the class docstring) and the
+                attributes needed to resolve `coords`, `edge_index`, and
+                optionally `is_support`, `force`, `load`.
+            **kwargs: Field overrides (`coords`, `edge_index`, `is_support`,
+                `force`, `load` — see the class docstring) plus any drawing
+                option accepted by :func:`torch_structure.plot.plot.plot_3d`
+                (`title`, `legend`, `show_supports`, `show_load`,
+                `force_scale`, `path`, `show`, ...).
+
+        Returns:
+            None
+        """
         fields = self._resolve_fields(data, kwargs)
-        return _draw(**fields, **kwargs)
+        return plot_3d(**fields, **kwargs)
 
     def plot_xz(self, data, **kwargs):
-        """Draw ``data`` projected onto the XZ plane."""
+        """
+        Draw `data` projected onto the XZ plane.
+
+        Args:
+            data: Structure data object to draw. Must expose
+                `_resolve_override` (see the class docstring) and the
+                attributes needed to resolve `coords`, `edge_index`, and
+                optionally `is_support`, `force`, `load`.
+            **kwargs: Field overrides (`coords`, `edge_index`, `is_support`,
+                `force`, `load` — see the class docstring) plus any drawing
+                option accepted by :func:`torch_structure.plot.plot.plot_xz`
+                (`title`, `legend`, `show_supports`, `show_load`,
+                `force_scale`, `path`, `show`, `highlight_nodes`, ...).
+
+        Returns:
+            None
+        """
         fields = self._resolve_fields(data, kwargs)
-        return _draw_xz(**fields, **kwargs)
+        return plot_xz(**fields, **kwargs)
 
     def _resolve_fields(self, data, kwargs):
+        """
+        Resolve the coords/edge_index/is_support/force/load fields for one call.
+
+        Args:
+            data: Structure data object to read fields from.
+            kwargs (dict): The keyword arguments passed to :meth:`plot` /
+                :meth:`plot_xz`. Any of `coords`, `edge_index`, `is_support`,
+                `force`, `load` present here are popped out (mutating
+                `kwargs` in place) and resolved; everything else is left for
+                the caller to forward on to the drawing function.
+
+        Returns:
+            dict: Mapping from each field name in `_FIELDS` to its resolved value.
+        """
         return {
             name: data._resolve_override(
                 name, kwargs.pop(name, None), required=name in self._REQUIRED
