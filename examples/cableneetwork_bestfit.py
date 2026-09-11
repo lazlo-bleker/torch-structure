@@ -22,7 +22,8 @@ class BestFitModel(nn.Module):
 
     def forward(self, force_density):
         tmp_struct_data = self.struct_data.detach().clone()
-        tmp_struct_data.force_density = force_density
+        tmp_struct_data.force_density[tmp_struct_data.directed_mask.squeeze(1)] = force_density
+        tmp_struct_data.force_density[~tmp_struct_data.directed_mask.squeeze(1)] = force_density
         tmp_struct_data.fdm(inplace=True)
 
         # Global coordinates
@@ -74,7 +75,7 @@ ax_init = struct_data.plot(
 
 # Start model
 model = BestFitModel(struct_data, target_coords)
-params = nn.Parameter(struct_data.force_density)
+params = nn.Parameter(struct_data.force_density[struct_data.directed_mask.squeeze(1)])
 optimizer = torch.optim.Adam([params], lr=lr)
 
 # Optimize
@@ -89,7 +90,8 @@ for i in range(n_iters):
 
 
 # Plot final
-struct_data.force_density = params.detach().clone()
+struct_data.force_density[struct_data.directed_mask.squeeze(1)] = params.detach().clone()
+struct_data.force_density[~struct_data.directed_mask.squeeze(1)] = params.detach().clone()
 struct_data.fdm(inplace=True)
 struct_data.plot(
     title="Best-Fit Structure and Target",
