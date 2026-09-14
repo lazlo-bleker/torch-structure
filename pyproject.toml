@@ -1,18 +1,30 @@
 [project]
 name = "torch_structure"
-version = "0.0.1"
+version = "0.1.0"
+description = "A Python package for graph-based autodifferentiable structural design and engineering."
 authors = [
     {name = "Lazlo Bleker"}
 ]
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
 
 dependencies = [
     "matplotlib>=3.9.0",
-    "pydantic>=2.10.6",
+    "numpy",
+    "packaging",
     "scipy>=1.13",
     "torch-geometric>=2.6.1",
 ]
+
+[project.urls]
+Documentation = "https://lazlo-bleker.github.io/torch-structure/"
+Repository = "https://github.com/lazlo-bleker/torch-structure"
 
 [project.optional-dependencies]
 dev = [
