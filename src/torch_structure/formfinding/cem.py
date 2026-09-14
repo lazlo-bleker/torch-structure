@@ -308,6 +308,7 @@ def cem_algorithm(
     track_history=False,
 ):
     """Combinatorial Equilibrium Modelling"""
+    # TODO: refactor into mpcem
 
     coords = torch.clone(coords)
     is_support = is_support.view(-1)
@@ -436,6 +437,7 @@ def seq_cem_algorithm(
     track_history=False,
 ):
     """Combinatorial Equilibrium Modelling"""
+    # TODO: refactor into mpcem
 
     coords = torch.clone(coords)
     is_support = is_support.view(-1)
