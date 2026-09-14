@@ -17,7 +17,7 @@ class PlotMixin(OverrideResolveMixin):
         force = self._resolve_override("force", force, required=False)
         load = self._resolve_override("load", load, required=False)
 
-        plot_data(
+        return plot_data(
             coords=coords,
             edge_index=edge_index,
             is_support=is_support,
