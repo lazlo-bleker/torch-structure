@@ -13,8 +13,26 @@ A Python package for graph-based autodifferentiable structural design and engine
 
 🚧 TorchStructure is in an early stage of development. It may contain bugs and will likely undergo API breaking changes. 🚧
 
+## Installation
+
+You can install TorchStructure with pip:
+
+```bash
+pip install torch_structure
+```
+
+For a more detailed installation guide, check out the dedicated [documentation page](https://lazlo-bleker.github.io/torch-structure/install/).
+
+## Documentation
+
 Documentation (work in progress) is available at [lazlo-bleker.github.io/torch-structure](https://lazlo-bleker.github.io/torch-structure/).
 
-See [CONTRIBUTORS.md](CONTRIBUTORS.md) for the list of people involved in the project.
+## Contributing
+
+TorchStructure is open to contributors. Feel free to reach out to [lazlo.bleker@tum.de](mailto:lazlo.bleker@tum.de) on how to do so.
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for the current list of people involved in the project.
+
+## License
 
 TorchStructure is licensed under the [MIT License](LICENSE).
