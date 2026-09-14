@@ -1125,7 +1125,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for horizontal edges connecting
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for horizontal edges connecting
               ``(u_ind, v_ind) → (u_ind, v_ind+1)``, ``1`` for vertical edges connecting
               ``(u_ind, v_ind) → (u_ind+1, v_ind)``, ``2`` for diagonal edges connecting
               ``(u_ind, v_ind+1) → (u_ind+1, v_ind)``.
@@ -1196,7 +1196,7 @@ class StructData(TSMixin, pyg.data.Data):
         
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
 
-        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0]), torch.full((row_d.shape[0],), 2.0)], dim=0)
+        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0]), torch.full((row_d.shape[0],), 2.0)], dim=0).unsqueeze(1)
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
@@ -1206,7 +1206,7 @@ class StructData(TSMixin, pyg.data.Data):
         self._create_topology(num_nodes = num_nodes, num_edges = num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
-    def add_polar_grid(self, n_rings, n_sectors, node_attrs: dict = {}, edge_attrs: dict = {}):
+    def add_polar_grid(self, n_sectors, n_rings, node_attrs: dict = {}, edge_attrs: dict = {}):
 
         """
         Adds a polar grid of ``N = n_rings × n_sectors + 1`` nodes to the graph. The grid has ``E = 2 × n_rings × n_sectors`` edges:
@@ -1220,11 +1220,11 @@ class StructData(TSMixin, pyg.data.Data):
         arguments:
 
         Node defaults:
-            - ``r_ind`` (torch.Tensor [N, 1]): radial index of each node (``0`` for the center,
-              ``1`` to ``n_rings`` for the rings).
             - ``a_ind`` (torch.Tensor [N, 1]): angular index of each node (``0`` to ``n_sectors-1``).
               The center node has ``a_ind == 0``.
-            - ``x_unit_coord`` (torch.Tensor [N, 1]): ``x`` coordinate (cartesian) in unit disc. 
+            - ``r_ind`` (torch.Tensor [N, 1]): radial index of each node (``0`` for the center,
+              ``1`` to ``n_rings`` for the rings).
+            - ``x_unit_coord`` (torch.Tensor [N, 1]): ``x`` coordinate (cartesian) in unit disc.
             - ``y_unit_coord`` (torch.Tensor [N, 1]): ``y`` coordinate (cartesian) in unit disc.
             - ``is_boundary`` (torch.Tensor [N, 1], bool): ``True`` for nodes on the outermost ring.
 
@@ -1237,7 +1237,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for radial edges, ``1`` for angular edges.
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for radial edges, ``1`` for angular edges.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
               boundary nodes.
 
@@ -1256,8 +1256,8 @@ class StructData(TSMixin, pyg.data.Data):
                 other edge attributes already defined earlier.
         """
 
-        r_node_ind = torch.cat([torch.tensor([0]), torch.arange(1, n_rings+1).repeat(n_sectors)]).unsqueeze(1)
         a_node_ind = torch.cat([torch.tensor([0]), torch.arange(0, n_sectors).repeat_interleave(n_rings)]).unsqueeze(1)
+        r_node_ind = torch.cat([torch.tensor([0]), torch.arange(1, n_rings+1).repeat(n_sectors)]).unsqueeze(1)
         
         angle = a_node_ind / n_sectors * 2 * torch.pi
 
@@ -1265,7 +1265,7 @@ class StructData(TSMixin, pyg.data.Data):
         y_node_unit_coord = r_node_ind / n_rings * torch.sin(angle)
 
         is_boundary_node = (r_node_ind == n_rings)
-        default_node_attrs = {"r_ind": r_node_ind, "a_ind": a_node_ind, "x_unit_coord": x_node_unit_coord, "y_unit_coord": y_node_unit_coord, "is_boundary": is_boundary_node}
+        default_node_attrs = {"a_ind": a_node_ind, "r_ind": r_node_ind, "x_unit_coord": x_node_unit_coord, "y_unit_coord": y_node_unit_coord, "is_boundary": is_boundary_node}
 
         #create edge indices
         # radial edges: center → first ring of each sector
@@ -1303,9 +1303,9 @@ class StructData(TSMixin, pyg.data.Data):
         a_edge_ind = torch.cat([a_center, a_radial, a_angular]).unsqueeze(1)
 
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_r.shape[0]), torch.ones(row_a.shape[0])])
+        edge_direction = torch.cat([torch.zeros(row_r.shape[0]), torch.ones(row_a.shape[0])]).unsqueeze(1)
 
-        default_edge_attrs = {"r_ind": r_edge_ind, "a_ind": a_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
+        default_edge_attrs = {"a_ind": a_edge_ind, "r_ind": r_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
         
         num_nodes = n_rings * n_sectors + 1
         num_edges = 2 * n_rings * n_sectors
@@ -1343,7 +1343,7 @@ class StructData(TSMixin, pyg.data.Data):
               destination node.
             - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
               destination node.
-            - ``edge_direction`` (torch.Tensor [E]): ``0`` for horizontal edges connecting
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for horizontal edges connecting
               ``(u_ind, v_ind) → (u_ind, v_ind+1)``, ``1`` for vertical edges connecting
               ``(u_ind, v_ind) → (u_ind+1, v_ind)``.
             - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both
@@ -1397,7 +1397,7 @@ class StructData(TSMixin, pyg.data.Data):
         u_edge_ind = u_node_ind[edge_indices[0]]
         v_edge_ind = v_node_ind[edge_indices[0]]
         is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
-        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0])], dim=0)
+        edge_direction = torch.cat([torch.zeros(row_h.shape[0]), torch.ones(row_v.shape[0])], dim=0).unsqueeze(1)
 
         default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "edge_direction": edge_direction,"is_boundary": is_boundary_edge}
 
@@ -1421,6 +1421,216 @@ class StructData(TSMixin, pyg.data.Data):
             encoded_names = torch.cat([encoded_names, torch.tensor([encoded_name], dtype=torch.long)])
 
         self.name[mask] = encoded_names
+
+    def add_cylinder(self, n_sectors: int, n_rings: int, node_attrs: dict = {}, edge_attrs: dict = {}):
+
+        """
+        Adds a cylindrical grid of ``N = n_sectors × n_rings`` nodes to the graph. The grid has
+        ``E = n_sectors × (2 × n_rings - 1)`` edges: ``n_sectors × (n_rings - 1)`` axial and
+        ``n_sectors × n_rings`` angular.
+
+        When a value in ``node_attrs`` or ``edge_attrs`` is a callable, it is invoked
+        with the subset of node or edge attributes whose names match its parameter names.
+        Available inputs are the default grid attributes listed below as well as any
+        other attributes already defined earlier in the same ``node_attrs`` or
+        ``edge_attrs`` dict. The following default attributes are available as callable
+        arguments:
+
+        Node defaults:
+            - ``a_ind`` (torch.Tensor [N, 1]): angular index of each node (``0`` to ``n_sectors-1``).
+            - ``r_ind`` (torch.Tensor [N, 1]): axial index of each node (``0`` to ``n_rings-1``).
+            - ``x_unit_coord`` (torch.Tensor [N, 1]): ``x`` coordinate (cartesian) in unit disc.
+            - ``y_unit_coord`` (torch.Tensor [N, 1]): ``y`` coordinate (cartesian) in unit disc.
+            - ``z_unit_coord`` (torch.Tensor [N, 1]): ``z`` coordinate in unit interval (``0`` to ``1``).
+            - ``is_boundary`` (torch.Tensor [N, 1], bool): ``True`` for nodes on the first or last ring.
+
+        Edge defaults:
+            - ``a_ind`` (torch.Tensor [E, 1]): angular index of the source node.
+            - ``r_ind`` (torch.Tensor [E, 1]): axial index of the source node.
+            - ``x_unit_coord`` (torch.Tensor [E, 1]): mean unit ``x`` coordinate of source and
+              destination node.
+            - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
+              destination node.
+            - ``z_unit_coord`` (torch.Tensor [E, 1]): mean unit ``z`` coordinate of source and
+              destination node.
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for axial edges connecting
+              ``(a_ind, r_ind) → (a_ind, r_ind+1)``, ``1`` for angular edges connecting
+              ``(a_ind, r_ind) → ((a_ind+1) % n_sectors, r_ind)``.
+            - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
+              boundary nodes.
+
+        Args:
+            n_sectors (int): number of angular sectors.
+            n_rings (int): number of rings along the axis.
+            node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
+                node attribute names to either a tensor of shape ``[N, *]`` or
+                ``[1, *]`` (broadcast over all nodes), or a callable whose
+                parameter names are resolved from the node defaults listed above as well as any
+                other node attributes already defined earlier.
+            edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
+                edge attribute names to either a tensor of shape ``[E, *]`` or
+                ``[1, *]`` (broadcast over all edges), or a callable whose
+                parameter names are resolved from the edge defaults listed above or any
+                other edge attributes already defined earlier.
+        """
+
+        a_node_ind = torch.arange(n_sectors).repeat_interleave(n_rings).unsqueeze(1)
+        r_node_ind = torch.arange(n_rings).repeat(n_sectors).unsqueeze(1)
+
+        angle = a_node_ind / n_sectors * 2 * torch.pi
+
+        x_node_unit_coord = torch.cos(angle)
+        y_node_unit_coord = torch.sin(angle)
+        z_node_unit_coord = r_node_ind / (n_rings - 1)
+
+        is_boundary_node = (r_node_ind == n_rings-1) | (r_node_ind == 0)
+
+        default_node_attrs = {"a_ind": a_node_ind, "r_ind": r_node_ind, "x_unit_coord": x_node_unit_coord, "y_unit_coord": y_node_unit_coord, "z_unit_coord": z_node_unit_coord, "is_boundary": is_boundary_node}
+
+        # axial edges: (r, a) → (r+1, a)
+        a_axial = torch.arange(n_sectors).repeat_interleave(n_rings - 1)
+        r_axial = torch.arange(n_rings - 1).repeat(n_sectors)
+        row_ax = a_axial * n_rings + r_axial
+        col_ax = a_axial * n_rings + r_axial + 1
+
+        # angular edges: (r, a) → (r, (a+1) % n_sectors)
+        a_angular = torch.arange(n_sectors).repeat_interleave(n_rings)
+        r_angular = torch.arange(n_rings).repeat(n_sectors)
+        row_ang = a_angular * n_rings + r_angular
+        col_ang = (a_angular + 1) % n_sectors * n_rings + r_angular
+
+        row = torch.cat([row_ax, row_ang])
+        col = torch.cat([col_ax, col_ang])
+        edge_indices = torch.stack([row, col], dim=0)
+
+        # default edge attributes
+        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
+        z_edge_unit_coord = (z_node_unit_coord[edge_indices[0]] + z_node_unit_coord[edge_indices[1]]) / 2
+
+        a_edge_ind = a_node_ind[edge_indices[0]]
+        r_edge_ind = r_node_ind[edge_indices[0]]
+        is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
+        edge_direction = torch.cat([torch.zeros(row_ax.shape[0]), torch.ones(row_ang.shape[0])]).unsqueeze(1)
+
+        default_edge_attrs = {"a_ind": a_edge_ind, "r_ind": r_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "z_unit_coord": z_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
+
+        num_nodes = n_rings * n_sectors
+        num_edges = (n_rings - 1) * n_sectors + n_rings * n_sectors
+
+        self._create_topology(num_nodes=num_nodes, num_edges=num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
+
+
+    def add_sphere(self, n_sectors: int, n_rings: int, node_attrs: dict = {}, edge_attrs: dict = {}):
+
+        """
+        Adds a spherical grid of ``N = n_sectors × n_rings + 2`` nodes to the graph: a north pole,
+        ``n_rings`` intermediate rings of ``n_sectors`` nodes each, and a south pole. The grid has
+        ``E = n_sectors × (2 × n_rings + 1)`` edges: ``n_sectors × (n_rings + 1)`` meridional and
+        ``n_sectors × n_rings`` angular.
+
+        When a value in ``node_attrs`` or ``edge_attrs`` is a callable, it is invoked
+        with the subset of node or edge attributes whose names match its parameter names.
+        Available inputs are the default grid attributes listed below as well as any
+        other attributes already defined earlier in the same ``node_attrs`` or
+        ``edge_attrs`` dict. The following default attributes are available as callable
+        arguments:
+
+        Node defaults:
+            - ``a_ind`` (torch.Tensor [N, 1]): angular index (``0`` to ``n_sectors-1`` for
+              intermediate nodes, ``0`` for both poles).
+            - ``r_ind`` (torch.Tensor [N, 1]): ring index (``0`` for north pole, ``1`` to
+              ``n_rings`` for intermediate rings, ``n_rings+1`` for south pole).
+            - ``x_unit_coord`` (torch.Tensor [N, 1]): ``x`` coordinate on the unit sphere.
+            - ``y_unit_coord`` (torch.Tensor [N, 1]): ``y`` coordinate on the unit sphere.
+            - ``z_unit_coord`` (torch.Tensor [N, 1]): ``z`` coordinate on the unit sphere (``1`` at
+              the north pole, ``-1`` at the south pole).
+            - ``is_boundary`` (torch.Tensor [N, 1], bool): ``True`` for the north and south pole nodes.
+
+        Edge defaults:
+            - ``a_ind`` (torch.Tensor [E, 1]): angular index of the source node.
+            - ``r_ind`` (torch.Tensor [E, 1]): ring index of the source node.
+            - ``x_unit_coord`` (torch.Tensor [E, 1]): mean unit ``x`` coordinate of source and
+              destination node.
+            - ``y_unit_coord`` (torch.Tensor [E, 1]): mean unit ``y`` coordinate of source and
+              destination node.
+            - ``z_unit_coord`` (torch.Tensor [E, 1]): mean unit ``z`` coordinate of source and
+              destination node.
+            - ``edge_direction`` (torch.Tensor [E, 1]): ``0`` for meridional edges, ``1`` for angular
+              edges connecting ``(a_ind, r_ind) → ((a_ind+1) % n_sectors, r_ind)``.
+            - ``is_boundary`` (torch.Tensor [E, 1], bool): ``True`` when both endpoint nodes are
+              boundary nodes.
+
+        Args:
+            n_sectors (int): number of angular sectors (meridians).
+            n_rings (int): number of intermediate horizontal rings (excluding poles).
+            node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
+                node attribute names to either a tensor of shape ``[N, *]`` or
+                ``[1, *]`` (broadcast over all nodes), or a callable whose
+                parameter names are resolved from the node defaults listed above as well as any
+                other node attributes already defined earlier.
+            edge_attrs (dict[str, torch.Tensor | callable]): mapping of registered
+                edge attribute names to either a tensor of shape ``[E, *]`` or
+                ``[1, *]`` (broadcast over all edges), or a callable whose
+                parameter names are resolved from the edge defaults listed above or any
+                other edge attributes already defined earlier.
+        """
+
+        a_node_ind = torch.cat([torch.tensor([0]), torch.arange(n_sectors).repeat_interleave(n_rings), torch.tensor([0])]).unsqueeze(1)
+        r_node_ind = torch.cat([torch.tensor([0]), torch.arange(1, n_rings + 1).repeat(n_sectors), torch.tensor([n_rings + 1])]).unsqueeze(1)
+
+        theta = a_node_ind / n_sectors * 2 * torch.pi
+        phi = r_node_ind / (n_rings + 1) * torch.pi
+
+        x_node_unit_coord = torch.sin(phi) * torch.cos(theta)
+        y_node_unit_coord = torch.sin(phi) * torch.sin(theta)
+        z_node_unit_coord = torch.cos(phi)
+
+        is_boundary_node = (r_node_ind == 0) | (r_node_ind == n_rings + 1)
+
+        default_node_attrs = {"a_ind": a_node_ind, "r_ind": r_node_ind, "x_unit_coord": x_node_unit_coord, "y_unit_coord": y_node_unit_coord, "z_unit_coord": z_node_unit_coord, "is_boundary": is_boundary_node}
+
+        # meridional edges: north pole → first intermediate ring
+        row_north = torch.zeros(n_sectors, dtype=torch.long)
+        col_north = torch.arange(n_sectors) * n_rings + 1
+
+        # meridional edges: (a, r) → (a, r+1) among intermediate rings
+        a_inner = torch.arange(n_sectors).repeat_interleave(n_rings - 1)
+        r_inner = torch.arange(1, n_rings).repeat(n_sectors)
+        row_inner = a_inner * n_rings + r_inner
+        col_inner = a_inner * n_rings + r_inner + 1
+
+        # meridional edges: last intermediate ring → south pole
+        row_south = torch.arange(n_sectors) * n_rings + n_rings
+        col_south = torch.full((n_sectors,), n_sectors * n_rings + 1, dtype=torch.long)
+
+        row_mer = torch.cat([row_north, row_inner, row_south])
+        col_mer = torch.cat([col_north, col_inner, col_south])
+
+        # angular edges among intermediate rings: (a, r) → ((a+1) % n_sectors, r)
+        a_angular = torch.arange(n_sectors).repeat_interleave(n_rings)
+        r_angular = torch.arange(1, n_rings + 1).repeat(n_sectors)
+        row_ang = a_angular * n_rings + r_angular
+        col_ang = (a_angular + 1) % n_sectors * n_rings + r_angular
+
+        row = torch.cat([row_mer, row_ang])
+        col = torch.cat([col_mer, col_ang])
+        edge_indices = torch.stack([row, col], dim=0)
+
+        # default edge attributes
+        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
+        z_edge_unit_coord = (z_node_unit_coord[edge_indices[0]] + z_node_unit_coord[edge_indices[1]]) / 2
+
+        a_edge_ind = a_node_ind[edge_indices[0]]
+        r_edge_ind = r_node_ind[edge_indices[0]]
+        is_boundary_edge = is_boundary_node[edge_indices[0]] & is_boundary_node[edge_indices[1]]
+        edge_direction = torch.cat([torch.zeros(row_mer.shape[0]), torch.ones(row_ang.shape[0])]).unsqueeze(1)
+
+        default_edge_attrs = {"a_ind": a_edge_ind, "r_ind": r_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord, "z_unit_coord": z_edge_unit_coord, "edge_direction": edge_direction, "is_boundary": is_boundary_edge}
+
+        num_nodes = n_sectors * n_rings + 2
+        num_edges = n_sectors * (2 * n_rings + 1)
+
+        self._create_topology(num_nodes=num_nodes, num_edges=num_edges, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
 
 def resolve_attrs(f, default_attrs, custom_attrs):

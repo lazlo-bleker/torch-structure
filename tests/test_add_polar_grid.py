@@ -15,7 +15,7 @@ def test_polar_grid_structure():
     def force(x_unit_coord):
         return x_unit_coord
 
-    data.add_polar_grid(2, 3, node_attrs={"coords": coords}, edge_attrs={"force": force})
+    data.add_polar_grid(3, 2, node_attrs={"coords": coords}, edge_attrs={"force": force})
 
     edge_index_expected = torch.tensor([
         [0, 0, 0, 1, 3, 5, 1, 2, 3, 4, 5, 6, 1, 3, 5, 2, 4, 6, 3, 4, 5, 6, 1, 2],
@@ -41,5 +41,3 @@ def test_polar_grid_structure():
     assert torch.equal(torch.tensor(data.num_nodes), num_nodes_expected)
     assert torch.equal(data.coords, coords_expected)
     assert torch.allclose(data.force, force_expected)
-
-
