@@ -81,8 +81,8 @@ def plot_data(
         edge_color = np.where(force_np > 0, colors["red"], colors["blue"])
         edge_label = np.where(
             force_np > 0,
-            "Tension (Predicted Equilibrium Geometry)",
-            "Compression (Predicted Equilibrium Geometry)",
+            "Tension",
+            "Compression",
         )
         lw = np.sqrt(np.abs(force_np)) if not lw_constant else np.ones(num_edges)
         lw = lw * lw_scale
