@@ -1,0 +1,119 @@
+/* Define colors for light/dark mode */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #E7461E;
+  --md-accent-fg-color: #E7461E;
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #F05F42;
+  --md-accent-fg-color: #F05F42;
+}
+
+/* Target the header element directly */
+[data-md-color-scheme="default"] header {
+  background-color: #f6f6f6;
+}
+[data-md-color-scheme="slate"] header {
+  background-color: #232832;
+}
+
+/* Explicitly set font-family and font-weight for all headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit !important;
+  font-weight: bold !important;
+}
+
+/* Set main header color */
+[data-md-color-scheme="default"] h1 {
+  color: #E7461E;
+}
+[data-md-color-scheme="slate"] h1 {
+  color: #F05F42;
+}
+
+/* Underline text links in page content and in the sidebar only */
+.md-typeset a:hover,
+.md-nav__link:hover {
+  text-decoration: underline;
+}
+
+/* Never underline icon-only buttons in the header (e.g., GitHub) */
+.md-header__button,
+.md-header__button:hover,
+.md-header__button:focus {
+  text-decoration: none !important;
+}
+
+/* Style "TorchStructure" with different colors for "Torch" and "Structure" */
+[data-md-color-scheme="default"] .torchstructure {
+  color: black;
+}
+[data-md-color-scheme="default"] .torchstructure .structure {
+  color: #E7461E;
+}
+[data-md-color-scheme="slate"] .torchstructure {
+  color: white;
+}
+[data-md-color-scheme="slate"] .torchstructure .structure {
+  color: #F05F42;
+}
+
+/* Hide the "Made with Material for MkDocs" footer bar */
+.md-footer-meta { display: none; }
+
+/* Set header text and icons to black by default in light mode */
+[data-md-color-scheme="default"] header, [data-md-color-scheme="default"] header .md-header__title, [data-md-color-scheme="default"] header .md-icon {
+  color: black;
+}
+
+/* Change the search box background color in light mode */
+[data-md-color-scheme="default"] .md-search__input {
+  background-color: #ffffff;
+  color: black; /* Set the search text color to black in light mode */
+}
+
+/* Force the search text color to black in light mode */
+[data-md-color-scheme="default"] .md-search__input::placeholder {
+  color: black !important;
+}
+[data-md-color-scheme="slate"] .md-search__input::placeholder {
+  color: white !important;
+}
+
+/* Ensure module names in the sidebar are displayed in lowercase */
+.md-sidebar__nav .md-nav__link {
+  text-transform: lowercase;
+}
+
+/* Force module names in the sidebar to display in lowercase with higher specificity */
+.md-sidebar__nav .md-nav__item .md-nav__link {
+  text-transform: none !important;
+}
+
+/* Hide both by default */
+.ts-logo--light,
+.ts-logo--dark {
+  display: none !important;
+}
+
+/* Show one based on current scheme (attribute is on <body>) */
+body[data-md-color-scheme="default"] .ts-logo--light {
+  display: inline-block !important;
+}
+
+body[data-md-color-scheme="slate"] .ts-logo--dark {
+  display: inline-block !important;
+}
+
+/* Light/dark swap for tutorial figures (same mechanism as the logo above) */
+.ts-fig--light,
+.ts-fig--dark {
+  display: none !important;
+}
+
+body[data-md-color-scheme="default"] .ts-fig--light {
+  display: block !important;
+}
+
+body[data-md-color-scheme="slate"] .ts-fig--dark {
+  display: block !important;
+}
