@@ -2251,6 +2251,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="AddLaplacianZNoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.transforms.laplacian_z_noise.AddLaplacianZNoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2386,6 +2403,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="AddLaplacianZNoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.transforms.laplacian_z_noise.AddLaplacianZNoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2594,7 +2628,8 @@ data = transform(data)</p>
 <span class="normal">64</span>
 <span class="normal">65</span>
 <span class="normal">66</span>
-<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AddLaplacianZNoise</span><span class="p">(</span><span class="n">BaseTransform</span><span class="p">):</span>
+<span class="normal">67</span>
+<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AddLaplacianZNoise</span><span class="p">(</span><span class="n">BaseTransform</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies Laplacian-eigenvector-modulated multiplicative noise to the</span>
 <span class="sd">    z-coordinate of each node.</span>
@@ -2627,6 +2662,7 @@ data = transform(data)</p>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the Laplacian-eigenvector-modulated z-noise to ``data.coords`` in place.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;coords&quot;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Data object has no attribute &#39;coords&#39;.&quot;</span><span class="p">)</span>
 
@@ -2671,6 +2707,77 @@ data = transform(data)</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.transforms.laplacian_z_noise.AddLaplacianZNoise.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply the Laplacian-eigenvector-modulated z-noise to <code>data.coords</code> in place.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/transforms/laplacian_z_noise.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the Laplacian-eigenvector-modulated z-noise to ``data.coords`` in place.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;coords&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Data object has no attribute &#39;coords&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="n">device</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">device</span>
+
+    <span class="c1"># Ensure data has the specified number of eigenvectors</span>
+    <span class="n">compute_lpe</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;laplacian_pe&quot;</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">data</span><span class="o">.</span><span class="n">laplacian_pe</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_eigenvectors</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">compute_lpe</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_lpe</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">coefficients</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_eigenvectors</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">laplacian_sum</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">laplacian_pe</span><span class="p">[:,</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_eigenvectors</span><span class="p">],</span> <span class="n">coefficients</span>
+    <span class="p">)</span>
+    <span class="n">noise</span> <span class="o">=</span> <span class="n">laplacian_sum</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_noise</span> <span class="o">/</span> <span class="n">laplacian_sum</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_lpe</span> <span class="ow">and</span> <span class="n">compute_lpe</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">data</span><span class="o">.</span><span class="n">laplacian_pe</span>
+
+    <span class="k">return</span> <span class="n">data</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

@@ -822,6 +822,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#torch_structure.formfinding.laplacian_smooth.laplacian_smoothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        laplacian_smoothing
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2367,6 +2378,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#torch_structure.formfinding.laplacian_smooth.laplacian_smoothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        laplacian_smoothing
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2416,6 +2438,317 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="torch_structure.formfinding.laplacian_smooth.laplacian_smoothing" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">laplacian_smoothing</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">is_fixed</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="mf">1e-07</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">damping_factor</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">laplacian</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Smooth free-node coordinates towards a uniform Laplacian equilibrium via explicit mean curvature flow.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>coords</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, <span title="D">D</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>node coordinates, updated in place for
+the free (non-fixed) nodes.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>is_fixed</code>
+            </td>
+            <td>
+                  <code>(<span title="torch.Tensor">Tensor</span>[<span title="N">N</span>], <span title="bool">bool</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>mask of nodes to keep fixed.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>edge_index</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[2, <span title="E">E</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>edge connectivity.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tolerance</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>convergence threshold on the per-iteration
+displacement norm.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1e-07</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_iter</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>maximum number of iterations.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10000</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>verbose</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if <code>True</code>, print a convergence summary.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>damping_factor</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>fraction of the Laplacian step to damp;
+<code>0</code> is a full explicit step, values closer to <code>1</code> slow
+convergence.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>laplacian</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="Laplacian (torch_structure.message_passing.laplace.Laplacian)" href="../../message_passing/laplace/#torch_structure.message_passing.laplace.Laplacian">Laplacian</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a precomputed
+<a class="autorefs autorefs-internal" href="../../message_passing/laplace/#torch_structure.message_passing.laplace.Laplacian">Laplacian</a>
+operator; if <code>None</code>, one is built from <code>edge_index</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>tuple[torch.Tensor, int, bool]: the (in-place updated) <code>coords</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the number of iterations run, and whether the loop converged.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/formfinding/laplacian_smooth.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">laplacian_smoothing</span><span class="p">(</span>
+    <span class="n">coords</span><span class="p">,</span>
+    <span class="n">is_fixed</span><span class="p">,</span>
+    <span class="n">edge_index</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">damping_factor</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">laplacian</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Smooth free-node coordinates towards a uniform Laplacian equilibrium via explicit mean curvature flow.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        coords (torch.Tensor [N, D]): node coordinates, updated in place for</span>
+<span class="sd">            the free (non-fixed) nodes.</span>
+<span class="sd">        is_fixed (torch.Tensor [N], bool): mask of nodes to keep fixed.</span>
+<span class="sd">        edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">        tolerance (float): convergence threshold on the per-iteration</span>
+<span class="sd">            displacement norm.</span>
+<span class="sd">        max_iter (int): maximum number of iterations.</span>
+<span class="sd">        verbose (bool): if ``True``, print a convergence summary.</span>
+<span class="sd">        damping_factor (float): fraction of the Laplacian step to damp;</span>
+<span class="sd">            ``0`` is a full explicit step, values closer to ``1`` slow</span>
+<span class="sd">            convergence.</span>
+<span class="sd">        laplacian (Laplacian, optional): a precomputed</span>
+<span class="sd">            [Laplacian][torch_structure.message_passing.laplace.Laplacian]</span>
+<span class="sd">            operator; if ``None``, one is built from ``edge_index``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[torch.Tensor, int, bool]: the (in-place updated) ``coords``,</span>
+<span class="sd">        the number of iterations run, and whether the loop converged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_fixed</span> <span class="o">=</span> <span class="n">is_fixed</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">laplacian</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">laplacian</span> <span class="o">=</span> <span class="n">Laplacian</span><span class="p">(</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">num_nodes</span><span class="o">=</span><span class="n">coords</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+    <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="c1"># Explicit time-stepping associated with mean curvature flow</span>
+        <span class="n">updated_coords</span> <span class="o">=</span> <span class="n">coords</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">damping_factor</span><span class="p">)</span> <span class="o">*</span> <span class="n">laplacian</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+        <span class="n">updated_coords</span> <span class="o">=</span> <span class="n">updated_coords</span><span class="p">[</span><span class="o">~</span><span class="n">is_fixed</span><span class="p">]</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[</span><span class="o">~</span><span class="n">is_fixed</span><span class="p">]</span> <span class="o">-</span> <span class="n">updated_coords</span>
+        <span class="n">delta_norm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
+        <span class="n">coords</span><span class="p">[</span><span class="o">~</span><span class="n">is_fixed</span><span class="p">]</span> <span class="o">=</span> <span class="n">updated_coords</span>
+        <span class="k">if</span> <span class="n">delta_norm</span> <span class="o">&lt;</span> <span class="n">tolerance</span><span class="p">:</span>
+            <span class="n">converged</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">break</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Laplacian Smoothing finished in </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> iterations. Converged: </span><span class="si">{</span><span class="n">converged</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">coords</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">converged</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

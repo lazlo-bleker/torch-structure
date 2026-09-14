@@ -2195,6 +2195,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="AddGaussianXYZNoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.transforms.gaussian_xyz_noise.AddGaussianXYZNoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2387,6 +2404,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="AddGaussianXYZNoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.transforms.gaussian_xyz_noise.AddGaussianXYZNoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2544,7 +2578,8 @@ data = transform(data)</p>
 <span class="normal">37</span>
 <span class="normal">38</span>
 <span class="normal">39</span>
-<span class="normal">40</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AddGaussianXYZNoise</span><span class="p">(</span><span class="n">BaseTransform</span><span class="p">):</span>
+<span class="normal">40</span>
+<span class="normal">41</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AddGaussianXYZNoise</span><span class="p">(</span><span class="n">BaseTransform</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies independent Gaussian multiplicative noise to the x-, y-, and z-coordinate of each node.</span>
 
@@ -2561,6 +2596,7 @@ data = transform(data)</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">std</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the multiplicative Gaussian xyz-noise to ``data.coords`` in place.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;coords&quot;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Data object has no attribute &#39;coords&#39;.&quot;</span><span class="p">)</span>
 
@@ -2595,6 +2631,57 @@ data = transform(data)</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.transforms.gaussian_xyz_noise.AddGaussianXYZNoise.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply the multiplicative Gaussian xyz-noise to <code>data.coords</code> in place.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/transforms/gaussian_xyz_noise.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the multiplicative Gaussian xyz-noise to ``data.coords`` in place.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;coords&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Data object has no attribute &#39;coords&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="n">device</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">device</span>
+
+    <span class="n">x_noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span>
+    <span class="n">y_noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span>
+    <span class="n">z_noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">x_noise</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">y_noise</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z_noise</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">data</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

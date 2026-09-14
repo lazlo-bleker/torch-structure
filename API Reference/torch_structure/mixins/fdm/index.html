@@ -2489,6 +2489,8 @@
 
 
 
+        <p>Adds the Force Density Method (FDM) form-finding method to a data class.</p>
+
 
 
 
@@ -2556,7 +2558,11 @@
 <span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span>
-<span class="normal">62</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FDMMixin</span><span class="p">(</span><span class="n">OverrideResolveMixin</span><span class="p">):</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FDMMixin</span><span class="p">(</span><span class="n">OverrideResolveMixin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adds the Force Density Method (FDM) form-finding method to a data class.&quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">fdm</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -2649,9 +2655,7 @@ and <code>force</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/mixins/fdm.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
 <span class="normal">10</span>
@@ -2706,7 +2710,9 @@ and <code>force</code>.</p>
 <span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span>
-<span class="normal">62</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fdm</span><span class="p">(</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fdm</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">coords</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>

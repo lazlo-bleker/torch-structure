@@ -2509,6 +2509,8 @@
 
 
 
+        <p>Legacy dict-based structural graph, used to build and verify equilibrium of hand-authored structures.</p>
+
 
 
 
@@ -2647,7 +2649,11 @@
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
-<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Structure</span><span class="p">:</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Structure</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Legacy dict-based structural graph, used to build and verify equilibrium of hand-authored structures.&quot;&quot;&quot;</span>
+
     <span class="n">red_color</span> <span class="o">=</span> <span class="s2">&quot;#E40714&quot;</span>
     <span class="n">blue_color</span> <span class="o">=</span> <span class="s2">&quot;#0578BF&quot;</span>
 
@@ -2809,13 +2815,13 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/generators/structure.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
-<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">average_member_length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">average_member_length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the average member length of the structure&quot;&quot;&quot;</span>
     <span class="n">total_member_length</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">edge</span><span class="p">,</span> <span class="n">attributes</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -2844,14 +2850,14 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/generators/structure.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">122</span>
 <span class="normal">123</span>
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
-<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the total load path of the structure&quot;&quot;&quot;</span>
     <span class="n">total_load_path</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">edge</span><span class="p">,</span> <span class="n">attributes</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>

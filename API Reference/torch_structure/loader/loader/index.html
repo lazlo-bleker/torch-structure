@@ -1520,6 +1520,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#torch_structure.loader.loader.Collater" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collater
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#torch_structure.loader.loader.DataLoader" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2379,6 +2390,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#torch_structure.loader.loader.Collater" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collater
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#torch_structure.loader.loader.DataLoader" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2442,6 +2464,105 @@
 
 
 
+<h2 id="torch_structure.loader.loader.Collater" class="doc doc-heading">
+            <code>Collater</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Collates a list of <a class="autorefs autorefs-internal" href="../../data/data/#torch_structure.data.data.StructData">StructData</a> samples into a batch.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/torch_structure/loader/loader.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Collater</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Collates a list of [StructData][torch_structure.data.data.StructData] samples into a batch.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">StructData</span><span class="p">]],</span>
+        <span class="n">follow_batch</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">exclude_keys</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">follow_batch</span> <span class="o">=</span> <span class="n">follow_batch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exclude_keys</span> <span class="o">=</span> <span class="n">exclude_keys</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">StructData</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">StructData</span><span class="p">:</span>
+        <span class="n">pyg_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">struct_data</span><span class="o">.</span><span class="n">data</span> <span class="k">for</span> <span class="n">struct_data</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span>
+        <span class="n">batched</span> <span class="o">=</span> <span class="n">Batch</span><span class="o">.</span><span class="n">from_data_list</span><span class="p">(</span>
+            <span class="n">pyg_list</span><span class="p">,</span> <span class="n">follow_batch</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">follow_batch</span><span class="p">,</span> <span class="n">exclude_keys</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude_keys</span>
+        <span class="p">)</span>
+        <span class="n">struct_data</span> <span class="o">=</span> <span class="n">StructData</span><span class="o">.</span><span class="n">from_pyg_data</span><span class="p">(</span><span class="n">batched</span><span class="p">)</span>
+
+        <span class="n">struct_data</span><span class="o">.</span><span class="n">node_attr_list</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">node_attr_list</span>
+        <span class="n">struct_data</span><span class="o">.</span><span class="n">edge_attr_list</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">edge_attr_list</span>
+        <span class="n">struct_data</span><span class="o">.</span><span class="n">graph_attr_list</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">graph_attr_list</span>
+
+        <span class="k">return</span> <span class="n">struct_data</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
 <h2 id="torch_structure.loader.loader.DataLoader" class="doc doc-heading">
             <code>DataLoader</code>
 
@@ -2456,7 +2577,7 @@
 
 
         <p>A data loader which merges data objects from a
-:class:<code>torch_structure.data.Dataset</code> to a mini-batch.</p>
+<a class="autorefs autorefs-internal" href="../../data/dataset/#torch_structure.data.dataset.Dataset">Dataset</a> to a mini-batch.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2475,7 +2596,7 @@
                 <code>dataset</code>
             </td>
             <td>
-                  <code><span title="torch_structure.data.Dataset">Dataset</span></code>
+                  <code><a class="autorefs autorefs-internal" title="Dataset (torch_structure.data.Dataset)" href="../../data/dataset/#torch_structure.data.dataset.Dataset">Dataset</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2496,7 +2617,7 @@
             <td>
               <div class="doc-md-description">
                 <p>How many samples per batch to load.
-(default: :obj:<code>1</code>)</p>
+(default: <code>1</code>)</p>
               </div>
             </td>
             <td>
@@ -2512,8 +2633,8 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If set to :obj:<code>True</code>, the data will be
-reshuffled at every epoch. (default: :obj:<code>False</code>)</p>
+                <p>If set to <code>True</code>, the data will be
+reshuffled at every epoch. (default: <code>False</code>)</p>
               </div>
             </td>
             <td>
@@ -2530,7 +2651,7 @@ reshuffled at every epoch. (default: :obj:<code>False</code>)</p>
             <td>
               <div class="doc-md-description">
                 <p>Creates assignment batch
-vectors for each key in the list. (default: :obj:<code>None</code>)</p>
+vectors for each key in the list. (default: <code>None</code>)</p>
               </div>
             </td>
             <td>
@@ -2547,7 +2668,7 @@ vectors for each key in the list. (default: :obj:<code>None</code>)</p>
             <td>
               <div class="doc-md-description">
                 <p>Will exclude each key in the
-list. (default: :obj:<code>None</code>)</p>
+list. (default: <code>None</code>)</p>
               </div>
             </td>
             <td>
@@ -2564,7 +2685,7 @@ list. (default: :obj:<code>None</code>)</p>
             <td>
               <div class="doc-md-description">
                 <p>Additional arguments of
-:class:<code>torch.utils.data.DataLoader</code>.</p>
+<code>torch.utils.data.DataLoader</code>.</p>
               </div>
             </td>
             <td>
@@ -2583,9 +2704,7 @@ list. (default: :obj:<code>None</code>)</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/torch_structure/loader/loader.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span>
 <span class="normal">37</span>
@@ -2629,22 +2748,24 @@ list. (default: :obj:<code>None</code>)</p>
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
-<span class="normal">78</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DataLoader</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">):</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DataLoader</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;A data loader which merges data objects from a</span>
-<span class="sd">    :class:`torch_structure.data.Dataset` to a mini-batch.</span>
+<span class="sd">    [Dataset][torch_structure.data.dataset.Dataset] to a mini-batch.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        dataset (Dataset): The dataset from which to load the data.</span>
 <span class="sd">        batch_size (int, optional): How many samples per batch to load.</span>
-<span class="sd">            (default: :obj:`1`)</span>
-<span class="sd">        shuffle (bool, optional): If set to :obj:`True`, the data will be</span>
-<span class="sd">            reshuffled at every epoch. (default: :obj:`False`)</span>
+<span class="sd">            (default: ``1``)</span>
+<span class="sd">        shuffle (bool, optional): If set to ``True``, the data will be</span>
+<span class="sd">            reshuffled at every epoch. (default: ``False``)</span>
 <span class="sd">        follow_batch (List[str], optional): Creates assignment batch</span>
-<span class="sd">            vectors for each key in the list. (default: :obj:`None`)</span>
+<span class="sd">            vectors for each key in the list. (default: ``None``)</span>
 <span class="sd">        exclude_keys (List[str], optional): Will exclude each key in the</span>
-<span class="sd">            list. (default: :obj:`None`)</span>
+<span class="sd">            list. (default: ``None``)</span>
 <span class="sd">        **kwargs (optional): Additional arguments of</span>
-<span class="sd">            :class:`torch.utils.data.DataLoader`.</span>
+<span class="sd">            `torch.utils.data.DataLoader`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># TODO: Data objects can be either of type :class:`~torch_geometric.data.StructData` or</span>

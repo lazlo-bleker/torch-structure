@@ -1778,6 +1778,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="LocalLogicLoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.LocalLogicLoss.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.LocalLogicLoss.message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        message
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1788,6 +1816,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="WeightedMax">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.WeightedMax.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.WeightedMax.message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        message
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2398,6 +2454,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="LocalLogicLoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.LocalLogicLoss.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.LocalLogicLoss.message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        message
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2408,6 +2492,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="WeightedMax">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.WeightedMax.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.lignn.WeightedMax.message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        message
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2501,7 +2613,22 @@
 <span class="normal">17</span>
 <span class="normal">18</span>
 <span class="normal">19</span>
-<span class="normal">20</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LocalLogicLoss</span><span class="p">(</span><span class="n">MessagePassing</span><span class="p">):</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LocalLogicLoss</span><span class="p">(</span><span class="n">MessagePassing</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Loss function for determining whether each node is connected to the correct number of trail edges&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reduction</span><span class="p">):</span>
@@ -2509,11 +2636,26 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">mseloss</span> <span class="o">=</span> <span class="n">MSELoss</span><span class="p">(</span><span class="n">reduction</span><span class="o">=</span><span class="n">reduction</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the local trail-connectivity loss.</span>
+
+<span class="sd">        Sums each node&#39;s neighbour features and compares the resulting</span>
+<span class="sd">        trail-edge count channel against the target ``y``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor [N, C]): per-node feature/probability channels.</span>
+<span class="sd">            edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">            y (torch.Tensor [N]): target trail-edge count per node.</span>
+<span class="sd">            device: unused, kept for interface consistency.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: the mean squared error loss.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">aggregate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mseloss</span><span class="p">(</span><span class="n">aggregate</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="o">.</span><span class="n">float</span><span class="p">())</span>
         <span class="k">return</span> <span class="n">loss</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pass each neighbour&#39;s features through unchanged, to be summed.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">x</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2530,6 +2672,192 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.message_passing.lignn.LocalLogicLoss.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the local trail-connectivity loss.</p>
+<p>Sums each node's neighbour features and compares the resulting
+trail-edge count channel against the target <code>y</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, <span title="C">C</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>per-node feature/probability channels.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>edge_index</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[2, <span title="E">E</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>edge connectivity.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>y</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>target trail-edge count per node.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>unused, kept for interface consistency.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: the mean squared error loss.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/message_passing/lignn.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the local trail-connectivity loss.</span>
+
+<span class="sd">    Sums each node&#39;s neighbour features and compares the resulting</span>
+<span class="sd">    trail-edge count channel against the target ``y``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor [N, C]): per-node feature/probability channels.</span>
+<span class="sd">        edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">        y (torch.Tensor [N]): target trail-edge count per node.</span>
+<span class="sd">        device: unused, kept for interface consistency.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: the mean squared error loss.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">aggregate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mseloss</span><span class="p">(</span><span class="n">aggregate</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="o">.</span><span class="n">float</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">loss</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.message_passing.lignn.LocalLogicLoss.message" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">message</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Pass each neighbour's features through unchanged, to be summed.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/message_passing/lignn.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pass each neighbour&#39;s features through unchanged, to be summed.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">x</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
@@ -2567,28 +2895,52 @@
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/torch_structure/message_passing/lignn.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WeightedMax</span><span class="p">(</span><span class="n">MessagePassing</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WeightedMax</span><span class="p">(</span><span class="n">MessagePassing</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Takes the weighted max of all nodes in the neighborhood by multiplying node embeddings with edge weights&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">aggr</span><span class="o">=</span><span class="n">MaxAggregation</span><span class="p">())</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">weight</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Take the weighted elementwise max over each node&#39;s neighborhood.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor [N, C]): per-node features.</span>
+<span class="sd">            edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">            weight (torch.Tensor [E]): per-edge weight applied to the source</span>
+<span class="sd">                node&#39;s features before the max.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor [N, C]: the aggregated features.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">aggregate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">aggregate</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_i</span><span class="p">,</span> <span class="n">x_j</span><span class="p">,</span> <span class="n">weight</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the elementwise max of the target&#39;s features and the weighted source features.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x_i</span><span class="p">,</span> <span class="n">weight</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">x_j</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2605,6 +2957,168 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.message_passing.lignn.WeightedMax.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Take the weighted elementwise max over each node's neighborhood.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, <span title="C">C</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>per-node features.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>edge_index</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[2, <span title="E">E</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>edge connectivity.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>weight</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="E">E</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>per-edge weight applied to the source
+node's features before the max.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor [N, C]: the aggregated features.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/message_passing/lignn.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">weight</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Take the weighted elementwise max over each node&#39;s neighborhood.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor [N, C]): per-node features.</span>
+<span class="sd">        edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">        weight (torch.Tensor [E]): per-edge weight applied to the source</span>
+<span class="sd">            node&#39;s features before the max.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor [N, C]: the aggregated features.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">aggregate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">aggregate</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.message_passing.lignn.WeightedMax.message" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">message</span><span class="p">(</span><span class="n">x_i</span><span class="p">,</span> <span class="n">x_j</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return the elementwise max of the target's features and the weighted source features.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/message_passing/lignn.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_i</span><span class="p">,</span> <span class="n">x_j</span><span class="p">,</span> <span class="n">weight</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the elementwise max of the target&#39;s features and the weighted source features.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x_i</span><span class="p">,</span> <span class="n">weight</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">x_j</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

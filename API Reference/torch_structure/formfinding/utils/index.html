@@ -900,6 +900,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#torch_structure.formfinding.utils.create_xy_equilibrium_space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_xy_equilibrium_space
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2411,6 +2422,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#torch_structure.formfinding.utils.create_xy_equilibrium_space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_xy_equilibrium_space
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2664,31 +2686,31 @@ the x and y coordinates have an effect on the output.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/formfinding/utils.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">60</span>
 <span class="normal">61</span>
 <span class="normal">62</span>
 <span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
-<span class="normal">66</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_xy_equilibrium_matrix</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">is_support</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">):</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_xy_equilibrium_matrix</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">is_support</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates the equilibrium matrix for the x and y components of the equilibrium equations.</span>
 
@@ -2713,6 +2735,189 @@ the x and y coordinates have an effect on the output.</p>
     <span class="n">A</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">torch</span><span class="o">.</span><span class="n">mm</span><span class="p">(</span><span class="n">C_free_transposed</span><span class="p">,</span> <span class="n">U</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">mm</span><span class="p">(</span><span class="n">C_free_transposed</span><span class="p">,</span> <span class="n">V</span><span class="p">)))</span>
 
     <span class="k">return</span> <span class="n">A</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="torch_structure.formfinding.utils.create_xy_equilibrium_space" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">create_xy_equilibrium_space</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">is_support</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compute a basis for the space of xy-equilibrium-preserving coordinate perturbations.</p>
+<p>Builds the xy equilibrium matrix and returns a basis of its null space,
+i.e. the directions in which free-node xy-coordinates can move while
+keeping the horizontal equilibrium equations satisfied.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>coords</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, 3]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>node coordinates; only x and y affect
+the result.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>is_support</code>
+            </td>
+            <td>
+                  <code>(<span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, 1], <span title="bool">bool</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>mask of fixed (supported)
+nodes.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>edge_index</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[2, <span title="E">E</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>directed edge connectivity.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor [D, K]: basis vectors (columns) spanning the null space</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>of the xy equilibrium matrix, where <code>D</code> is twice the number of</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>free nodes.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/formfinding/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_xy_equilibrium_space</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">is_support</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute a basis for the space of xy-equilibrium-preserving coordinate perturbations.</span>
+
+<span class="sd">    Builds the xy equilibrium matrix and returns a basis of its null space,</span>
+<span class="sd">    i.e. the directions in which free-node xy-coordinates can move while</span>
+<span class="sd">    keeping the horizontal equilibrium equations satisfied.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        coords (torch.Tensor [N, 3]): node coordinates; only x and y affect</span>
+<span class="sd">            the result.</span>
+<span class="sd">        is_support (torch.Tensor [N, 1], bool): mask of fixed (supported)</span>
+<span class="sd">            nodes.</span>
+<span class="sd">        edge_index (torch.Tensor [2, E]): directed edge connectivity.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor [D, K]: basis vectors (columns) spanning the null space</span>
+<span class="sd">        of the xy equilibrium matrix, where ``D`` is twice the number of</span>
+<span class="sd">        free nodes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>  <span class="c1"># check if this is necessary</span>
+
+    <span class="n">A</span> <span class="o">=</span> <span class="n">create_xy_equilibrium_matrix</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">is_support</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">)</span>
+
+    <span class="n">basis_vectors</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">null_space</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>  <span class="c1"># consider using torch</span>
+    <span class="n">basis_vectors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">basis_vectors</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">basis_vectors</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

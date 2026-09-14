@@ -1185,6 +1185,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NerviDome
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="NerviDome">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome.fix_graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fix_graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome.generate_graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome.generate_trail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_trail
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2367,6 +2417,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NerviDome
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="NerviDome">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome.fix_graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fix_graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome.generate_graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.generators.nervi_dome.NerviDome.generate_trail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_trail
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2415,6 +2515,704 @@
 
 
 
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="torch_structure.generators.nervi_dome.NerviDome" class="doc doc-heading">
+            <code>NerviDome</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Builds a Nervi-style ribbed dome: radial CEM trails linked by diagonal (rather than ring) deviation edges.</p>
+<p>Unlike <a class="autorefs autorefs-internal" href="../dome/#torch_structure.generators.dome.DomeGenerator">DomeGenerator</a>, this
+class takes fully specified (not randomly sampled) parameters, links
+consecutive rings diagonally rather than circumferentially, and only
+builds the graph in <code>__init__</code> without form-finding it.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/torch_structure/generators/nervi_dome.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">  9</span>
+<span class="normal"> 10</span>
+<span class="normal"> 11</span>
+<span class="normal"> 12</span>
+<span class="normal"> 13</span>
+<span class="normal"> 14</span>
+<span class="normal"> 15</span>
+<span class="normal"> 16</span>
+<span class="normal"> 17</span>
+<span class="normal"> 18</span>
+<span class="normal"> 19</span>
+<span class="normal"> 20</span>
+<span class="normal"> 21</span>
+<span class="normal"> 22</span>
+<span class="normal"> 23</span>
+<span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">NerviDome</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Builds a Nervi-style ribbed dome: radial CEM trails linked by diagonal (rather than ring) deviation edges.</span>
+
+<span class="sd">    Unlike [DomeGenerator][torch_structure.generators.dome.DomeGenerator], this</span>
+<span class="sd">    class takes fully specified (not randomly sampled) parameters, links</span>
+<span class="sd">    consecutive rings diagonally rather than circumferentially, and only</span>
+<span class="sd">    builds the graph in ``__init__`` without form-finding it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">n_trails</span><span class="p">,</span>
+        <span class="n">n_rings</span><span class="p">,</span>
+        <span class="n">trail_length</span><span class="p">,</span>
+        <span class="n">deviation_force</span><span class="p">,</span>
+        <span class="n">center_deviation_force</span><span class="p">,</span>
+        <span class="n">ring_force</span><span class="p">,</span>
+        <span class="n">opening_diameter</span><span class="p">,</span>
+        <span class="n">opening</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="c1"># Topological parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span> <span class="o">=</span> <span class="n">n_trails</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span> <span class="o">=</span> <span class="n">n_rings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opening</span> <span class="o">=</span> <span class="n">opening</span>
+
+        <span class="c1"># Metric parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trail_length</span> <span class="o">=</span> <span class="n">trail_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center_deviation_force</span> <span class="o">=</span> <span class="n">center_deviation_force</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ring_force</span> <span class="o">=</span> <span class="n">ring_force</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opening_diameter</span> <span class="o">=</span> <span class="n">opening_diameter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deviation_force</span> <span class="o">=</span> <span class="n">deviation_force</span>
+
+        <span class="c1"># if self.n_trails % 2 != 0:</span>
+        <span class="c1">#     raise ValueError(&#39;Number of trails must be even.&#39;)  # doublecheck</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">generate_graph</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fix_graph</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the radial trails and diagonal ring deviations into ``self.graph`` (not yet form-found).&quot;&quot;&quot;</span>
+        <span class="c1"># Initialize data object</span>
+        <span class="n">node_attrs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;coords&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+            <span class="s2">&quot;load&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+            <span class="s2">&quot;support_condition&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">),</span>
+            <span class="s2">&quot;is_origin_node&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+            <span class="s2">&quot;sequence&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="n">edge_attrs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;force&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+            <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+            <span class="s2">&quot;is_trail_edge&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+            <span class="s2">&quot;force_sign&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+            <span class="s2">&quot;source_sequence&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="n">default_attrs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;force&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">]),</span>
+            <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">]),</span>
+            <span class="s2">&quot;coords&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">3</span><span class="p">,),</span> <span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="s2">&quot;load&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+            <span class="s2">&quot;support_condition&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+            <span class="s2">&quot;is_origin_node&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">StructData</span><span class="p">(</span>
+            <span class="n">node_attrs</span><span class="o">=</span><span class="n">node_attrs</span><span class="p">,</span> <span class="n">edge_attrs</span><span class="o">=</span><span class="n">edge_attrs</span><span class="p">,</span> <span class="n">default_attrs</span><span class="o">=</span><span class="n">default_attrs</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create topology diagram</span>
+        <span class="n">centroid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># pi = math.pi</span>
+        <span class="c1"># print(f&#39;{pi:.200f}&#39;)</span>
+        <span class="c1"># angles = torch.tensor([0, 0.5*pi, pi, 1.5*pi])</span>
+
+        <span class="c1"># manual_radius = 0.75</span>
+        <span class="c1"># manual_origin_coords = [torch.tensor([manual_radius, 0.0000, 0.0000]),</span>
+        <span class="c1">#                         torch.tensor([0.0000,  manual_radius,  0.0000]),</span>
+        <span class="c1">#                         torch.tensor([-manual_radius, 0.0000,  0.0000]),</span>
+        <span class="c1">#                         torch.tensor([0.0000, -manual_radius,  0.0000])]</span>
+
+        <span class="c1"># Generate trails</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">):</span>
+            <span class="n">angle</span> <span class="o">=</span> <span class="n">angles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening</span><span class="p">:</span>
+                <span class="n">origin_diameter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening_diameter</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">origin_diameter</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">origin_diameter</span>
+                <span class="n">origin_coords</span> <span class="o">=</span> <span class="n">centroid</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+                <span class="c1"># origin_coords = manual_origin_coords[i]</span>
+                <span class="n">origin_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">origin_coords</span> <span class="o">=</span> <span class="n">centroid</span>
+                <span class="n">x_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_deviation_force</span>
+                <span class="n">y_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_deviation_force</span>
+                <span class="n">origin_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">x_load</span><span class="p">,</span> <span class="n">y_load</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">generate_trail</span><span class="p">(</span>
+                <span class="n">origin_coords</span><span class="o">=</span><span class="n">origin_coords</span><span class="p">,</span> <span class="n">origin_load</span><span class="o">=</span><span class="n">origin_load</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">i</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Add ring deviations</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="p">(</span><span class="n">j</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+                    <span class="n">force</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">deviation_force</span><span class="p">,</span>
+                    <span class="n">source_sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+                <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">_node_0&quot;</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="si">}</span><span class="s2">_node_0&quot;</span><span class="p">,</span>
+                    <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+                    <span class="n">force</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ring_force</span><span class="p">,</span>
+                    <span class="n">source_sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_trail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin_coords</span><span class="p">,</span> <span class="n">origin_load</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a single radial CEM trail (``n_rings`` edges) from an origin node to a supported outer node, in place.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_0&quot;</span><span class="p">,</span>
+            <span class="n">coords</span><span class="o">=</span><span class="n">origin_coords</span><span class="p">,</span>
+            <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+            <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">load</span><span class="o">=</span><span class="n">origin_load</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">support_condition</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span>
+                <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">load</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span>
+                <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+                <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+                <span class="n">load</span><span class="o">=</span><span class="n">load</span><span class="p">,</span>
+                <span class="n">support_condition</span><span class="o">=</span><span class="n">support_condition</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+                <span class="n">length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trail_length</span><span class="p">,</span>
+                <span class="n">force_sign</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">source_sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">fix_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge all trails&#39; origin nodes into a single centroid node, in place.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+            <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
+            <span class="n">coords</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">load</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+        <span class="p">)</span>
+        <span class="n">merge_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">_node_0&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">merge_nodes</span><span class="p">(</span><span class="s2">&quot;centroid&quot;</span><span class="p">,</span> <span class="n">merge_nodes</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.generators.nervi_dome.NerviDome.fix_graph" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">fix_graph</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Merge all trails' origin nodes into a single centroid node, in place.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/generators/nervi_dome.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fix_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge all trails&#39; origin nodes into a single centroid node, in place.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+        <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
+        <span class="n">coords</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+        <span class="n">load</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+    <span class="p">)</span>
+    <span class="n">merge_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">_node_0&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">)]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">merge_nodes</span><span class="p">(</span><span class="s2">&quot;centroid&quot;</span><span class="p">,</span> <span class="n">merge_nodes</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.generators.nervi_dome.NerviDome.generate_graph" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">generate_graph</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build the radial trails and diagonal ring deviations into <code>self.graph</code> (not yet form-found).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/generators/nervi_dome.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the radial trails and diagonal ring deviations into ``self.graph`` (not yet form-found).&quot;&quot;&quot;</span>
+    <span class="c1"># Initialize data object</span>
+    <span class="n">node_attrs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;coords&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+        <span class="s2">&quot;load&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+        <span class="s2">&quot;support_condition&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">),</span>
+        <span class="s2">&quot;is_origin_node&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+        <span class="s2">&quot;sequence&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="n">edge_attrs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;force&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+        <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+        <span class="s2">&quot;is_trail_edge&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+        <span class="s2">&quot;force_sign&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+        <span class="s2">&quot;source_sequence&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="n">default_attrs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;force&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">]),</span>
+        <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">]),</span>
+        <span class="s2">&quot;coords&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">3</span><span class="p">,),</span> <span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+        <span class="s2">&quot;load&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
+        <span class="s2">&quot;support_condition&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+        <span class="s2">&quot;is_origin_node&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">StructData</span><span class="p">(</span>
+        <span class="n">node_attrs</span><span class="o">=</span><span class="n">node_attrs</span><span class="p">,</span> <span class="n">edge_attrs</span><span class="o">=</span><span class="n">edge_attrs</span><span class="p">,</span> <span class="n">default_attrs</span><span class="o">=</span><span class="n">default_attrs</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create topology diagram</span>
+    <span class="n">centroid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+    <span class="n">angles</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># pi = math.pi</span>
+    <span class="c1"># print(f&#39;{pi:.200f}&#39;)</span>
+    <span class="c1"># angles = torch.tensor([0, 0.5*pi, pi, 1.5*pi])</span>
+
+    <span class="c1"># manual_radius = 0.75</span>
+    <span class="c1"># manual_origin_coords = [torch.tensor([manual_radius, 0.0000, 0.0000]),</span>
+    <span class="c1">#                         torch.tensor([0.0000,  manual_radius,  0.0000]),</span>
+    <span class="c1">#                         torch.tensor([-manual_radius, 0.0000,  0.0000]),</span>
+    <span class="c1">#                         torch.tensor([0.0000, -manual_radius,  0.0000])]</span>
+
+    <span class="c1"># Generate trails</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">):</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="n">angles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening</span><span class="p">:</span>
+            <span class="n">origin_diameter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening_diameter</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">origin_diameter</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">origin_diameter</span>
+            <span class="n">origin_coords</span> <span class="o">=</span> <span class="n">centroid</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+            <span class="c1"># origin_coords = manual_origin_coords[i]</span>
+            <span class="n">origin_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">origin_coords</span> <span class="o">=</span> <span class="n">centroid</span>
+            <span class="n">x_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_deviation_force</span>
+            <span class="n">y_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_deviation_force</span>
+            <span class="n">origin_load</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">x_load</span><span class="p">,</span> <span class="n">y_load</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generate_trail</span><span class="p">(</span>
+            <span class="n">origin_coords</span><span class="o">=</span><span class="n">origin_coords</span><span class="p">,</span> <span class="n">origin_load</span><span class="o">=</span><span class="n">origin_load</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">i</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Add ring deviations</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="p">(</span><span class="n">j</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+                <span class="n">force</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">deviation_force</span><span class="p">,</span>
+                <span class="n">source_sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opening</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">_node_0&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">n_trails</span><span class="si">}</span><span class="s2">_node_0&quot;</span><span class="p">,</span>
+                <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+                <span class="n">force</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ring_force</span><span class="p">,</span>
+                <span class="n">source_sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+            <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.generators.nervi_dome.NerviDome.generate_trail" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">generate_trail</span><span class="p">(</span><span class="n">origin_coords</span><span class="p">,</span> <span class="n">origin_load</span><span class="p">,</span> <span class="nb">id</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Add a single radial CEM trail (<code>n_rings</code> edges) from an origin node to a supported outer node, in place.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/generators/nervi_dome.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_trail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin_coords</span><span class="p">,</span> <span class="n">origin_load</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a single radial CEM trail (``n_rings`` edges) from an origin node to a supported outer node, in place.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_0&quot;</span><span class="p">,</span>
+        <span class="n">coords</span><span class="o">=</span><span class="n">origin_coords</span><span class="p">,</span>
+        <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+        <span class="n">load</span><span class="o">=</span><span class="n">origin_load</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">support_condition</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span>
+            <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">load</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rings</span>
+            <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+            <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+            <span class="n">load</span><span class="o">=</span><span class="n">load</span><span class="p">,</span>
+            <span class="n">support_condition</span><span class="o">=</span><span class="n">support_condition</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;trail_</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">_node_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+            <span class="n">length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trail_length</span><span class="p">,</span>
+            <span class="n">force_sign</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+            <span class="n">source_sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 

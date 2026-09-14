@@ -1764,6 +1764,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.laplace.Laplacian.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.laplace.Laplacian.message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        message
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2418,6 +2440,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.laplace.Laplacian.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.message_passing.laplace.Laplacian.message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        message
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2526,7 +2570,16 @@
 <span class="normal">26</span>
 <span class="normal">27</span>
 <span class="normal">28</span>
-<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Laplacian</span><span class="p">(</span><span class="n">MessagePassing</span><span class="p">):</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Laplacian</span><span class="p">(</span><span class="n">MessagePassing</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Matrix-free uniform graph Laplacian.</span>
 
 <span class="sd">    The operator uses the random-walk form of the uniform Laplacian:</span>
@@ -2539,6 +2592,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">num_nodes</span> <span class="o">=</span> <span class="n">num_nodes</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the Laplacian operator: ``x - mean(neighbour_values)``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor [N, *]): per-node values.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor [N, *]: the Laplacian of ``x``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">mean_neighbours</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">mean_neighbours</span>
 
@@ -2550,6 +2611,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="n">identity</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_j</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pass each neighbour&#39;s value through unchanged, to be mean-aggregated.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">x_j</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2583,17 +2645,140 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/message_passing/laplace.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">dense_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">dense_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Materialize the operator as a dense matrix when a solver needs it.&quot;&quot;&quot;</span>
     <span class="n">identity</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_index</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">get_default_dtype</span><span class="p">()</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="n">identity</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.message_passing.laplace.Laplacian.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply the Laplacian operator: <code>x - mean(neighbour_values)</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+                  <code>torch.Tensor [N, *]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>per-node values.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor [N, *]: the Laplacian of <code>x</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/message_passing/laplace.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the Laplacian operator: ``x - mean(neighbour_values)``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor [N, *]): per-node values.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor [N, *]: the Laplacian of ``x``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mean_neighbours</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_index</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_nodes</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">mean_neighbours</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.message_passing.laplace.Laplacian.message" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">message</span><span class="p">(</span><span class="n">x_j</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Pass each neighbour's value through unchanged, to be mean-aggregated.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/message_passing/laplace.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_j</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pass each neighbour&#39;s value through unchanged, to be mean-aggregated.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">x_j</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

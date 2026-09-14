@@ -1611,6 +1611,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="LogicLoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.loss.lignn.LogicLoss.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2387,6 +2404,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="LogicLoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.loss.lignn.LogicLoss.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2493,7 +2527,22 @@
 <span class="normal">30</span>
 <span class="normal">31</span>
 <span class="normal">32</span>
-<span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LogicLoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LogicLoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Theory-informed loss function for determining topology diagram validity&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">search_depth</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">):</span>
@@ -2506,6 +2555,21 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">mean_dim</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">reduction</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span> <span class="k">else</span> <span class="mi">1</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x2</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the combined local and trail-connectivity loss.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor [N, C]): per-node predicted probability channels.</span>
+<span class="sd">            edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">            batch (torch.Tensor [N]): unused, kept for interface consistency.</span>
+<span class="sd">            y (torch.Tensor [N]): target trail-edge count per node, used by</span>
+<span class="sd">                the local loss.</span>
+<span class="sd">            x2 (torch.Tensor [N, C]): initial values propagated over</span>
+<span class="sd">                ``search_depth`` hops to assess indirect trail connectivity.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[torch.Tensor, torch.Tensor, torch.Tensor]: the combined</span>
+<span class="sd">            loss, the local loss, and the trail loss.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Compress domain to prevent numerical issues with ones and zeros</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mf">0.9999999</span> <span class="o">+</span> <span class="mf">0.00000005</span>
 
@@ -2536,6 +2600,217 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.loss.lignn.LogicLoss.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the combined local and trail-connectivity loss.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, <span title="C">C</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>per-node predicted probability channels.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>edge_index</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[2, <span title="E">E</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>edge connectivity.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>batch</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>unused, kept for interface consistency.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>y</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>target trail-edge count per node, used by
+the local loss.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>x2</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span>[<span title="N">N</span>, <span title="C">C</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>initial values propagated over
+<code>search_depth</code> hops to assess indirect trail connectivity.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>tuple[torch.Tensor, torch.Tensor, torch.Tensor]: the combined</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>loss, the local loss, and the trail loss.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/loss/lignn.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the combined local and trail-connectivity loss.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (torch.Tensor [N, C]): per-node predicted probability channels.</span>
+<span class="sd">        edge_index (torch.Tensor [2, E]): edge connectivity.</span>
+<span class="sd">        batch (torch.Tensor [N]): unused, kept for interface consistency.</span>
+<span class="sd">        y (torch.Tensor [N]): target trail-edge count per node, used by</span>
+<span class="sd">            the local loss.</span>
+<span class="sd">        x2 (torch.Tensor [N, C]): initial values propagated over</span>
+<span class="sd">            ``search_depth`` hops to assess indirect trail connectivity.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[torch.Tensor, torch.Tensor, torch.Tensor]: the combined</span>
+<span class="sd">        loss, the local loss, and the trail loss.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Compress domain to prevent numerical issues with ones and zeros</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mf">0.9999999</span> <span class="o">+</span> <span class="mf">0.00000005</span>
+
+    <span class="c1"># Compute local loss related to local trail connectivity</span>
+    <span class="n">local_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Compute trail loss related to indirect connectivity of nodes to support/origin nodes through trail edges</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_depth</span><span class="p">):</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wmax</span><span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="n">edge_index</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">trail_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mean_dim</span><span class="p">)</span>
+
+    <span class="c1"># Compute weighted average according to local_component</span>
+    <span class="n">local_component</span> <span class="o">=</span> <span class="mf">0.9</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">local_component</span> <span class="o">*</span> <span class="n">local_loss</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">local_component</span><span class="p">)</span> <span class="o">*</span> <span class="n">trail_loss</span>
+    <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">local_loss</span><span class="p">,</span> <span class="n">trail_loss</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

@@ -2279,6 +2279,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="AddRadialZNoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.transforms.radial_z_noise.AddRadialZNoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2386,6 +2403,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="AddRadialZNoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#torch_structure.transforms.radial_z_noise.AddRadialZNoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2577,7 +2611,8 @@ data = transform(data)</p>
 <span class="normal">51</span>
 <span class="normal">52</span>
 <span class="normal">53</span>
-<span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AddRadialZNoise</span><span class="p">(</span><span class="n">BaseTransform</span><span class="p">):</span>
+<span class="normal">54</span>
+<span class="normal">55</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AddRadialZNoise</span><span class="p">(</span><span class="n">BaseTransform</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies radial multiplicative noise to the z-coordinate of each node.</span>
 
@@ -2601,6 +2636,7 @@ data = transform(data)</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">degree</span> <span class="o">=</span> <span class="n">degree</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the radial polynomial z-noise to ``data.coords`` in place.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;coords&quot;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Data object has no attribute &#39;coords&#39;.&quot;</span><span class="p">)</span>
 
@@ -2641,6 +2677,69 @@ data = transform(data)</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="torch_structure.transforms.radial_z_noise.AddRadialZNoise.forward" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply the radial polynomial z-noise to <code>data.coords</code> in place.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/transforms/radial_z_noise.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply the radial polynomial z-noise to ``data.coords`` in place.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;coords&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Data object has no attribute &#39;coords&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="n">device</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">device</span>
+
+    <span class="c1"># Determine normalized radius in the xy-plane</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [N]</span>
+    <span class="n">max_radius</span> <span class="o">=</span> <span class="n">radius</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">/</span> <span class="n">max_radius</span> <span class="k">if</span> <span class="n">max_radius</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span>
+
+    <span class="c1"># Define polynomial</span>
+    <span class="n">coefficients</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">powers</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">vander</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">increasing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">polynomial</span> <span class="o">=</span> <span class="n">powers</span> <span class="o">@</span> <span class="n">coefficients</span>
+
+    <span class="n">noise</span> <span class="o">=</span> <span class="n">polynomial</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_noise</span> <span class="o">/</span> <span class="n">polynomial</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">data</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

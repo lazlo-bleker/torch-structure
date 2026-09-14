@@ -1254,6 +1254,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#torch_structure.generators.single_trail.SingleTrailGenerator.generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#torch_structure.generators.single_trail.SingleTrailGenerator.sample_input" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2419,6 +2430,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#torch_structure.generators.single_trail.SingleTrailGenerator.generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#torch_structure.generators.single_trail.SingleTrailGenerator.sample_input" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2510,6 +2532,8 @@
               Bases: <code><a class="autorefs autorefs-internal" title="BaseGenerator (torch_structure.generators.base_generator.BaseGenerator)" href="../base_generator/#torch_structure.generators.base_generator.BaseGenerator">BaseGenerator</a></code></p>
 
 
+
+        <p>Builds a single chain of CEM trail edges from the origin node to a fixed end node.</p>
 
 
 
@@ -2628,7 +2652,25 @@
 <span class="normal">112</span>
 <span class="normal">113</span>
 <span class="normal">114</span>
-<span class="normal">115</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SingleTrailGenerator</span><span class="p">(</span><span class="n">BaseGenerator</span><span class="p">):</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SingleTrailGenerator</span><span class="p">(</span><span class="n">BaseGenerator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Builds a single chain of CEM trail edges from the origin node to a fixed end node.&quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">overrides</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_attempts</span> <span class="o">=</span> <span class="mi">1</span>
@@ -2678,6 +2720,20 @@
                 <span class="n">trail_element_length</span> <span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
                 <span class="n">origin_node_load</span> <span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
                 <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a single trail of ``n_nodes`` nodes from an origin node to a supported end node.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n_nodes (int): total number of nodes in the trail, including the</span>
+<span class="sd">                origin and end node.</span>
+<span class="sd">            nodal_load (list): load applied to every intermediate node.</span>
+<span class="sd">            trail_element_length (float): length assigned to every trail</span>
+<span class="sd">                edge.</span>
+<span class="sd">            origin_node_load (list): additional load applied only to the</span>
+<span class="sd">                origin node (on top of ``nodal_load``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            StructData: the constructed (not yet form-found) trail graph.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Initialize graph</span>
         <span class="n">graph</span> <span class="o">=</span> <span class="n">StructData</span><span class="p">(</span>
                 <span class="n">node_attrs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">node_attrs</span><span class="p">,</span>
@@ -2756,6 +2812,289 @@
 <div class="doc doc-object doc-function">
 
 
+<h3 id="torch_structure.generators.single_trail.SingleTrailGenerator.generate" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">generate</span><span class="p">(</span><span class="n">n_nodes</span><span class="p">,</span> <span class="n">nodal_load</span><span class="p">,</span> <span class="n">trail_element_length</span><span class="p">,</span> <span class="n">origin_node_load</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build a single trail of <code>n_nodes</code> nodes from an origin node to a supported end node.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>n_nodes</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>total number of nodes in the trail, including the
+origin and end node.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>nodal_load</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>load applied to every intermediate node.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>trail_element_length</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>length assigned to every trail
+edge.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>origin_node_load</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>additional load applied only to the
+origin node (on top of <code>nodal_load</code>).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>StructData</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the constructed (not yet form-found) trail graph.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/torch_structure/generators/single_trail.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+            <span class="n">n_nodes</span> <span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">nodal_load</span> <span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+            <span class="n">trail_element_length</span> <span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">origin_node_load</span> <span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+            <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a single trail of ``n_nodes`` nodes from an origin node to a supported end node.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_nodes (int): total number of nodes in the trail, including the</span>
+<span class="sd">            origin and end node.</span>
+<span class="sd">        nodal_load (list): load applied to every intermediate node.</span>
+<span class="sd">        trail_element_length (float): length assigned to every trail</span>
+<span class="sd">            edge.</span>
+<span class="sd">        origin_node_load (list): additional load applied only to the</span>
+<span class="sd">            origin node (on top of ``nodal_load``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        StructData: the constructed (not yet form-found) trail graph.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Initialize graph</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">StructData</span><span class="p">(</span>
+            <span class="n">node_attrs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">node_attrs</span><span class="p">,</span>
+            <span class="n">edge_attrs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_attrs</span><span class="p">,</span>
+            <span class="n">default_attrs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">default_attrs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Parse data as numpy arrays</span>
+    <span class="n">origin_node_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">nodal_load</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">nodal_load</span><span class="p">)</span>
+    <span class="n">origin_node_load</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">origin_node_load</span><span class="p">)</span>
+    <span class="n">support_condition</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
+
+    <span class="c1"># Add origin nodes</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;node_0&quot;</span><span class="p">,</span>
+        <span class="n">coords</span><span class="o">=</span><span class="n">origin_node_coords</span><span class="p">,</span>
+        <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+        <span class="n">load</span><span class="o">=</span><span class="n">nodal_load</span> <span class="o">+</span> <span class="n">origin_node_load</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">n_nodes</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="c1"># Add node</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;node_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+            <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">j</span><span class="p">),</span>
+            <span class="n">load</span><span class="o">=</span><span class="n">nodal_load</span><span class="p">,</span>
+            <span class="n">support_condition</span><span class="o">=</span><span class="n">support_condition</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Add new edge with the created node and its previous node</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;node_</span><span class="si">{</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;node_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+            <span class="n">length</span><span class="o">=</span><span class="n">trail_element_length</span><span class="p">,</span>
+            <span class="n">force_sign</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Add node</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">n_nodes</span> <span class="o">-</span> <span class="mi">1</span> 
+    <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;node_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">is_origin_node</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+        <span class="n">sequence</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">j</span><span class="p">),</span>
+        <span class="n">load</span><span class="o">=</span><span class="n">nodal_load</span><span class="p">,</span>
+        <span class="n">support_condition</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">]),</span>
+    <span class="p">)</span>
+    <span class="c1"># Add new edge with the created node and its previous node</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;node_</span><span class="si">{</span><span class="n">j</span><span class="o">-</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">&quot;node_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">is_trail_edge</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">length</span><span class="o">=</span><span class="n">trail_element_length</span><span class="p">,</span>
+        <span class="n">force_sign</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">graph</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h3 id="torch_structure.generators.single_trail.SingleTrailGenerator.sample_input" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">sample_input</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
@@ -2769,11 +3108,11 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/generators/single_trail.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">41</span>
 <span class="normal">42</span>
-<span class="normal">43</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sample_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sample_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    No sampling required</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2800,11 +3139,11 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/torch_structure/generators/single_trail.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
 <span class="normal">48</span>
-<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    No validation required</span>
 <span class="sd">    &quot;&quot;&quot;</span>
