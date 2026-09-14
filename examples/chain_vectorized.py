@@ -4,25 +4,21 @@ import matplotlib.pyplot as plt
 
 
 node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
-edge_attrs = {"force": torch.empty((0), dtype=torch.long)}
+edge_attrs = {"forcea": torch.empty((0, 1), dtype=torch.long)}
 data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-def f(u_ind):
+num_nodes = 10
 
-    height = (u_ind**2)/10
+force = 10 * torch.ones(num_nodes - 1, 1, dtype=torch.long)
 
-    return torch.hstack([u_ind,torch.zeros_like(u_ind),height])
-
-
-def g(x_unit_coord):
-
-    res = x_unit_coord**2
-
-    return res
+def f(x_unit_coord):
+    height = 3 * x_unit_coord * (1 - x_unit_coord)
+    return torch.hstack([x_unit_coord, torch.zeros_like(x_unit_coord), height])
 
 node_attrs = {"coords": f}
-edge_attrs = {"force": g}
-data.add_chain(10, node_attrs=node_attrs, edge_attrs=edge_attrs)
+edge_attrs = {"forcea": force}
+
+data.add_chain(num_nodes, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 data.plot()
 plt.show()

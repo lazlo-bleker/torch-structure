@@ -103,3 +103,17 @@ body[data-md-color-scheme="default"] .ts-logo--light {
 body[data-md-color-scheme="slate"] .ts-logo--dark {
   display: inline-block !important;
 }
+
+/* Light/dark swap for tutorial figures (same mechanism as the logo above) */
+.ts-fig--light,
+.ts-fig--dark {
+  display: none !important;
+}
+
+body[data-md-color-scheme="default"] .ts-fig--light {
+  display: block !important;
+}
+
+body[data-md-color-scheme="slate"] .ts-fig--dark {
+  display: block !important;
+}
