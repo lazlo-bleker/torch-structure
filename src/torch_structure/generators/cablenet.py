@@ -88,7 +88,13 @@ class CableNetGenerator(BaseGenerator):
         square_size=None,
         corner_angle_list=None,
         corner_support_sequence=None,
+        seed = None
     ):
+        if seed is not None:
+            np.random.seed(seed) 
+            torch.manual_seed(seed)
+            random.seed(seed)
+        
         if n is None:
             if rectangle or square:
                 n = 4

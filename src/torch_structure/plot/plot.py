@@ -28,7 +28,11 @@ def plot_data(
     show=False,
     show_edge_indices=False,
     show_deck=False,
-    is_deck_node=None
+    is_deck_node=None,
+    target_coords=None,
+    target_edge_index=None,
+    target_color="gray",
+    target_node_size=8,
 ):
     """
     Plot a structure in 3D.
@@ -91,6 +95,27 @@ def plot_data(
     if ax is None:
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection="3d")
+
+    if target_coords is not None:
+        target_edge_index = edge_index if target_edge_index is None else target_edge_index
+        target_np = target_coords.detach().cpu().numpy()
+        ax.scatter(
+            target_np[:, 0],
+            target_np[:, 1],
+            target_np[:, 2],
+            color=target_color,
+            s=target_node_size,
+            label="Target Geometry",
+        )
+        for src, dst in target_edge_index.t().cpu().numpy():
+            ax.plot(
+                [target_np[src, 0], target_np[dst, 0]],
+                [target_np[src, 1], target_np[dst, 1]],
+                [target_np[src, 2], target_np[dst, 2]],
+                color=target_color,
+                linestyle="--",
+                linewidth=0.8,
+            )
 
     # Plot supports
     if show_supports:
@@ -252,6 +277,8 @@ def plot_data(
     # Show plot
     if show:
         plt.show()
+
+    return ax
 
 
 def plot_data_xz(
@@ -469,3 +496,5 @@ def plot_data_xz(
     # Show plot
     if show:
         plt.show()
+
+    return ax
