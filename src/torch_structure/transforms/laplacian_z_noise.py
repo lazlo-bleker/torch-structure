@@ -36,6 +36,7 @@ class AddLaplacianZNoise(BaseTransform):
         )
 
     def forward(self, data):
+        """Apply the Laplacian-eigenvector-modulated z-noise to ``data.coords`` in place."""
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
 

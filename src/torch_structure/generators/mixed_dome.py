@@ -7,6 +7,15 @@ from torch_structure.generators.base_generator import BaseGenerator, InvalidSamp
 
 
 class MixedDomeGenerator(BaseGenerator):
+    """Randomly samples and form-finds a radial dome whose rings alternate between tension and compression.
+
+    Like [DomeGenerator][torch_structure.generators.dome.DomeGenerator], ``n_trails``
+    radial CEM trails converge on a center or central opening, but ring
+    deviation edges may flip force sign at ``sign_flip_indices``, mixing
+    convex and concave (tension/compression) sections. The resulting
+    geometry is verified to be radially symmetric.
+    """
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
@@ -42,6 +51,7 @@ class MixedDomeGenerator(BaseGenerator):
         sign_flip_indices,
         center_trail_sign,
     ):
+        """Validate that ``n_trails`` is even and ``center_trail_sign`` is 'tension' or 'compression'."""
         if n_trails % 2 != 0:
             raise ValueError("Number of trails must be even.")
         if center_trail_sign not in ["tension", "compression"]:
@@ -59,6 +69,14 @@ class MixedDomeGenerator(BaseGenerator):
         sign_flip_indices=None,
         center_trail_sign=None,
     ):
+        """Sample any unspecified generation parameters, deriving dependent defaults where relevant.
+
+        Each parameter defaults to ``None``, meaning "sample randomly"; an
+        explicit value passed via ``overrides`` (see
+        [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator])
+        is left unchanged. Returns a dict of all resolved parameters, to be
+        passed to [generate][torch_structure.generators.mixed_dome.MixedDomeGenerator.generate].
+        """
         if n_trails is None:
             n_trails = 2 * np.random.randint(5, 15)
         if n_rings is None:
@@ -98,6 +116,19 @@ class MixedDomeGenerator(BaseGenerator):
         sign_flip_indices,
         center_trail_sign,
     ):
+        """Build the trails and sign-flipping ring deviations, form-find with MP-CEM, and normalize the geometry.
+
+        If ``opening`` is ``False``, the trail origin nodes are merged into
+        a single centroid node after form-finding ([fix_graph][torch_structure.generators.mixed_dome.MixedDomeGenerator.fix_graph]).
+
+        Returns:
+            StructData: the form-found dome, scaled to unit horizontal
+            radius and translated to non-negative z.
+
+        Raises:
+            InvalidSampleError: if the resulting geometry is not radially
+                symmetric.
+        """
         # Initialize data object
         data = StructData(
             node_attrs=self.node_attrs,
@@ -201,6 +232,7 @@ class MixedDomeGenerator(BaseGenerator):
     def generate_trail(
         self, data, origin_coords, origin_load, id, n_rings, trail_length, force_signs
     ):
+        """Add a single radial CEM trail, applying ``force_signs[i]`` to each ring's edge, in place."""
         data.add_node(
             f"trail_{id}_node_0",
             coords=origin_coords,
@@ -230,6 +262,7 @@ class MixedDomeGenerator(BaseGenerator):
             )
 
     def fix_graph(self, data, n_trails):
+        """Merge all trails' origin nodes into a single centroid node, in place."""
         data.add_node(
             "centroid",
             coords=torch.tensor([0.0, 0.0, 0.0]),

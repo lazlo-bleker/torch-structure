@@ -8,6 +8,15 @@ from torch_structure.generators.base_generator import BaseGenerator, InvalidSamp
 
 
 class CableNetGenerator(BaseGenerator):
+    """Randomly samples and form-finds a cable net over a (rectangular, circular, or polygonal) boundary.
+
+    Supports three mesh patterns: ``"standard"`` (quad mesh converging on
+    a centroid), ``"singularity"`` (converging directly on the centroid
+    node), and ``"opening"`` (converging on a central circular opening).
+    The net's force densities are prescribed per edge role (field,
+    boundary, diagonal) and equilibrated with the Force Density Method.
+    """
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
@@ -52,6 +61,7 @@ class CableNetGenerator(BaseGenerator):
         corner_angle_list,
         corner_support_sequence,
     ):
+        """Validate the boundary/pattern parameters; raises ``ValueError`` if they are inconsistent."""
         if n < 4:
             raise ValueError("n must be at least 4")
         if pattern not in ["standard", "singularity", "opening"]:
@@ -90,6 +100,15 @@ class CableNetGenerator(BaseGenerator):
         corner_support_sequence=None,
         seed = None
     ):
+        """Sample any unspecified generation parameters, deriving dependent defaults where relevant.
+
+        Each parameter defaults to ``None``, meaning "sample randomly"; an
+        explicit value passed via ``overrides`` (see
+        [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator])
+        is left unchanged. If ``seed`` is given, seeds ``numpy``, ``torch``,
+        and ``random`` before sampling. Returns a dict of all resolved
+        parameters, to be passed to [generate][torch_structure.generators.cablenet.CableNetGenerator.generate].
+        """
         if seed is not None:
             np.random.seed(seed) 
             torch.manual_seed(seed)
@@ -192,6 +211,15 @@ class CableNetGenerator(BaseGenerator):
         corner_angle_list,
         corner_support_sequence,
     ):
+        """Build the boundary, mesh, and (for "opening") central ring, then form-find with the FDM.
+
+        Returns:
+            StructData: the form-found cable net.
+
+        Raises:
+            InvalidSampleError: if the resulting geometry's z-extent falls
+                outside ``[0, 1]``.
+        """
         graph = StructData(
             node_attrs=self.node_attrs,
             edge_attrs=self.edge_attrs,
@@ -746,6 +774,17 @@ class CableNetGenerator(BaseGenerator):
 
     @staticmethod
     def compute_optimal_rotation(polygon_angles):
+        """
+        Evenly space points around a circle and rotate them to best align with ``polygon_angles``.
+
+        Parameters:
+            polygon_angles (torch.Tensor): angular positions (radians) of the
+                polygon's corners around the centroid.
+
+        Returns:
+            torch.Tensor: evenly spaced angles, rotated by the least-squares
+            optimal shift to align with ``polygon_angles``.
+        """
         print(torch.tensor(math.pi), len(polygon_angles))
         circle_angles = torch.linspace(0.0, 2 * math.pi, len(polygon_angles) + 1)[:-1]
         angular_differences = polygon_angles - circle_angles
@@ -830,11 +869,13 @@ class CableNetGenerator(BaseGenerator):
 
     @staticmethod
     def nd_linspace(start: torch.tensor, end: torch.tensor, num_points: int):
+        """Linearly interpolate ``num_points`` points (inclusive) between two n-dimensional points."""
         t = torch.linspace(0, 1, num_points).view(-1, 1)
         return start + t * (end - start)
 
     @staticmethod
     def generate_random_sequence(n):
+        """Generate a random binary sequence of length ``n``, seeded with ``[1, 0, 1, 0]`` and grown by random insertion."""
         sequence = np.array([1, 0, 1, 0])  # Start with [1, 0, 1, 0] as a numpy array
 
         while len(sequence) < n:

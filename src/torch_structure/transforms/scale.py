@@ -18,6 +18,7 @@ class ScaleZ(BaseTransform):  # ToDo: Generalize to structures with non-vertical
         self.scaling_factor = scaling_factor
 
     def forward(self, data):
+        """Scale ``data.coords`` along z and rescale ``force_density``/``force`` to compensate, in place."""
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
         if not hasattr(data, "force_density"):
@@ -52,6 +53,7 @@ class ScaleX(BaseTransform):  # ToDo: Generalize to structures with non-vertical
         self.scaling_factor = scaling_factor
 
     def forward(self, data):
+        """Scale ``data.coords`` along x and recompute ``length``/``force`` to compensate, in place."""
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
         if not hasattr(data, "force_density"):
@@ -70,12 +72,26 @@ class ScaleX(BaseTransform):  # ToDo: Generalize to structures with non-vertical
 
 
 class RandomizedScaleX(BaseTransform):
+    r"""
+    Applies [ScaleX][torch_structure.transforms.scale.ScaleX] with a scaling factor sampled uniformly from
+    ``[min_scale, max_scale]``.
+
+    Args:
+        min_scale (float): Lower bound of the sampled scaling factor.
+        max_scale (float): Upper bound of the sampled scaling factor.
+
+    Example:
+        >>> transform = RandomizedScaleX(min_scale=0.5, max_scale=2.0)
+        >>> data = transform(data)
+    """
+
     def __init__(self, min_scale, max_scale):
         super().__init__()
         self.min_scale = min_scale
         self.max_scale = max_scale
 
     def forward(self, data):
+        """Sample a scaling factor and apply [ScaleX][torch_structure.transforms.scale.ScaleX] with it."""
         scaling_factor = (
             torch.rand(1).item() * (self.max_scale - self.min_scale) + self.min_scale
         )

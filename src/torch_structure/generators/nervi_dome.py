@@ -7,6 +7,14 @@ from torch_structure.data import StructData
 
 
 class NerviDome:
+    """Builds a Nervi-style ribbed dome: radial CEM trails linked by diagonal (rather than ring) deviation edges.
+
+    Unlike [DomeGenerator][torch_structure.generators.dome.DomeGenerator], this
+    class takes fully specified (not randomly sampled) parameters, links
+    consecutive rings diagonally rather than circumferentially, and only
+    builds the graph in ``__init__`` without form-finding it.
+    """
+
     def __init__(
         self,
         n_trails,
@@ -38,6 +46,7 @@ class NerviDome:
             self.fix_graph()
 
     def generate_graph(self):
+        """Build the radial trails and diagonal ring deviations into ``self.graph`` (not yet form-found)."""
         # Initialize data object
         node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
@@ -119,6 +128,7 @@ class NerviDome:
                 )
 
     def generate_trail(self, origin_coords, origin_load, id):
+        """Add a single radial CEM trail (``n_rings`` edges) from an origin node to a supported outer node, in place."""
         self.graph.add_node(
             f"trail_{id}_node_0",
             coords=origin_coords,
@@ -154,6 +164,7 @@ class NerviDome:
             )
 
     def fix_graph(self):
+        """Merge all trails' origin nodes into a single centroid node, in place."""
         self.graph.add_node(
             "centroid",
             coords=torch.tensor([0.0, 0.0, 0.0]),

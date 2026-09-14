@@ -13,6 +13,21 @@ from torch_structure.mixins import TSMixin
 from torch_scatter import scatter
 
 class StructData(TSMixin, pyg.data.Data):
+    """A `torch_geometric.data.Data` subclass representing a directed, reciprocal-edge structural graph.
+
+    Every undirected edge is stored as a pair of opposite directed edges;
+    ``directed_mask`` marks one edge of each pair as the "canonical"
+    direction, and ``reciprocal_edge`` maps each edge to its opposite. This
+    lets edge attributes be defined once per undirected edge (via
+    ``edge_attr_to_undirected``) while message passing still sees both
+    directions. Node/edge/graph attributes are declared through
+    ``node_attrs``/``edge_attrs``/``graph_attrs``, and nodes carry a
+    ``name`` attribute enabling NetworkX-style access via
+    [nodes][torch_structure.data.data.StructData.nodes] and name-based
+    editing methods such as
+    [add_edge][torch_structure.data.data.StructData.add_edge]/[add_edges_by_names][torch_structure.data.data.StructData.add_edges_by_names].
+    """
+
     def __init__(self,
                  edge_index=torch.empty((2, 0), dtype=torch.long),
                  directed_mask=torch.empty((0, 1), dtype=torch.bool),
@@ -65,6 +80,22 @@ class StructData(TSMixin, pyg.data.Data):
 
     @classmethod
     def from_rhino(cls, points, lines, tolerance=1e-6):
+        """Build a [StructData][torch_structure.data.data.StructData] from Rhino ``Point3d``/``Line`` geometry.
+
+        Coincident points (within ``tolerance``) are merged into a single
+        node, and each line becomes a pair of reciprocal directed edges.
+
+        Args:
+            points (list[Rhino.Geometry.Point3d]): node coordinates.
+            lines (list[Rhino.Geometry.Line]): edges, referencing points by
+                their ``From``/``To`` endpoints.
+            tolerance (float): coordinate rounding tolerance used to merge
+                coincident points.
+
+        Returns:
+            StructData: the constructed graph, with a ``coords`` node
+            attribute.
+        """
         coords_list = []
         index_map = {}
         for pt in points:
@@ -78,6 +109,7 @@ class StructData(TSMixin, pyg.data.Data):
                 coords_list.append([pt.X, pt.Y, pt.Z])
 
         def point_key(pt):
+            """Round a point's coordinates to ``tolerance`` to key it for coincidence merging."""
             return (
                 round(pt.X / tolerance),
                 round(pt.Y / tolerance),
@@ -115,6 +147,12 @@ class StructData(TSMixin, pyg.data.Data):
         return obj
     
     def to_rhino(self):
+        """Convert this graph's canonical (directed-mask) edges to Rhino ``Point3d``/``Line`` geometry.
+
+        Returns:
+            tuple[list[Rhino.Geometry.Point3d], list[Rhino.Geometry.Line]]:
+            the node coordinates as points, and one line per canonical edge.
+        """
         import Rhino.Geometry as rg
 
         xyz = self.coords.detach().cpu().numpy()
@@ -139,6 +177,23 @@ class StructData(TSMixin, pyg.data.Data):
             return 0
         
     def verify_equilibrium(self, tolerance=1e-7, verbose=False, **kwargs):
+        """Check whether this structure is in static equilibrium.
+
+        Computes the residual-force loss (see
+        [ResidualForceLoss][torch_structure.loss.residual_force.ResidualForceLoss]) and compares it
+        against ``tolerance``.
+
+        Args:
+            tolerance (float): maximum residual-force loss still considered
+                equilibrium.
+            verbose (bool): if ``True``, print the result and loss value.
+            **kwargs: overrides for ``coords``, ``load``, ``is_support``,
+                ``force``, or ``edge_index``; each defaults to the
+                corresponding attribute on ``self``.
+
+        Returns:
+            bool: ``True`` if the residual-force loss is below ``tolerance``.
+        """
         if "coords" not in kwargs:
             kwargs["coords"] = self.coords
         if "load" not in kwargs:
@@ -160,6 +215,24 @@ class StructData(TSMixin, pyg.data.Data):
         return equilibrium
     
     def edge_attr_to_undirected(self, edge_attr, mask, batched=False):
+        """Expand an edge attribute defined on canonical edges to all (both-direction) edges.
+
+        Args:
+            edge_attr (torch.Tensor): values for the edges selected by
+                ``mask``, of shape ``[num_masked_edges, 1]`` or, if
+                ``batched``, ``[batch_size, num_masked_edges]``.
+            mask (torch.Tensor [num_edges]): boolean mask selecting the
+                canonical subset of edges ``edge_attr`` was computed for
+                (e.g. ``directed_mask`` or ``cem_edge_mask``).
+            batched (bool): if ``True``, treat ``edge_attr`` as a batch of
+                per-edge value sets (e.g. an iteration history) instead of a
+                single set.
+
+        Returns:
+            torch.Tensor: ``edge_attr`` broadcast to all ``num_edges``
+            edges, with each edge outside ``mask`` set to the value of its
+            reciprocal edge.
+        """
         mask = mask.view(-1)
         device = edge_attr.device
 
@@ -214,6 +287,11 @@ class StructData(TSMixin, pyg.data.Data):
     # Properties
     @property
     def is_support(self):
+        """torch.Tensor [N, 1]: boolean mask of supported (fixed) nodes.
+
+        Falls back to ``any(support_condition, dim=1)`` if ``is_support``
+        was not set directly.
+        """
         if "is_support" in self._store:
             return self["is_support"]
 
@@ -228,10 +306,12 @@ class StructData(TSMixin, pyg.data.Data):
         
     @property
     def support(self):
+        """torch.Tensor [N, 1]: alias for [is_support][torch_structure.data.data.StructData.is_support]."""
         return self.is_support  ### REMOVE LATER TEMP
-    
+
     @property
     def length_from_coords(self):
+        """torch.Tensor [E, 1]: each edge's length, recomputed from ``coords``."""
         if hasattr(self, "coords"):
             return graph_edge_lengths(self.coords, self.edge_index)
         else:
@@ -241,6 +321,7 @@ class StructData(TSMixin, pyg.data.Data):
 
     @property
     def bbox(self):
+        """torch.Tensor [2, D]: the axis-aligned bounding box of ``coords``, as ``[min, max]``."""
         if not hasattr(self, "coords"):
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute 'coords' required for bounding box calculation."
@@ -251,14 +332,22 @@ class StructData(TSMixin, pyg.data.Data):
 
     @property
     def directed_edge_index(self):
+        """torch.Tensor [2, E_directed]: ``edge_index`` restricted to the canonical (``directed_mask``) edges."""
         return self.edge_index[:, self.directed_mask.view(-1)]
-    
+
     @property
     def cem_edge_index(self):
+        """torch.Tensor [2, E_cem]: ``edge_index`` restricted to the CEM-canonical ([cem_edge_mask][torch_structure.data.data.StructData.cem_edge_mask]) edges."""
         return self.edge_index[:, self.cem_edge_mask]
-    
+
     @property
     def cem_edge_mask(self):
+        """torch.Tensor [E], bool: mask selecting one direction of every edge for CEM.
+
+        Like ``directed_mask``, but trail edges (whose force direction is
+        meaningful and must be preserved) always keep their original
+        direction regardless of ``directed_mask``.
+        """
         return ~(self.is_trail_edge.view(-1) & ~self.directed_mask.view(-1))
         
     # Graph Editing Functionality
@@ -541,7 +630,14 @@ class StructData(TSMixin, pyg.data.Data):
        
 
     def add_edges_by_names(self, src_names, dest_names, **kwargs):
+        """Add edges given by lists of source/destination node names.
 
+        Args:
+            src_names (list[str]): source node name of each new edge.
+            dest_names (list[str]): destination node name of each new edge.
+            **kwargs: edge attribute values, forwarded to
+                [add_edges][torch_structure.data.data.StructData.add_edges].
+        """
         src_indices = torch.tensor([self.get_node_index_from_name(src) for src in src_names])
         dest_indices = torch.tensor([self.get_node_index_from_name(dest) for dest in dest_names])
         edge_indices = torch.stack([src_indices, dest_indices], dim=0)
@@ -569,7 +665,14 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def get_node_index_from_name(self, name):
+        """Return the node index whose ``name`` attribute matches ``name``.
 
+        Args:
+            name (str): the node name to look up.
+
+        Returns:
+            int: the index of the matching node.
+        """
         return int((self.name == encode(name)).nonzero(as_tuple=True)[0])
 
 
@@ -1408,7 +1511,15 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def name_nodes(self, names: list, mask: torch.Tensor):
+        """Assign names to the nodes selected by ``mask``, in order.
 
+        Args:
+            names (list[str]): names to assign, one per ``True`` entry in
+                ``mask``; each must encode to at most 8 bytes (see
+                [encode][torch_structure.data.data.encode]).
+            mask (torch.Tensor [N], bool): mask selecting which nodes to
+                name.
+        """
         if len(names) != mask.sum().item():
 
             raise ValueError(f"Length of names does not match the number of 'True' values in the mask.")
@@ -1634,7 +1745,27 @@ class StructData(TSMixin, pyg.data.Data):
 
 
 def resolve_attrs(f, default_attrs, custom_attrs):
+    """Resolve the keyword arguments of ``f`` from custom and default attribute dicts.
 
+    For each parameter of ``f``, prefers a matching key in ``custom_attrs``
+    over one in ``default_attrs``. Used to call the callables accepted by
+    generator methods like
+    [StructData.add_polar_grid][torch_structure.data.data.StructData.add_polar_grid], whose
+    parameters are resolved by name from the available node/edge
+    attributes.
+
+    Args:
+        f (Callable): the function whose parameters should be resolved.
+        default_attrs (dict): fallback attribute values, keyed by name.
+        custom_attrs (dict): attribute values that take precedence, keyed by
+            name.
+
+    Returns:
+        dict: keyword arguments for calling ``f``.
+
+    Raises:
+        ValueError: if a parameter of ``f`` is found in neither dict.
+    """
     resolve_attrs = {}
 
     sig = inspect.signature(f)
@@ -1651,7 +1782,17 @@ def resolve_attrs(f, default_attrs, custom_attrs):
 
 
 def encode(string: str):
+    """Encode a string of at most 8 UTF-8 bytes into an integer, for storage as a node/edge name tensor.
 
+    Args:
+        string (str): the string to encode; must encode to at most 8 bytes.
+
+    Returns:
+        int: the big-endian integer representation of the encoded bytes.
+
+    Raises:
+        ValueError: if ``string`` encodes to more than 8 bytes.
+    """
     encoded = string.encode("utf-8")
     if len(encoded) > 8:
         raise ValueError(f"String '{string}' encodes to {len(encoded)} bytes, which exceeds the 8-byte limit.")
@@ -1659,7 +1800,7 @@ def encode(string: str):
     return int.from_bytes(encoded, "big")
 
 def decode(integer: int):
-
+    """Decode an integer produced by [encode][torch_structure.data.data.encode] back into a string."""
     return integer.to_bytes(8, "big").decode("utf-8").lstrip("\x00")
 
     

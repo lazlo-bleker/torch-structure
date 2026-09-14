@@ -27,6 +27,7 @@ class AddRadialZNoise(BaseTransform):
         self.degree = degree
 
     def forward(self, data):
+        """Apply the radial polynomial z-noise to ``data.coords`` in place."""
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
 

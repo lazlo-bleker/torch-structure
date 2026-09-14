@@ -8,6 +8,16 @@ from torch_structure.formfinding import create_branch_node_matrix
 
 
 class TrussBridgeGenerator(BaseGenerator):
+    """Randomly samples and analyzes a Pratt, Howe, or Parker truss bridge (deck or through, triangulated or not).
+
+    Unlike the CEM-based bridge generators, the truss's force densities are
+    solved directly by least squares from the equilibrium matrix; if
+    ``analysis`` is enabled, the resulting geometry and equilibrium are
+    verified and rejected via
+    [InvalidSampleError][torch_structure.generators.base_generator.InvalidSampleError]
+    if inconsistent.
+    """
+
     def __init__(self, analysis=True, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
@@ -88,6 +98,7 @@ class TrussBridgeGenerator(BaseGenerator):
         truss_inclination,
         truss_type,
     ):
+        """Validate that ``truss_type`` is one of 'pratt', 'howe', or 'parker'; raises ``ValueError`` otherwise."""
         if truss_type not in ["pratt", "howe", "parker"]:
             raise ValueError("Truss type must be either 'pratt', 'howe', or 'parker'.")
 
@@ -103,6 +114,14 @@ class TrussBridgeGenerator(BaseGenerator):
         truss_inclination=None,
         truss_type=None,
     ):
+        """Sample any unspecified generation parameters, deriving dependent defaults where relevant.
+
+        Each parameter defaults to ``None``, meaning "sample randomly"; an
+        explicit value passed via ``overrides`` (see
+        [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator])
+        is left unchanged. Returns a dict of all resolved parameters, to be
+        passed to [generate][torch_structure.generators.truss_bridge.TrussBridgeGenerator.generate].
+        """
         if span is None:
             span = np.random.uniform(40.0, 80.0)
         if deck_truss is None:
@@ -152,6 +171,18 @@ class TrussBridgeGenerator(BaseGenerator):
         truss_inclination,
         truss_type,
     ):
+        """Build the truss geometry and, if ``self.analysis`` is enabled, solve and verify its equilibrium.
+
+        Returns:
+            tuple[StructData, dict]: the (optionally analyzed) truss graph,
+            and a dict of descriptive text labels (typology, truss type,
+            dimensions, etc.).
+
+        Raises:
+            InvalidSampleError: if analysis is enabled and the solved
+                geometry is not in equilibrium or is inconsistent with the
+                sampled coordinates.
+        """
         # Initialize data object
         data = StructData(
             node_attrs=self.node_attrs,

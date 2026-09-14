@@ -13,6 +13,28 @@ def laplacian_smoothing(
     damping_factor = 0.5,
     laplacian=None,
 ):
+    """Smooth free-node coordinates towards a uniform Laplacian equilibrium via explicit mean curvature flow.
+
+    Args:
+        coords (torch.Tensor [N, D]): node coordinates, updated in place for
+            the free (non-fixed) nodes.
+        is_fixed (torch.Tensor [N], bool): mask of nodes to keep fixed.
+        edge_index (torch.Tensor [2, E]): edge connectivity.
+        tolerance (float): convergence threshold on the per-iteration
+            displacement norm.
+        max_iter (int): maximum number of iterations.
+        verbose (bool): if ``True``, print a convergence summary.
+        damping_factor (float): fraction of the Laplacian step to damp;
+            ``0`` is a full explicit step, values closer to ``1`` slow
+            convergence.
+        laplacian (Laplacian, optional): a precomputed
+            [Laplacian][torch_structure.message_passing.laplace.Laplacian]
+            operator; if ``None``, one is built from ``edge_index``.
+
+    Returns:
+        tuple[torch.Tensor, int, bool]: the (in-place updated) ``coords``,
+        the number of iterations run, and whether the loop converged.
+    """
     is_fixed = is_fixed.view(-1)
 
     if laplacian is None:

@@ -2,6 +2,8 @@ from torch_structure.formfinding import mpcem_algorithm, cem_algorithm, seq_cem_
 from torch_structure.mixins.utils import OverrideResolveMixin
 
 class CEMMixin(OverrideResolveMixin):
+    """Adds Combinatorial Equilibrium Modeling (CEM) form-finding methods to a data class."""
+
     def mpcem(
         self,
         inplace: bool=False,
@@ -26,10 +28,10 @@ class CEMMixin(OverrideResolveMixin):
         load_out=None,
     ):
         """
-        Applies the Force Density Method (FDM) to this structure and updates `coords`
-        and `force`.
+        Applies the Message Passing Combinatorial Equilibrium Modeling (MP-CEM)
+        algorithm to this structure and updates `coords`, `load`, and `force`.
 
-        See [`torch_structure.formfinding.fdm`](../formfinding/fdm.md).
+        See [`torch_structure.formfinding.cem`](../formfinding/cem.md).
         """
         # Node inputs
         coords = self._resolve_override("coords", coords)
@@ -115,6 +117,12 @@ class CEMMixin(OverrideResolveMixin):
         verbose=False,
         track_history=False,
     ):
+        """
+        Applies the Combinatorial Equilibrium Modeling (CEM) algorithm to this
+        structure and updates `coords` and `force`.
+
+        See [`torch_structure.formfinding.cem`](../formfinding/cem.md).
+        """
         # Node inputs
         if coords is None:
             coords = self.coords
@@ -201,6 +209,13 @@ class CEMMixin(OverrideResolveMixin):
         verbose=False,
         track_history=False,
     ):
+        """
+        Applies the sequential variant of the Combinatorial Equilibrium
+        Modeling (CEM) algorithm to this structure and updates `coords` and
+        `force`.
+
+        See [`torch_structure.formfinding.cem`](../formfinding/cem.md).
+        """
         # Node inputs
         if coords is None:
             coords = self.coords

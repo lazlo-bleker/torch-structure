@@ -29,6 +29,24 @@ def create_branch_node_matrix(edge_index):
 
 
 def create_xy_equilibrium_space(coords, is_support, edge_index):
+    """Compute a basis for the space of xy-equilibrium-preserving coordinate perturbations.
+
+    Builds the xy equilibrium matrix and returns a basis of its null space,
+    i.e. the directions in which free-node xy-coordinates can move while
+    keeping the horizontal equilibrium equations satisfied.
+
+    Args:
+        coords (torch.Tensor [N, 3]): node coordinates; only x and y affect
+            the result.
+        is_support (torch.Tensor [N, 1], bool): mask of fixed (supported)
+            nodes.
+        edge_index (torch.Tensor [2, E]): directed edge connectivity.
+
+    Returns:
+        torch.Tensor [D, K]: basis vectors (columns) spanning the null space
+        of the xy equilibrium matrix, where ``D`` is twice the number of
+        free nodes.
+    """
     coords = torch.clone(coords)  # check if this is necessary
 
     A = create_xy_equilibrium_matrix(coords, is_support, edge_index)

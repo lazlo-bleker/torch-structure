@@ -4,6 +4,8 @@ import numpy as np
 
 
 class Structure:
+    """Legacy dict-based structural graph, used to build and verify equilibrium of hand-authored structures."""
+
     red_color = "#E40714"
     blue_color = "#0578BF"
 

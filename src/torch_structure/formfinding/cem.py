@@ -181,6 +181,20 @@ def mpcem_algorithm(
         return state["coords"], state["force"].unsqueeze(1), reaction_force, state["load"]
 
 def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
+    """MP-CEM ``callback`` that adds self-weight-induced nodal loads based on current member forces and lengths.
+
+    Args:
+        state (dict): current MP-CEM iteration state, containing ``coords``,
+            ``force``, and ``load``.
+        edge_index (torch.Tensor [2, E]): undirected edge connectivity.
+        edge_cem_to_undir (torch.Tensor [E]): mapping from undirected edge
+            index to the corresponding CEM (semi-directed) edge index.
+        load_factor (float): ratio of material density to yield strength,
+            used to convert axial force and length into a self-weight load.
+
+    Returns:
+        dict: a ``{"load": node_load}`` update to merge into ``state``.
+    """
     # Only consider edges with a coordinate (estimate) for both nodes
     valid_nodes = ~torch.isnan(state["coords"]).any(dim=1)
     valid_edges = (valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]])
@@ -202,6 +216,27 @@ def selfweight_cb(state, edge_index, edge_cem_to_undir, load_factor):
     return state_updates
 
 def constrained_deck_cb(state, cem_edge_index, is_deck_trail_edge, is_mod_v, is_mod_h, sequence, deck_slope):  # TODO: Simplify
+    """MP-CEM ``callback`` that constrains deck-trail edges to a prescribed slope.
+
+    Adjusts the vertical (``is_mod_v``) and horizontal (``is_mod_h``)
+    modifiable trail edges connected to the deck so the deck maintains
+    ``deck_slope``, based on which direction along the deck each edge runs.
+
+    Args:
+        state (dict): current MP-CEM iteration state, containing ``coords``.
+        cem_edge_index (torch.Tensor [2, E]): CEM (semi-directed) edge
+            connectivity.
+        is_deck_trail_edge (torch.Tensor [E], bool): mask of trail edges
+            belonging to the deck.
+        is_mod_v (torch.Tensor [E], bool): mask of vertical modifiable edges.
+        is_mod_h (torch.Tensor [E], bool): mask of horizontal modifiable
+            edges.
+        sequence (torch.Tensor [E]): CEM build sequence index of each edge.
+        deck_slope (torch.Tensor [E] or [1]): target slope of the deck.
+
+    Returns:
+        dict: a state update to merge into ``state``.
+    """
     # Enforce expected input shapes
     is_deck_trail_edge = is_deck_trail_edge.view(-1)
     is_mod_v = is_mod_v.view(-1)

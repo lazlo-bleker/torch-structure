@@ -4,9 +4,24 @@ from torch_structure.message_passing import StiffnessAggregator
 
 
 def scipy_jacobian(func):
+    """Wrap a scalar-valued torch function for use with scipy's gradient-based optimizers.
+
+    Args:
+        func (Callable[..., torch.Tensor]): differentiable function that
+            takes a 1D torch tensor (plus optional extra args) and returns a
+            scalar loss.
+
+    Returns:
+        Callable[[numpy.ndarray, ...], tuple[float, numpy.ndarray]]: a
+        function taking a numpy array (plus the same extra args) that
+        returns the ``(loss, gradient)`` pair expected by
+        ``scipy.optimize.minimize(jac=True)``. The returned function tracks
+        the best loss seen so far in its ``best_loss`` attribute.
+    """
     func_grad_and_value = torch.func.grad_and_value(func)
 
     def func_scipy(x_np, *args):
+        """Evaluate ``func`` and its gradient at ``x_np``, tracking the best loss seen."""
         x = torch.tensor(x_np, dtype=torch.float64)
         grad_val, loss_val = func_grad_and_value(x, *args)
         loss, grad = loss_val.item(), grad_val.detach().numpy()
@@ -18,6 +33,18 @@ def scipy_jacobian(func):
 
 
 def edge_direction(edge_index, x, return_length=False):
+    """Compute the unit vector (and optionally the length) along each edge.
+
+    Args:
+        edge_index (torch.Tensor [2, E]): edge connectivity.
+        x (torch.Tensor [N, D]): node coordinates.
+        return_length (bool): if ``True``, also return each edge's length.
+
+    Returns:
+        torch.Tensor [E, D] or tuple[torch.Tensor, torch.Tensor]: the
+        normalized direction from source to target node, and, if
+        ``return_length`` is ``True``, a ``[E, 1]`` tensor of edge lengths.
+    """
     row, col = edge_index
     direction = x[col] - x[row]
     length = torch.norm(direction, dim=1, keepdim=True)

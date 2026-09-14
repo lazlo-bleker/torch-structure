@@ -5,6 +5,8 @@ from typing import List, Optional, Sequence, Union
 
 
 class Collater:
+    """Collates a list of [StructData][torch_structure.data.data.StructData] samples into a batch."""
+
     def __init__(
         self,
         dataset: Union[Dataset, Sequence[StructData]],
@@ -31,20 +33,20 @@ class Collater:
 
 class DataLoader(torch.utils.data.DataLoader):
     r"""A data loader which merges data objects from a
-    :class:`torch_structure.data.Dataset` to a mini-batch.
+    [Dataset][torch_structure.data.dataset.Dataset] to a mini-batch.
 
     Args:
         dataset (Dataset): The dataset from which to load the data.
         batch_size (int, optional): How many samples per batch to load.
-            (default: :obj:`1`)
-        shuffle (bool, optional): If set to :obj:`True`, the data will be
-            reshuffled at every epoch. (default: :obj:`False`)
+            (default: ``1``)
+        shuffle (bool, optional): If set to ``True``, the data will be
+            reshuffled at every epoch. (default: ``False``)
         follow_batch (List[str], optional): Creates assignment batch
-            vectors for each key in the list. (default: :obj:`None`)
+            vectors for each key in the list. (default: ``None``)
         exclude_keys (List[str], optional): Will exclude each key in the
-            list. (default: :obj:`None`)
+            list. (default: ``None``)
         **kwargs (optional): Additional arguments of
-            :class:`torch.utils.data.DataLoader`.
+            `torch.utils.data.DataLoader`.
     """
 
     # TODO: Data objects can be either of type :class:`~torch_geometric.data.StructData` or

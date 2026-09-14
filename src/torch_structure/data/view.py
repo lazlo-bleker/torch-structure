@@ -19,9 +19,11 @@ class NodeView:
         return iter(self.node_name_to_index)
 
     def keys(self):
+        """Return the node names."""
         return self.node_name_to_index.keys()
 
     def items(self):
+        """Return an iterator of ``(node_name, NodeAttributeView)`` pairs."""
         return ((name, self[name]) for name in self.node_name_to_index)
 
     def __len__(self):

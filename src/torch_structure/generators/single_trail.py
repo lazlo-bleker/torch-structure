@@ -5,6 +5,8 @@ from torch_structure.data import StructData
 from torch_structure.generators.base_generator import BaseGenerator
 
 class SingleTrailGenerator(BaseGenerator):
+    """Builds a single chain of CEM trail edges from the origin node to a fixed end node."""
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 1
@@ -54,6 +56,20 @@ class SingleTrailGenerator(BaseGenerator):
                 trail_element_length : float,
                 origin_node_load : list,
                 ):
+        """Build a single trail of ``n_nodes`` nodes from an origin node to a supported end node.
+
+        Args:
+            n_nodes (int): total number of nodes in the trail, including the
+                origin and end node.
+            nodal_load (list): load applied to every intermediate node.
+            trail_element_length (float): length assigned to every trail
+                edge.
+            origin_node_load (list): additional load applied only to the
+                origin node (on top of ``nodal_load``).
+
+        Returns:
+            StructData: the constructed (not yet form-found) trail graph.
+        """
         # Initialize graph
         graph = StructData(
                 node_attrs=self.node_attrs,

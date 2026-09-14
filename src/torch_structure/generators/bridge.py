@@ -13,6 +13,12 @@ from torch_structure.generators import Structure
 
 
 class Bridge(Structure):
+    """Legacy dict-based generator for arch, suspension, and truss bridges built from mirrored half-spans.
+
+    Unlike the CEM-based generators, force densities are prescribed
+    directly per element type rather than solved via form-finding.
+    """
+
     param_dtypes = {
         "span": float,
         "n_cables": int,
@@ -477,6 +483,13 @@ class Bridge(Structure):
         self.edges.update(mirrored_edges)
 
     def create_feature_dict(self):
+        """Derive a dict of descriptive features (typology, dimensions, load path, etc.) from this bridge.
+
+        Returns:
+            dict: the sampled parameters plus derived features such as
+            ``typology``, ``curved_deck``, ``alignment``, ``height``,
+            ``load_path``, and member length statistics.
+        """
         self.array_output()
         coords = self.array_dict["coordinates_node"]
         # support_node_indices = set(self.array_dict['support_node_indices'][0])
@@ -524,6 +537,7 @@ class Bridge(Structure):
         return feature_dict
 
     def create_request_dict(self):
+        """Return [create_feature_dict][torch_structure.generators.bridge.Bridge.create_feature_dict]'s output, stripped of the underlying sampling parameters."""
         request_dict = self.create_feature_dict()
         # del request_dict['passed_filter']
         del request_dict["n_cables"]
@@ -601,6 +615,14 @@ class Bridge(Structure):
         return self.array_dict
 
     def pyg_data(self):
+        """Convert this bridge to a `torch_geometric.data.Data` graph.
+
+        Returns:
+            tuple[torch_geometric.data.Data, dict]: the graph, with node
+            features ``[x, y, z, x_load, y_load, z_load, support]`` and
+            edge feature ``force_density``, and a metadata dict describing
+            each feature column.
+        """
         self.array_output()
         meta_data = {}
 

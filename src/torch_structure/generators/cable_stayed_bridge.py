@@ -6,6 +6,8 @@ from torch_structure.generators.base_generator import BaseGenerator
 
 
 class CableStayedBridge(BaseGenerator):
+    """Builds a cable-stayed bridge: a deck trail, towers with backstays, and fan cables, as CEM trail edges."""
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
@@ -58,6 +60,11 @@ class CableStayedBridge(BaseGenerator):
         back_stay_force,
         deck_load=torch.tensor([0.0, 0.0, -1.0]),
     ):
+        """Build the (not yet form-found) cable-stayed bridge graph from the given parameters.
+
+        Returns:
+            StructData: the constructed graph.
+        """
         # Cmpute number of trail edges
         n_deck_trail_edges = n_towers * n_cables
         # Initialize graph to contain data

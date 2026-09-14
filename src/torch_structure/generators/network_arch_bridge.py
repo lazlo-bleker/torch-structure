@@ -7,6 +7,13 @@ from torch_structure.data import StructData
 
 
 class NetworkArchBridge:
+    """Builds a network arch bridge: two CEM deck trails and two arch trails connected by cables.
+
+    Unlike the generators under [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator],
+    this class takes fully specified (not randomly sampled) parameters and
+    builds the graph eagerly in ``__init__``, without form-finding it.
+    """
+
     def __init__(
         self,
         n_trail_edges,
@@ -49,6 +56,12 @@ class NetworkArchBridge:
         self.generate_graph()
 
     def generate_graph(self):
+        """Build the deck, arch, cable, and inter-deck/arch edges into ``self.graph``.
+
+        Populates ``self.graph`` (a [StructData][torch_structure.data.data.StructData])
+        and ``self.cable_optim_groups``/``self.n_optim_groups``, used to
+        group non-trail edges for downstream optimization.
+        """
         node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),

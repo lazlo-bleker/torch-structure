@@ -7,6 +7,15 @@ from torch_structure.generators.base_generator import BaseGenerator, InvalidSamp
 
 
 class GridShellGenerator(BaseGenerator):
+    """Randomly samples and form-finds a gridshell over a (rectangular, circular, or polygonal) boundary.
+
+    Shares its mesh-construction logic with [CableNetGenerator][torch_structure.generators.cablenet.CableNetGenerator]
+    (``"standard"``, ``"singularity"``, and ``"opening"`` patterns), but
+    equilibrates the shell with Laplacian smoothing followed by Thrust
+    Network Analysis under prescribed target force densities, rather than
+    the Force Density Method.
+    """
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
@@ -49,6 +58,7 @@ class GridShellGenerator(BaseGenerator):
         square_size,
         corner_angle_list,
     ):
+        """Validate the boundary/pattern parameters; raises ``ValueError`` if they are inconsistent."""
         if pattern not in ["standard", "singularity", "opening"]:
             raise ValueError(f"Invalid pattern: {pattern}")
         if rectangle and n != 4:
@@ -84,6 +94,14 @@ class GridShellGenerator(BaseGenerator):
         square_size=None,
         corner_angle_list=None,
     ):
+        """Sample any unspecified generation parameters, deriving dependent defaults where relevant.
+
+        Each parameter defaults to ``None``, meaning "sample randomly"; an
+        explicit value passed via ``overrides`` (see
+        [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator])
+        is left unchanged. Returns a dict of all resolved parameters, to be
+        passed to [generate][torch_structure.generators.gridshell.GridShellGenerator.generate].
+        """
         if n is None:
             if rectangle or square:
                 n = 4
@@ -208,6 +226,15 @@ class GridShellGenerator(BaseGenerator):
         square_size,
         corner_angle_list,
     ):
+        """Build the boundary, mesh, and (for "opening") central ring, then form-find with Laplacian smoothing + TNA.
+
+        Returns:
+            StructData: the form-found gridshell.
+
+        Raises:
+            InvalidSampleError: if the resulting geometry's z-extent is out
+                of bounds, or if any element is in tension.
+        """
         graph = StructData(
             node_attrs=self.node_attrs,
             edge_attrs=self.edge_attrs,
@@ -750,6 +777,17 @@ class GridShellGenerator(BaseGenerator):
 
     @staticmethod
     def compute_optimal_rotation(polygon_angles):
+        """
+        Evenly space points around a circle and rotate them to best align with ``polygon_angles``.
+
+        Parameters:
+            polygon_angles (torch.Tensor): angular positions (radians) of the
+                polygon's corners around the centroid.
+
+        Returns:
+            torch.Tensor: evenly spaced angles, rotated by the least-squares
+            optimal shift to align with ``polygon_angles``.
+        """
         circle_angles = torch.linspace(0.0, 2 * math.pi, len(polygon_angles) + 1)[:-1]
         angular_differences = polygon_angles - circle_angles
         theta_shift = torch.arctan2(
@@ -833,5 +871,6 @@ class GridShellGenerator(BaseGenerator):
 
     @staticmethod
     def nd_linspace(start: torch.tensor, end: torch.tensor, num_points: int):
+        """Linearly interpolate ``num_points`` points (inclusive) between two n-dimensional points."""
         t = torch.linspace(0, 1, num_points).view(-1, 1)
         return start + t * (end - start)

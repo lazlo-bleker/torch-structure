@@ -7,6 +7,14 @@ from torch_structure.generators.base_generator import BaseGenerator
 
 
 class DomeGenerator(BaseGenerator):
+    """Randomly samples and form-finds a radial dome from CEM trails converging on a center or central opening.
+
+    Each of ``n_trails`` radial CEM trails runs from the center (or, if
+    ``opening``, from a small central ring) outward to a supported outer
+    ring, with per-ring deviation edges tying the trails together, and is
+    equilibrated with MP-CEM.
+    """
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 100
@@ -36,6 +44,7 @@ class DomeGenerator(BaseGenerator):
     def validate_input(
         self, n_trails, n_rings, trail_length, center_deviation_force, opening
     ):
+        """Validate that ``n_trails`` is even; raises ``ValueError`` otherwise."""
         if n_trails % 2 != 0:
             raise ValueError("Number of trails must be even.")
 
@@ -47,6 +56,14 @@ class DomeGenerator(BaseGenerator):
         center_deviation_force=None,
         opening=False,
     ):
+        """Sample any unspecified generation parameters.
+
+        Each parameter defaults to ``None``, meaning "sample randomly"; an
+        explicit value passed via ``overrides`` (see
+        [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator])
+        is left unchanged. Returns a dict of all resolved parameters, to be
+        passed to [generate][torch_structure.generators.dome.DomeGenerator.generate].
+        """
         if n_trails is None:
             n_trails = 2 * np.random.randint(5, 15)
         if n_rings is None:
@@ -67,6 +84,20 @@ class DomeGenerator(BaseGenerator):
     def generate(
         self, n_trails, n_rings, trail_length, center_deviation_force, opening
     ):
+        """Build the trails and ring deviations, form-find with MP-CEM, and normalize the resulting geometry.
+
+        If ``opening`` is ``False``, the trail origin nodes are merged into
+        a single centroid node after form-finding ([fix_graph][torch_structure.generators.dome.DomeGenerator.fix_graph]).
+
+        Returns:
+            StructData: the form-found dome, scaled to unit horizontal
+            radius and translated to non-negative z.
+
+        Raises:
+            RuntimeError: if any trail's distance to the centroid decreases
+                outward ([filter][torch_structure.generators.dome.DomeGenerator.filter]), or if the resulting height is out
+                of bounds.
+        """
         # Initialize data object
         data = StructData(
             node_attrs=self.node_attrs,
@@ -150,6 +181,7 @@ class DomeGenerator(BaseGenerator):
     def generate_trail(
         self, data, origin_coords, origin_load, id, n_rings, trail_length
     ):
+        """Add a single radial CEM trail (``n_rings`` edges) from an origin node to a supported outer node, in place."""
         data.add_node(
             f"trail_{id}_node_0",
             coords=origin_coords,
@@ -179,6 +211,7 @@ class DomeGenerator(BaseGenerator):
             )
 
     def fix_graph(self, data, n_trails):
+        """Merge all trails' origin nodes into a single centroid node, in place."""
         data.add_node(
             "centroid",
             coords=torch.tensor([0.0, 0.0, 0.0]),
@@ -188,6 +221,12 @@ class DomeGenerator(BaseGenerator):
         data.merge_nodes("centroid", merge_nodes)
 
     def filter(self, data):
+        """Check whether any trail edge's outer node is closer to the centroid than its inner node.
+
+        Returns:
+            bool: ``True`` if such an invalid (non-monotonically-outward)
+            trail edge exists.
+        """
         mask = (data.is_trail_edge & data.directed_mask).view(-1)
         src, dst = data.edge_index[:, mask]
         src_centroid_distance = torch.norm(data.coords[src, 0:2], dim=1)

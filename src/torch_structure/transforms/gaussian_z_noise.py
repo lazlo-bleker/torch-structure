@@ -19,6 +19,7 @@ class AddGaussianZNoise(BaseTransform):
         self.std = std
 
     def forward(self, data):
+        """Apply the multiplicative Gaussian z-noise to ``data.coords`` in place."""
         if not hasattr(data, "coords"):
             raise AttributeError("Data object has no attribute 'coords'.")
 

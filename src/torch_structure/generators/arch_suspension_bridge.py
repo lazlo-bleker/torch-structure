@@ -11,6 +11,15 @@ from torch_structure.geometry.utils import line_direction
 
 
 class ArchSuspensionBridgeGenerator(BaseGenerator):
+    """Randomly samples and form-finds an arch or suspension bridge with one or two main cables/arches.
+
+    The deck and cables/arches are each built as a set of CEM trail edges
+    (see [mpcem][torch_structure.mixins.cem.CEMMixin.mpcem]), connected by
+    deviation edges, and equilibrated with MP-CEM. Samples that are too
+    wide/tall, have overly sharp trail angles, or excessive force density
+    are rejected via [InvalidSampleError][torch_structure.generators.base_generator.InvalidSampleError].
+    """
+
     def __init__(self, **overrides):
         super().__init__(**overrides)
         self.max_attempts = 1000
@@ -72,6 +81,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         inter_cable_force,
         deck_rise,
     ):
+        """Validate that ``n_cables`` is either 1 or 2; raises [InvalidSampleError][torch_structure.generators.base_generator.InvalidSampleError] otherwise."""
         if n_cables not in [1,  2]:
             raise InvalidSampleError("Number of cables must be either 1 or 2.")
 
@@ -91,6 +101,14 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         inter_cable_force=None,
         deck_rise=None,
     ):
+        """Sample any unspecified generation parameters, deriving dependent defaults where relevant.
+
+        Each parameter defaults to ``None``, meaning "sample randomly"; an
+        explicit value passed via ``overrides`` (see
+        [BaseGenerator][torch_structure.generators.base_generator.BaseGenerator])
+        is left unchanged. Returns a dict of all resolved parameters, to be
+        passed to [generate][torch_structure.generators.arch_suspension_bridge.ArchSuspensionBridgeGenerator.generate].
+        """
         if cable_force is None:
             cable_force_sign = np.random.choice([-1, 1])
             cable_force = cable_force_sign * np.random.uniform(3.0, 15.0)
@@ -155,6 +173,18 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         inter_cable_force,
         deck_rise,
     ):
+        """Build and form-find the bridge from the given (fully resolved) parameters.
+
+        Constructs the deck and cable/arch trails and their deviation
+        edges, runs MP-CEM equilibration, and rejects the sample (via
+        [InvalidSampleError][torch_structure.generators.base_generator.InvalidSampleError]) if the resulting geometry is too wide,
+        too tall, has overly sharp trail angles, or excessive force
+        density.
+
+        Returns:
+            tuple[StructData, dict]: the form-found bridge, and a dict of
+            descriptive text labels (typology, span, dimensions, etc.).
+        """
         # Initialize data object
         data = StructData(
             node_attrs=self.node_attrs,

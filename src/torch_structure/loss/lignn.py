@@ -16,6 +16,21 @@ class LogicLoss(torch.nn.Module):
         self.mean_dim = (0, 1) if reduction == "mean" else 1
 
     def forward(self, x, edge_index, batch, y, x2):
+        """Compute the combined local and trail-connectivity loss.
+
+        Args:
+            x (torch.Tensor [N, C]): per-node predicted probability channels.
+            edge_index (torch.Tensor [2, E]): edge connectivity.
+            batch (torch.Tensor [N]): unused, kept for interface consistency.
+            y (torch.Tensor [N]): target trail-edge count per node, used by
+                the local loss.
+            x2 (torch.Tensor [N, C]): initial values propagated over
+                ``search_depth`` hops to assess indirect trail connectivity.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor]: the combined
+            loss, the local loss, and the trail loss.
+        """
         # Compress domain to prevent numerical issues with ones and zeros
         x = x * 0.9999999 + 0.00000005
 

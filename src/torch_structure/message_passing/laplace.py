@@ -15,6 +15,14 @@ class Laplacian(MessagePassing):
         self.num_nodes = num_nodes
 
     def forward(self, x):
+        """Apply the Laplacian operator: ``x - mean(neighbour_values)``.
+
+        Args:
+            x (torch.Tensor [N, *]): per-node values.
+
+        Returns:
+            torch.Tensor [N, *]: the Laplacian of ``x``.
+        """
         mean_neighbours = self.propagate(self.edge_index, x=x, size=(self.num_nodes, self.num_nodes))
         return x - mean_neighbours
 
@@ -26,4 +34,5 @@ class Laplacian(MessagePassing):
         return self(identity)
 
     def message(self, x_j):
+        """Pass each neighbour's value through unchanged, to be mean-aggregated."""
         return x_j

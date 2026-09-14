@@ -6,6 +6,8 @@ from torch_structure.mixins.utils import OverrideResolveMixin
 
 
 class LaplacianMixin(OverrideResolveMixin):
+    """Adds matrix-free Laplacian coordinates and Laplacian-based surface editing to a data class."""
+
     @property
     def laplacian(self):
         """Return the cached matrix-free Laplacian for this topology."""
@@ -131,6 +133,10 @@ class LaplacianMixin(OverrideResolveMixin):
         max_iter=10000,
         verbose=False,
     ):
+        """Smooth the xy-coordinates of free nodes towards a uniform Laplacian equilibrium.
+
+        See [`torch_structure.formfinding.laplacian_smooth`](../formfinding/laplacian_smooth.md).
+        """
         # Node inputs
         if coords is None:
             coords = self.coords[:, :2]  # Only use x and y coordinates

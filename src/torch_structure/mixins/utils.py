@@ -1,6 +1,8 @@
 from typing import Any
 
 class OverrideResolveMixin:
+    """Adds a helper for resolving optional method arguments against a data class's own attributes."""
+
     def _resolve_override(
         self,
         default_name: str,

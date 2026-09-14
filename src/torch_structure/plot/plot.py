@@ -306,10 +306,10 @@ def plot_data_xz(
     highlight_nodes=None,
 ):
     """
-    Plot a structure in 3D.
+    Plot a structure's xz-projection (elevation view) in 2D.
 
     Args:
-        coords (torch.Tensor): Tensor of shape (num_nodes, 3) with the 3D coordinates of each node.
+        coords (torch.Tensor): Tensor of shape (num_nodes, 3) with the 3D coordinates of each node; only x and z are plotted.
         edge_index (torch.Tensor): Tensor of shape (2, num_edges) defining edge connections by node indices.
         is_support (torch.Tensor, optional): Boolean tensor of shape (num_nodes) indicating which nodes are supports. Required if show_supports=True.
         force (torch.Tensor, optional): Tensor of shape (num_edges) with axial force values for each edge.
@@ -319,14 +319,14 @@ def plot_data_xz(
         show_residual_forces (bool, optional): If True, plots residual force vectors. Requires `load`. Default is False.
         show_axes (bool, optional): If True, axis lines and labels will be shown. Default is False.
         legend (bool, optional): If True, a legend will be displayed. Default is True.
-        equal_axes (bool, optional): If True, sets equal scaling for all axes. Default is True.
+        equal_axes (bool, optional): If True, sets equal scaling for both axes. Default is True.
         lw_constant (bool, optional): If True, uses uniform line widths for all edges. If False, widths are scaled by force magnitude. Default is False.
-        force_scale (float, optional): Scale factor for visualizing force vectors (load and residual). Default is 1.0.
+        force_scale (float, optional): Scale factor for visualizing force vectors (load and residual). Default is 0.6.
         lw_scale (float, optional): Scale factor for line widths of edges. Default is 1.0.
-        support_marker_size (int, optional): Marker size for support symbols. Default is 6.
-        support_marker_offset (float, optional): Vertical offset for support markers (to avoid overlap with structure). Default is 0.02.
+        support_marker_size (int, optional): Marker size for support symbols. Default is 3.
+        support_marker_offset (float, optional): Vertical offset for support markers (to avoid overlap with structure). Default is 0.12.
         title (str, optional): Title for the plot. Default is None.
-        ax (matplotlib.axes._subplots.Axes3DSubplot, optional): An existing 3D axis object to plot on. If None, a new one is created.
+        ax (matplotlib.axes.Axes, optional): An existing 2D axis object to plot on. If None, a new one is created.
         path (str, optional): If provided, saves the figure as a PNG to this file path (without extension).
         show (bool, optional): If True, the plot will be displayed with plt.show(). Default is False.
 

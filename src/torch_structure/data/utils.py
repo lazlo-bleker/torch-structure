@@ -5,6 +5,7 @@ def requires_metadata(func):
     """
 
     def wrapper(self, *args, **kwargs):
+        """Check for metadata on ``self`` before delegating to the wrapped function."""
         if not getattr(self, "metadata", None):
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no metadata. "
