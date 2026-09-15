@@ -24,23 +24,39 @@ class StructData(TSMixin, pyg.data.Data):
                  default_attrs={},
                  **kwargs,
     ):
-        
-        if "name" in node_attrs:
-            
-            raise ValueError(
-                "'name' is always a default node attribute key and cannot be defined as a new attribute."
-            )
-        
-        if "name" in default_attrs:
-            
-            raise ValueError(
-                "'name' is always a default node attribute key and cannot be defined as a new default attribute."
-            )
-
-        node_attrs = {**node_attrs, "name": torch.empty(0, dtype=torch.long)}
-        default_attrs = {**default_attrs, "name": torch.tensor(0, dtype=torch.long)}
 
         
+        if "node_name" in node_attrs:
+
+            raise ValueError(
+                "'node_name' is always a default node attribute key and cannot be defined as a new attribute."
+            )
+
+        if "node_name" in default_attrs:
+
+            raise ValueError(
+                "'node_name' is always a default node attribute key and cannot be defined as a new default attribute."
+            )
+
+        if "edge_name" in edge_attrs:
+        
+            raise ValueError(
+                "'edge_name' is always a default edge attribute key and cannot be defined as a new attribute."
+            )
+        
+        if "edge_name" in default_attrs:
+
+            raise ValueError(
+                "'edge_name' is always a default edge attribute key and cannot be defined as a new default attribute."
+            )
+
+
+        node_attrs = {**node_attrs, "node_name": torch.empty(0, dtype=torch.long)}
+        default_attrs = {**default_attrs, "node_name": torch.tensor(0, dtype=torch.long)}
+        edge_attrs = {**edge_attrs, "edge_name": torch.empty(0, dtype=torch.long)}
+        default_attrs = {**default_attrs, "edge_name": torch.tensor(0, dtype=torch.long)}
+
+
         super().__init__(
             edge_index=edge_index,
             directed_mask=directed_mask,
@@ -63,6 +79,7 @@ class StructData(TSMixin, pyg.data.Data):
                 "edge_attr_list": [kwarg for kwarg in edge_attrs.keys()],
                 "graph_attr_list": [kwarg for kwarg in graph_attrs.keys()],
             }
+
 
     @classmethod
     def from_rhino(cls, points, lines, tolerance=1e-6):
@@ -345,7 +362,7 @@ class StructData(TSMixin, pyg.data.Data):
         # Add default node attributes
         for attr in self.metadata["node_attr_list"]:
 
-            if names is not None and attr == "name":
+            if names is not None and attr == "node_name":
                 value = encoded_names
             else:
                 value = self._resolve_attr_value(attr, {}, n)
@@ -399,7 +416,7 @@ class StructData(TSMixin, pyg.data.Data):
             if len(names) != num_seed_nodes:
                 raise ValueError(f"Number {len(names)} of names {names} does not match the length {num_seed_nodes} of the given attributes {kwargs}")
 
-            kwargs["name"] = torch.tensor([encode(name) for name in names], dtype=torch.long)
+            kwargs["node_name"] = torch.tensor([encode(name) for name in names], dtype=torch.long)
 
         # Check for unexpected attributes
         unexpected_attrs = set(kwargs.keys()) - set(self.metadata["node_attr_list"])
@@ -694,8 +711,8 @@ class StructData(TSMixin, pyg.data.Data):
 
     def add_edges_by_names(self, src_names, dest_names, **kwargs):
 
-        src_indices = torch.tensor([self.get_node_index_from_name(src) for src in src_names])
-        dest_indices = torch.tensor([self.get_node_index_from_name(dest) for dest in dest_names])
+        src_indices = torch.tensor([self.get_node_index_from_name(src)[0] for src in src_names])
+        dest_indices = torch.tensor([self.get_node_index_from_name(dest)[0] for dest in dest_names])
         edge_indices = torch.stack([src_indices, dest_indices], dim=0)
 
         self.add_edges(edge_indices=edge_indices, **kwargs)
@@ -746,7 +763,12 @@ class StructData(TSMixin, pyg.data.Data):
 
     def get_node_index_from_name(self, name):
 
-        return int((self.name == encode(name)).nonzero(as_tuple=True)[0])
+        return (self.node_name == encode(name)).nonzero(as_tuple=True)[0]
+
+    def get_edge_index_from_name(self, name):
+        # edge_name is duplicated onto the reciprocal row, so restrict to directed (forward) rows
+        matches = (self.edge_name == encode(name)) & self.directed_mask.view(-1)
+        return matches.nonzero(as_tuple=True)[0]
 
 
     @requires_metadata
@@ -1895,7 +1917,7 @@ class StructData(TSMixin, pyg.data.Data):
             encoded_name = encode(names[i])
             encoded_names = torch.cat([encoded_names, torch.tensor([encoded_name], dtype=torch.long)])
 
-        self.name[mask] = encoded_names
+        self.node_name[mask] = encoded_names
 
 
 def resolve_attrs(f, default_attrs, custom_attrs):
