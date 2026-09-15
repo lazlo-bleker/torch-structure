@@ -9,11 +9,6 @@ edge_attrs = {"force": torch.empty((0, 1), dtype=torch.float)}
 data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 symmetry = data.create_rotational_symmetry(n)
-#addmirror symmetry
-#combine symmetry
-#special case for adding edge between no symmetry and n-fold symmetry. 
-#docstring
-#tests
 
 data.add_symmetry({"n_fold": symmetry}, transform_attrs=["coords"])
 
@@ -71,10 +66,10 @@ mask = torch.zeros(data.num_nodes, dtype=torch.bool)
 mask[assym_ind] = True
 new_value = data.coords[assym_ind:assym_ind + 1].clone()
 new_value[:, 2] -= 10
-data.set_node_attr_with_symmetry("coords", mask, new_value)
+data.set_node_attr("coords", mask, new_value)
 
 edge_mask = (data.edge_index[0] == assym_ind) & (data.edge_index[1] == 0) & data.directed_mask.view(-1)
-data.set_edge_attr_with_symmetry("force", edge_mask, torch.tensor([[5.0]]))
+data.set_edge_attr("force", edge_mask, torch.tensor([[5.0]]))
 
 data.plot()
 plt.show()
