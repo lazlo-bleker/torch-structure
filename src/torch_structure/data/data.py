@@ -452,6 +452,11 @@ class StructData(TSMixin, pyg.data.Data):
         Adds new nodes with the given attribute values.
 
         Args:
+            names (list[str], optional): node name for each new node. Encoded and
+                stored as the ``name`` attribute; if ``symmetry`` is also given, each
+                node's name is copied verbatim to all of its symmetry replicas.
+            symmetry (str, optional): name of a registered symmetry to apply. If given,
+                each provided node is replicated accordingly.
             **kwargs (dict[str, torch.Tensor]): mapping of registered node attribute
                 names to tensors. The first dimension of each tensor must equal the
                 number of nodes to add. Attributes omitted from ``kwargs`` are
@@ -460,8 +465,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         Raises:
             ValueError: if no keyword arguments are provided. If you want to add nodes without any attributes use add_n_empty_nodes()
-            ValueError: if any provided attribute name is not a registered node
-                attribute.
+            ValueError: if any provided attribute name is not a registered node attribute.
         """
 
         if not kwargs:
@@ -483,6 +487,13 @@ class StructData(TSMixin, pyg.data.Data):
 
         if num_seed_nodes == 0:
             raise ValueError("No node attribute values provided. There must be at least one attribute value")
+
+        mismatched = {attr: len(value) for attr, value in kwargs.items() if len(value) != num_seed_nodes}
+        if mismatched:
+            raise ValueError(
+                f"All node attributes must have the same length ({num_seed_nodes}), "
+                f"but got mismatched lengths: {mismatched}."
+            )
 
         if names:
             if len(names) != num_seed_nodes:
@@ -569,7 +580,7 @@ class StructData(TSMixin, pyg.data.Data):
         return level_sizes
 
 
-    def _expand_edge_indices_symmetrically(self, src, dst, symmetry_order, group_id):
+    def _expand_edge_indices_symmetrically(self, src, dst, group_id):
     
         orbit_position = self.orbit_position.view(-1)
         src_base = src - orbit_position[src]
@@ -597,8 +608,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         diffs = src_idx != dst_idx
         level_arange = torch.arange(num_levels, dtype=torch.long).unsqueeze(0)
-        max_level = torch.where(diffs, level_arange, torch.full_like(level_arange, -1))
-        max_level = max_level.max(dim=1).values.clamp(min=0) if num_levels else torch.zeros_like(src)
+        max_level = (diffs * level_arange).amax(dim=1) if num_levels else torch.zeros_like(src)
 
         src_out, dst_out = [], []
         counts = torch.zeros(src.shape[0], dtype=torch.long)
@@ -621,14 +631,7 @@ class StructData(TSMixin, pyg.data.Data):
             total = 1
             for size in swept_sizes:
                 total *= size
-            if symmetry_order is not None:
-                if total % symmetry_order != 0:
-                    raise ValueError(
-                        f"symmetry_order={symmetry_order} must evenly divide the natural replica count ({total})."
-                    )
-                idx = torch.arange(0, total, total // symmetry_order)
-            else:
-                idx = torch.arange(total)
+            idx = torch.arange(total)
 
             iter_place = torch.ones(num_swept, dtype=torch.long)
             for level in range(num_swept - 2, -1, -1):
@@ -665,7 +668,7 @@ class StructData(TSMixin, pyg.data.Data):
         return torch.cat(src_out), torch.cat(dst_out), counts
     
 
-    def _expand_edges_symmetrically(self, edge_indices, symmetry_order, kwargs):
+    def _expand_edges_symmetrically(self, edge_indices, kwargs):
 
         src, dst = edge_indices[0], edge_indices[1]
 
@@ -682,7 +685,7 @@ class StructData(TSMixin, pyg.data.Data):
         if torch.any(mismatched):
             bad = torch.where(mismatched)[0].tolist()
             raise ValueError(
-                f"Seed edge(s) at index {bad} connect two different registered symmetries; "
+                f"Edge(s) at index {bad} connect two different registered symmetries; "
                 "add_edges(consider_symmetry=True) only supports src and dst from the same "
                 "registered symmetry."
             )
@@ -693,11 +696,12 @@ class StructData(TSMixin, pyg.data.Data):
         kwargs_expanded = {attr: [value[~symmetric]] for attr, value in kwargs.items()}
 
         sym_idx = torch.where(symmetric)[0]
-        for group_id in torch.unique(src_symmetry_id[sym_idx]).tolist():
-            group_edge_idx = sym_idx[src_symmetry_id[sym_idx] == group_id]
+        sym_group_ids = src_symmetry_id[sym_idx]
+        for group_id in torch.unique(sym_group_ids).tolist():
+            group_edge_idx = sym_idx[sym_group_ids == group_id]
 
             src_orbits, dst_orbits, counts = self._expand_edge_indices_symmetrically(
-                src[group_edge_idx], dst[group_edge_idx], symmetry_order, group_id
+                src[group_edge_idx], dst[group_edge_idx], group_id
             )
             src_expanded.append(src_orbits)
             dst_expanded.append(dst_orbits)
@@ -708,11 +712,11 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([torch.cat(src_expanded), torch.cat(dst_expanded)], dim=0)
         kwargs_expanded = {attr: torch.cat(values, dim=0) for attr, values in kwargs_expanded.items()}
 
-        return edge_indices, kwargs_expanded
+        return edge_indices, kwargs_expanded    
 
 
     @requires_metadata
-    def add_edges(self, edge_indices, consider_symmetry: bool = True, symmetry_order: int = None, **kwargs):
+    def add_edges(self, edge_indices, consider_symmetry: bool = True, **kwargs):
         """
         Adds new edges.
 
@@ -720,6 +724,9 @@ class StructData(TSMixin, pyg.data.Data):
             edge_indices (torch.Tensor): source and destination node
                 indices for each of the ``E`` edges to add. Shape [2, E]. All indices must refer to
                 existing nodes.
+            consider_symmetry (bool): if ``True`` (default) and the graph has a registered
+                symmetry, each edge is replicated according to the the symmetry of the source and destination nodes. If ``False``, only
+                the given edge are added.
             **kwargs (dict[str, torch.Tensor]): mapping of registered edge attribute
                 names to tensors. The first dimension of each tensor must equal ``E``.
                 Attributes omitted from ``kwargs`` are initialized to their default
@@ -743,18 +750,16 @@ class StructData(TSMixin, pyg.data.Data):
             )
 
         if consider_symmetry and hasattr(self, "symmetry_id"):
-            edge_indices, kwargs = self._expand_edges_symmetrically(edge_indices, symmetry_order, kwargs)
+            edge_indices, kwargs = self._expand_edges_symmetrically(edge_indices, kwargs)
         
         num_new_edges = edge_indices.shape[1] 
         
         # Update directed mask and reciprocal edge
         self.directed_mask = torch.cat(
-
             [self.directed_mask, torch.ones(num_new_edges, dtype=torch.bool).unsqueeze(1), torch.zeros(num_new_edges, dtype=torch.bool).unsqueeze(1)], 
+            dim=0
+        )
 
-        dim=0)
-
-        
         edges = torch.arange(self.num_edges, self.num_edges + num_new_edges).unsqueeze(1)
         reciprocal_edges = torch.arange(self.num_edges + num_new_edges, self.num_edges + num_new_edges * 2).unsqueeze(1)
         
@@ -781,43 +786,72 @@ class StructData(TSMixin, pyg.data.Data):
             )
        
 
-    def add_edges_by_names(self, src_names, dest_names, **kwargs):
-        """Add edges given by lists of source/destination node names.
+    def add_edges_by_node_names(self, src_names, dest_names, consider_symmetry: bool = True, **kwargs):
+        """
+        Resolves node names to indices, then calls ``add_edges``.
 
         Args:
-            src_names (list[str]): source node name of each new edge.
-            dest_names (list[str]): destination node name of each new edge.
-            **kwargs: edge attribute values, forwarded to
-                [add_edges][torch_structure.data.data.StructData.add_edges].
+            src_names (list[str]): node name for each new edge's source endpoint.
+            dest_names (list[str]): node name for each new edge's destination endpoint,
+                aligned with ``src_names``.
+            consider_symmetry (bool): see ``add_edges``.
+            **kwargs (dict[str, torch.Tensor]): edge attribute values, see ``add_edges``.
+
+        Raises:
+            IndexError: if a name in ``src_names`` or ``dest_names`` does not match any node.
+            ValueError: any error raised by ``add_edges`` for the resolved edge indices.
         """
-        src_indices = torch.tensor([self.get_node_index_from_name(src) for src in src_names])
-        dest_indices = torch.tensor([self.get_node_index_from_name(dest) for dest in dest_names])
+
+        src_indices = torch.tensor([self.get_node_index_from_name(src)[0] for src in src_names])
+        dest_indices = torch.tensor([self.get_node_index_from_name(dest)[0] for dest in dest_names])
         edge_indices = torch.stack([src_indices, dest_indices], dim=0)
 
-        self.add_edges(edge_indices=edge_indices, **kwargs)
+        self.add_edges(edge_indices=edge_indices, consider_symmetry=consider_symmetry, **kwargs)
 
 
-    def add_edges_by_orbit(self, src_orbit_ids, dest_orbit_ids, src_orbit_position, dest_orbit_position, **kwargs):
+    def _build_orbit_lookup(self):
         orbit_id = self.orbit_id.view(-1)
         orbit_position = self.orbit_position.view(-1)
 
         lookup = torch.full((int(orbit_id.max()) + 1, int(orbit_position.max()) + 1), -1, dtype=torch.long)
         lookup[orbit_id, orbit_position] = torch.arange(orbit_id.shape[0])
+        return lookup
 
-        def node_indices(ids, positions):
-            ids = torch.as_tensor(ids, dtype=torch.long)
-            positions = torch.as_tensor(positions, dtype=torch.long)
-            indices = lookup[ids, positions]
-            if torch.any(indices == -1):
-                bad = torch.where(indices == -1)[0].tolist()
-                raise ValueError(f"No node found for (orbit_id, orbit_position) pairs at query index {bad}.")
-            return indices
+    def _node_indices_from_orbit(self, lookup, orbit_ids, orbit_positions):
+        ids = torch.as_tensor(orbit_ids, dtype=torch.long)
+        positions = torch.as_tensor(orbit_positions, dtype=torch.long)
+        in_bounds = (ids >= 0) & (ids < lookup.shape[0]) & (positions >= 0) & (positions < lookup.shape[1])
+        indices = torch.full_like(ids, -1)
+        indices[in_bounds] = lookup[ids[in_bounds], positions[in_bounds]]
+        if torch.any(indices == -1):
+            bad = torch.where(indices == -1)[0].tolist()
+            raise ValueError(f"No node found for (orbit_id, orbit_position) pairs at query index {bad}.")
+        return indices
 
-        src_indices = node_indices(src_orbit_ids, src_orbit_position)
-        dest_indices = node_indices(dest_orbit_ids, dest_orbit_position)
+    def add_edges_by_orbit(self, src_orbit_ids, dest_orbit_ids, src_orbit_positions, dest_orbit_positions, consider_symmetry: bool = True, **kwargs):
+        """
+        Resolves ``(orbit_id, orbit_position)`` pairs to node indices, then calls ``add_edges``.
+
+        Args:
+            src_orbit_ids (list[int]): orbit id for each new edge's source endpoint.
+            dest_orbit_ids (list[int]): orbit id for each new edge's destination endpoint.
+            src_orbit_positions (list[int]): orbit position for each new edge's source
+                endpoint, aligned with ``src_orbit_ids``.
+            dest_orbit_positions (list[int]): orbit position for each new edge's destination
+                endpoint, aligned with ``dest_orbit_ids``.
+            consider_symmetry (bool): see ``add_edges``.
+            **kwargs (dict[str, torch.Tensor]): edge attribute values, see ``add_edges``.
+
+        Raises:
+            ValueError: if an ``(orbit_id, orbit_position)`` pair does not match any node.
+            ValueError: any error raised by ``add_edges`` for the resolved edge indices.
+        """
+        lookup = self._build_orbit_lookup()
+        src_indices = self._node_indices_from_orbit(lookup, src_orbit_ids, src_orbit_positions)
+        dest_indices = self._node_indices_from_orbit(lookup, dest_orbit_ids, dest_orbit_positions)
         edge_indices = torch.stack([src_indices, dest_indices], dim=0)
 
-        self.add_edges(edge_indices=edge_indices, **kwargs)
+        self.add_edges(edge_indices=edge_indices, consider_symmetry=consider_symmetry, **kwargs)
 
 
     def delete_edges(self, mask: torch.Tensor):
@@ -841,15 +875,8 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def get_node_index_from_name(self, name):
-        """Return the node index whose ``name`` attribute matches ``name``.
 
-        Args:
-            name (str): the node name to look up.
-
-        Returns:
-            int: the index of the matching node.
-        """
-        return int((self.name == encode(name)).nonzero(as_tuple=True)[0])
+        return (self.name == encode(name)).nonzero(as_tuple=True)[0]
 
 
     @requires_metadata
@@ -1352,6 +1379,25 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def create_rotational_symmetry(self, n, origin = torch.tensor([0.0, 0.0, 0.0]), rotation_axis = torch.tensor([0.0, 0.0, 1.0])):
+        """
+        Builds an n-fold rotational symmetry: ``n`` affine matrices rotating evenly by
+        ``2*pi/n`` about ``rotation_axis``, through ``origin``.
+
+        Args:
+            n (int): number of rotational positions. Must be at least 1.
+            origin (torch.Tensor): a point the rotation axis passes through. Shape [3].
+            rotation_axis (torch.Tensor): the axis to rotate about. Shape [3]
+
+        Returns:
+            dict: ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor}`` -- ``n``
+            affine matrices of shape [n, 4, 4], and a ``symmetry_level`` of shape [n]
+            (all zeros, since this is a single, unnested level). Pass this dict to
+            ``add_symmetry`` directly, or nest it inside another symmetry via
+            ``combine_symmetry``.
+
+        Raises:
+            ValueError: if ``n`` is less than 1.
+        """
 
         if n < 1:
             raise ValueError(f"n must be at least 1, got {n}.")
@@ -1377,6 +1423,20 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def create_mirror_symmetry(self, origin = torch.tensor([0.0, 0.0, 0.0]), normal = torch.tensor([1.0, 0.0, 0.0])):
+        """
+        Builds a mirror symmetry with respect to the plane through ``origin`` with normal ``normal``.
+
+        Args:
+            origin (torch.Tensor): a point the mirror plane passes through. Shape [3].
+            normal (torch.Tensor): the mirror plane's normal vector. Shape [3].
+
+        Returns:
+            dict: ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor}`` -- 2
+            affine matrices of shape [2, 4, 4] (identity, then the reflection), and a
+            ``symmetry_level`` of shape [2] (all zeros, since this is a single, unnested
+            level). Pass this dict to ``add_symmetry`` directly, or nest it inside another
+            symmetry via ``combine_symmetry``.
+        """
 
         normal = normal / normal.norm()
         M = torch.eye(3) - 2 * torch.outer(normal, normal)
@@ -1389,6 +1449,22 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def combine_symmetry(self, symmetry_a, symmetry_b):
+        """
+        Nests ``symmetry_b`` inside ``symmetry_a``, producing every combination of the
+        two.
+
+        Args:
+            symmetry_a (dict): the inner symmetry, as returned by ``create_rotational_symmetry``,
+                ``create_mirror_symmetry``, or a previous ``combine_symmetry`` call.
+            symmetry_b (dict): the outer symmetry to nest around ``symmetry_a``, in the
+                same dict form.
+
+        Returns:
+            dict: ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor}`` -- the
+            combined affine matrices, shape ``[size_a * size_b, 4, 4]``, and a combined
+            ``symmetry_level`` that appends ``symmetry_b``'s levels (shifted) on top of
+            ``symmetry_a``'s own levels, one level deeper per nesting.
+        """
 
         affine = symmetry_b["matrices"].unsqueeze(1) @ symmetry_a["matrices"].unsqueeze(0)
 
@@ -1403,6 +1479,30 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def set_node_attr(self, attr: str, mask: torch.Tensor, value: torch.Tensor, consider_symmetry: bool = True):
+        """
+        Sets a node attribute for the nodes selected by ``mask``.
+
+        Args:
+            attr (str): name of the registered node attribute to set.
+            mask (torch.Tensor): boolean tensor of shape ``[num_nodes]``. Selects the nodes
+                to set.
+            value (torch.Tensor): one row per ``True`` entry in ``mask``, in the same order.
+            consider_symmetry (bool): if ``True`` (default) and the graph has a registered
+                symmetry, the update also propagates to every symmetry sibling of each selected node, not just the nodes selected by ``mask``. Attributes
+                registered as ``transform_attrs`` are geometrically transformed per sibling,
+                attributes registered as ``copy_attrs`` are copied verbatim. If ``False``, only
+                the selected nodes are updated.
+
+        Raises:
+            ValueError: if ``attr`` is not a registered node attribute, or is symmetry
+                bookkeeping (``orbit_id``, ``orbit_position``, ``symmetry_id``).
+            ValueError: if ``mask`` does not have ``num_nodes`` entries.
+            ValueError: if ``value`` does not have one row per ``True`` entry in ``mask``.
+            ValueError: if multiple selected nodes belong to the same symmetry orbit.
+            ValueError: if a selected node's symmetry group has ``attr`` classified as
+                neither a transform nor a copy attribute.
+        """
+
         if attr not in self.metadata["node_attr_list"]:
             raise ValueError(f"Unexpected node attribute '{attr}'. Expected an attribute in: {list(self.metadata['node_attr_list'])}")
 
@@ -1471,6 +1571,98 @@ class StructData(TSMixin, pyg.data.Data):
 
         setattr(self, attr, current)
 
+    def _mask_and_reorder(self, indices: torch.Tensor, value: torch.Tensor, num_rows: int):
+        order = torch.argsort(indices)
+        indices = indices[order]
+        value = value[order]
+
+        mask = torch.zeros(num_rows, dtype=torch.bool)
+        mask[indices] = True
+        return mask, value
+
+
+    def set_node_attr_by_name(self, attr: str, names: list, value: torch.Tensor, consider_symmetry: bool = True):
+        """
+        Resolves node names to indices, then calls ``set_node_attr``.
+
+        Args:
+            attr (str): name of the registered node attribute to set.
+            names (list[str]): node name for each row of ``value``.
+            value (torch.Tensor): one row per entry in ``names``.
+            consider_symmetry (bool): see ``set_node_attr``.
+
+        Raises:
+            IndexError: if a name in ``names`` does not match any node.
+            ValueError: any error raised by ``set_node_attr`` for the resolved nodes.
+        """
+        indices = torch.tensor([self.get_node_index_from_name(name)[0] for name in names], dtype=torch.long)
+        mask, value = self._mask_and_reorder(indices, value, self.num_nodes)
+
+        self.set_node_attr(attr, mask, value, consider_symmetry)
+
+
+    def set_node_attr_by_orbit(self, attr: str, orbit_ids: list, orbit_positions: list, value: torch.Tensor, consider_symmetry: bool = True):
+        """
+        Resolves ``(orbit_id, orbit_position)`` pairs to node indices, then calls ``set_node_attr``.
+
+        Args:
+            attr (str): name of the registered node attribute to set.
+            orbit_ids (list[int]): orbit id for each row of ``value``.
+            orbit_positions (list[int]): position inside the orbit for each row of ``value``.
+            value (torch.Tensor): one row per entry in ``orbit_ids``/``orbit_positions``.
+            consider_symmetry (bool): see ``set_node_attr``.
+
+        Raises:
+            ValueError: if an ``(orbit_id, orbit_position)`` pair does not match any node.
+            ValueError: any error raised by ``set_node_attr`` for the resolved nodes.
+        """
+        lookup = self._build_orbit_lookup()
+        indices = self._node_indices_from_orbit(lookup, orbit_ids, orbit_positions)
+        mask, value = self._mask_and_reorder(indices, value, self.num_nodes)
+
+        self.set_node_attr(attr, mask, value, consider_symmetry)
+
+    def _edge_indices_for_pairs(self, src_indices: torch.Tensor, dest_indices: torch.Tensor):
+        all_keys = self.edge_index[0] * self.num_nodes + self.edge_index[1]
+        query_keys = src_indices * self.num_nodes + dest_indices
+
+        sorted_keys, sort_idx = torch.sort(all_keys)
+        pos = torch.searchsorted(sorted_keys, query_keys).clamp(max=sorted_keys.numel() - 1)
+        found = sorted_keys[pos] == query_keys
+        if not torch.all(found):
+            bad = torch.where(~found)[0].tolist()
+            raise ValueError(f"No edge found for (src, dest) pairs at query index {bad}.")
+
+        return sort_idx[pos]
+
+    def set_edge_attr_by_orbit(self, attr: str, src_orbit_ids: list, dest_orbit_ids: list, src_orbit_positions: list, dest_orbit_positions: list, value: torch.Tensor, consider_symmetry: bool = True):
+        """
+        Resolves the ``(orbit_id, orbit_position)`` pairs of each edge's endpoints to edge indices, then calls ``set_edge_attr``.
+
+        Args:
+            attr (str): name of the registered edge attribute to set.
+            src_orbit_ids (list[int]): orbit id for each edge's source endpoint.
+            dest_orbit_ids (list[int]): orbit id for each edge's destination endpoint.
+            src_orbit_positions (list[int]): position inside the orbit for each edge's source
+                endpoint.
+            dest_orbit_positions (list[int]): position inside the orbit for each edge's destination
+                endpoint.
+            value (torch.Tensor): one row per edge.
+            consider_symmetry (bool): see ``set_edge_attr``.
+
+        Raises:
+            ValueError: if an ``(orbit_id, orbit_position)`` pair does not match any node.
+            ValueError: if no edge exists between a resolved source/destination node pair.
+            ValueError: any error raised by ``set_edge_attr`` for the resolved edges.
+        """
+        lookup = self._build_orbit_lookup()
+        src_indices = self._node_indices_from_orbit(lookup, src_orbit_ids, src_orbit_positions)
+        dest_indices = self._node_indices_from_orbit(lookup, dest_orbit_ids, dest_orbit_positions)
+        edges = self._edge_indices_for_pairs(src_indices, dest_indices)
+        mask, value = self._mask_and_reorder(edges, value, self.edge_index.shape[1])
+
+        self.set_edge_attr(attr, mask, value, consider_symmetry)
+
 
     def _modify_edge_attr_and_reciprocal(self, attr: str, edge_index: torch.Tensor, value: torch.Tensor):
 
@@ -1489,8 +1681,35 @@ class StructData(TSMixin, pyg.data.Data):
         mask: torch.Tensor,
         value: torch.Tensor,
         consider_symmetry: bool = True,
-        symmetry_order: int = None,
     ):
+        """
+        Sets an edge attribute for the edges selected by ``mask``.
+
+        Args:
+            attr (str): name of the registered edge attribute to set.
+            mask (torch.Tensor): boolean tensor of shape ``[num_edges]``. Selects the edges
+                to set; for each undirected edge, its forward or reciprocal may be selected
+                interchangeably, but not both.
+            value (torch.Tensor): one row per ``True`` entry in ``mask``.
+            consider_symmetry (bool): if ``True`` (default) and the graph has a registered
+                symmetry, the update also propagates to every symmetry sibling of each
+                selected edge, not just the edges selected by ``mask`` -- the value is
+                copied verbatim to every sibling. This requires ``attr`` to be registered
+                as an edge copy attribute for that symmetry, via
+                ``add_symmetry(edge_copy_attrs=...)``. If ``False``, only the selected
+                edges (and their reciprocal edges) are updated.
+
+        Raises:
+            ValueError: if ``attr`` is not a registered edge attribute.
+            ValueError: if ``value`` does not have one row per ``True`` entry in ``mask``.
+            ValueError: if ``mask`` selects both the forward and reciprocal row of the
+                same edge.
+            ValueError: if selected edges span more than one registered symmetry, no
+                sibling edge exists for a symmetry orbit implied by the selection, or
+                ``attr`` is not registered as an edge copy attribute for a selected
+                edge's symmetry.
+        """
+
         if attr not in self.metadata["edge_attr_list"]:
             raise ValueError(f"Unexpected edge attribute '{attr}'. Expected an attribute in: {list(self.metadata['edge_attr_list'])}")
 
@@ -1500,8 +1719,16 @@ class StructData(TSMixin, pyg.data.Data):
         if value.shape[0] != edges.shape[0]:
             raise ValueError(f"value must have one row per masked edge ({edges.shape[0]}), got {value.shape[0]}.")
 
-        if torch.any(~self.directed_mask.view(-1)[edges]):
-            raise ValueError("mask may only select directed (forward) edge rows; the reciprocal row is updated automatically.")
+        directed = self.directed_mask.view(-1)
+        edges = torch.where(directed[edges], edges, self.reciprocal_edge.view(-1)[edges])
+
+        edges_unique, edge_counts = torch.unique(edges, return_counts=True)
+        duplicated = edges_unique[edge_counts > 1]
+        if duplicated.numel() > 0:
+            bad_pairs = [(int(self.edge_index[0, e]), int(self.edge_index[1, e])) for e in duplicated.tolist()]
+            raise ValueError(
+                f"mask selects both the forward and reciprocal row of the same edge(s): {bad_pairs}."
+            )
 
         self._modify_edge_attr_and_reciprocal(attr, edges, value)
 
@@ -1518,7 +1745,6 @@ class StructData(TSMixin, pyg.data.Data):
         src, dst, value, src_group, dst_group = (
             src[tracked], dst[tracked], value[tracked], src_group[tracked], dst_group[tracked]
         )
-
 
         num_orbits = int(self.orbit_id.max().item()) + 1
         counts = torch.bincount(orbit_id[src] * num_orbits + orbit_id[dst])
@@ -1540,10 +1766,16 @@ class StructData(TSMixin, pyg.data.Data):
         sorted_keys, sort_idx = torch.sort(all_keys)
 
         for group_id in torch.unique(src_group).tolist():
+            if attr not in self.metadata["symmetry_copy_attrs"][group_id]:
+                raise ValueError(
+                    f"Attribute '{attr}' is not registered as a copy attribute for symmetry "
+                    f"group {group_id}. Register it via add_symmetry(edge_copy_attrs=...)."
+                )
+
             group_idx = torch.where(src_group == group_id)[0]
 
             sib_src, sib_dst, counts = self._expand_edge_indices_symmetrically(
-                src[group_idx], dst[group_idx], symmetry_order, group_id
+                src[group_idx], dst[group_idx], group_id
             )
             sib_value = value[group_idx].repeat_interleave(counts, dim=0)
 
@@ -1554,10 +1786,50 @@ class StructData(TSMixin, pyg.data.Data):
 
             self._modify_edge_attr_and_reciprocal(attr, sort_idx[pos], sib_value)
 
-    def add_symmetry(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None):
+    def add_symmetry(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None, edge_copy_attrs: list = None):
+        """
+        Registers one or more symmetries on the graph, so ``add_nodes``, ``add_edges``,
+        ``set_node_attr``, and ``set_edge_attr`` can propagate updates across a symmetry.
+        Args:
+            symmetries (dict[str, dict]): mapping of symmetry name to a symmetry dict, as
+                returned by ``create_rotational_symmetry``, ``create_mirror_symmetry``, or
+                ``combine_symmetry``. Each name must not already be registered.
+            transform_attrs (list[str], optional): node attributes that should be
+                geometrically transformed (rotated/mirrored, via the full affine matrix)
+                per orbit member. Defaults to ``["coords"]`` when omitted (pass ``[]``
+                explicitly for no transform attributes at all).
+            copy_attrs (list[str], optional): node attributes that should be copied
+                verbatim to every member of the same symmetry orbit, without any transform.
+            edge_copy_attrs (list[str], optional): edge attributes that should be copied
+                verbatim to every symmetry sibling edge. Edges have no transform category --
+                only copying is supported.
 
-        transform_attrs = transform_attrs or []
+        Raises:
+            ValueError: if ``transform_attrs``/``copy_attrs`` contains symmetry bookkeeping
+                (``orbit_id``, ``orbit_position``, ``symmetry_id``), or a registered edge
+                attribute name (edges only support ``edge_copy_attrs``).
+            ValueError: if a name in ``symmetries`` is already registered.
+            ValueError: if a symmetry's ``symmetry_level`` does not have one entry per matrix.
+        """
+
+        transform_attrs = transform_attrs if transform_attrs is not None else ["coords"]
         copy_attrs = copy_attrs or []
+        edge_copy_attrs = edge_copy_attrs or []
+
+        bookkeeping = {"orbit_id", "orbit_position", "symmetry_id"}
+        invalid_attrs = bookkeeping & (set(transform_attrs) | set(copy_attrs))
+        if invalid_attrs:
+            raise ValueError(
+                f"{sorted(invalid_attrs)} is symmetry bookkeeping and cannot be registered as a "
+                "transform or copy attribute."
+            )
+
+        invalid_transform_attrs = set(transform_attrs) & set(self.metadata["edge_attr_list"])
+        if invalid_transform_attrs:
+            raise ValueError(
+                f"{sorted(invalid_transform_attrs)} is a registered edge attribute and cannot be "
+                "registered as a transform attribute; edges only support copy_attrs, via edge_copy_attrs=..."
+            )
 
         is_first_symmetry = "name_to_symmetry" not in self.metadata
         name_to_symmetry = self.metadata.setdefault("name_to_symmetry", {})
@@ -1608,7 +1880,22 @@ class StructData(TSMixin, pyg.data.Data):
 
             name_to_symmetry[name] = group_id
             self.metadata["symmetry_transform_attrs"][group_id] = transform_attrs
-            self.metadata["symmetry_copy_attrs"][group_id] = copy_attrs
+            self.metadata["symmetry_copy_attrs"][group_id] = copy_attrs + edge_copy_attrs
+
+    def view_symmetries(self):
+        """
+        Prints every registered symmetry's name, order, transform
+        attributes, and copy attributes.
+        """
+        if "name_to_symmetry" not in self.metadata:
+            print("No symmetries registered.")
+            return
+
+        for name, group_id in self.metadata["name_to_symmetry"].items():
+            order = int((self.symmetry_matrix_id == group_id).sum())
+            transform_attrs = self.metadata["symmetry_transform_attrs"][group_id]
+            copy_attrs = self.metadata["symmetry_copy_attrs"][group_id]
+            print(f"{name}: order={order}, transform_attrs={transform_attrs}, copy_attrs={copy_attrs}")
 
 
     def add_chain(self, n: int, node_attrs: dict = {}, edge_attrs: dict = {}):
