@@ -2242,10 +2242,10 @@ class StructData(TSMixin, pyg.data.Data):
               boundary nodes.
 
         Args:
-            n_rings (int): number of concentric rings (excluding the center node). Must be at
-                least 2.
             n_sectors (int): number of angular sectors. Must be at least 3, so that each ring
                 is closed and every angular edge connects a different pair of nodes.
+            n_rings (int): number of concentric rings (excluding the center node). Must be at
+                least 2.
             node_attrs (dict[str, torch.Tensor | callable]): mapping of registered
                 node attribute names to either a tensor of shape ``[N, *]`` or
                 ``[1, *]`` (broadcast over all nodes), or a callable whose
