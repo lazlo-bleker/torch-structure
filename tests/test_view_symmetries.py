@@ -34,11 +34,11 @@ def test_view_symmetries_lists_each_symmetry(capsys):
 
     data.view_symmetries()
 
-    # the order is the number of matrices
+    # the order is the number of matrices, the levels are listed innermost first
     output_expected = (
-        "rot4: order=4, transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
-        "mirror: order=2, transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
-        "d4: order=8, transform_attrs=[], copy_attrs=[]\n"
+        "rot4: order=4, levels=[4 (closing)], transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
+        "mirror: order=2, levels=[2 (closing)], transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
+        "d4: order=8, levels=[2 (closing), 4 (closing)], transform_attrs=[], copy_attrs=[]\n"
     )
 
     assert capsys.readouterr().out == output_expected

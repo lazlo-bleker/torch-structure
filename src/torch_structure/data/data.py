@@ -576,18 +576,23 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     def _infer_level_sizes(self, group_id):
-       
-        levels = self.symmetry_level[self.symmetry_matrix_id == group_id]
+
+        group = self.symmetry_matrix_id == group_id
+        levels = self.symmetry_level[group]
         counts = torch.bincount(levels)
         boundaries = torch.cumsum(counts, dim=0)
 
-        level_sizes = []
+        closes = getattr(self, "symmetry_closes", None)
+        closes = torch.ones_like(levels, dtype=torch.bool) if closes is None else closes[group]
+
+        level_sizes, level_closes = [], []
         prev = 1
         for boundary in boundaries.tolist():
             level_sizes.append(boundary // prev)
+            level_closes.append(bool(closes[boundary - 1]))
             prev = boundary
 
-        return level_sizes
+        return level_sizes, level_closes
 
 
     def _expand_edge_indices_symmetrically(self, src, dst, group_id):
@@ -596,9 +601,10 @@ class StructData(TSMixin, pyg.data.Data):
         src_base = src - orbit_position[src]
         dst_base = dst - orbit_position[dst]
 
-        level_sizes = self._infer_level_sizes(group_id)
+        level_sizes, level_closes = self._infer_level_sizes(group_id)
         num_levels = len(level_sizes)
         sizes_t = torch.tensor(level_sizes, dtype=torch.long)
+        closes_t = torch.tensor(level_closes, dtype=torch.bool)
 
         place_full = torch.ones(num_levels, dtype=torch.long)
         for level in range(1, num_levels):
@@ -614,7 +620,8 @@ class StructData(TSMixin, pyg.data.Data):
 
         src_idx = decode_batch(orbit_position[src])
         dst_idx = decode_batch(orbit_position[dst])
-        deltas = (dst_idx - src_idx) % sizes_t if num_levels else src_idx
+        signed_deltas = dst_idx - src_idx
+        deltas = torch.where(closes_t, signed_deltas % sizes_t, signed_deltas) if num_levels else src_idx
 
         diffs = src_idx != dst_idx
         level_arange = torch.arange(num_levels, dtype=torch.long).unsqueeze(0)
@@ -651,8 +658,13 @@ class StructData(TSMixin, pyg.data.Data):
             src_swept = (digits * enc_place.unsqueeze(0)).sum(dim=1)
 
             swept_deltas = deltas[bucket, ml:]
-            dst_digits = (digits.unsqueeze(0) + swept_deltas.unsqueeze(1)) % swept_sizes_t.view(1, 1, -1)
+            raw_dst_digits = digits.unsqueeze(0) + swept_deltas.unsqueeze(1)
+            dst_digits = raw_dst_digits % swept_sizes_t.view(1, 1, -1)
             dst_swept = (dst_digits * enc_place.view(1, 1, -1)).sum(dim=2)
+
+            swept_closes = closes_t[ml:].view(1, 1, -1)
+            in_level = (raw_dst_digits >= 0) & (raw_dst_digits < swept_sizes_t.view(1, 1, -1))
+            exists = (in_level | swept_closes).all(dim=2)
 
             src_all = base_src.unsqueeze(1) + src_swept.unsqueeze(0)
             dst_all = base_dst.unsqueeze(1) + dst_swept
@@ -660,6 +672,7 @@ class StructData(TSMixin, pyg.data.Data):
             pair_min = torch.minimum(src_all, dst_all)
             pair_max = torch.maximum(src_all, dst_all)
             keys = pair_min * self.num_nodes + pair_max
+            keys = torch.where(exists, keys, -1 - torch.arange(keys.shape[1]))
 
             order = torch.argsort(keys, dim=-1, stable=True)
             sorted_keys = torch.gather(keys, 1, order)
@@ -669,6 +682,7 @@ class StructData(TSMixin, pyg.data.Data):
             )
             keep = torch.zeros_like(keys, dtype=torch.bool)
             keep.scatter_(1, order, first_in_group)
+            keep &= exists
 
             src_out.append(src_all[keep])
             dst_out.append(dst_all[keep])
@@ -742,8 +756,12 @@ class StructData(TSMixin, pyg.data.Data):
                 their two endpoints do not have in common. E.g. in the case of a mirrored 
                 rotation, an edge between two nodes on different sides of the mirror is only 
                 reflected over to the other side, but an edge between two nodes on the same 
-                side of the mirror is rotated n-times and n-times rotary reflected. If 
-                ``False``, only the given edges are added.
+                side of the mirror is rotated n-times and n-times rotary reflected. On a level that
+                does not close (see ``create_translation`` and the ``closes`` argument of
+                ``create_rotational_symmetry``), the copy that would run from the last position of
+                that level back to the first is left out, so an open level yields one copy less than
+                a closing one. The given edge itself is always added. If ``False``, only the given
+                edges are added.
             **kwargs (dict[str, torch.Tensor]): mapping of registered edge attribute
                 names to tensors. The first dimension of each tensor must equal ``E``.
                 Attributes omitted from ``kwargs`` are initialized to their default
@@ -1416,7 +1434,14 @@ class StructData(TSMixin, pyg.data.Data):
             raise ValueError(f"{name} must not be the zero vector.")
 
 
-    def create_rotational_symmetry(self, n, origin = torch.tensor([0.0, 0.0, 0.0]), rotation_axis = torch.tensor([0.0, 0.0, 1.0])) -> dict[str, torch.Tensor]:
+    @staticmethod
+    def _closing_flags(n, closes):
+        flags = torch.ones(n, dtype=torch.bool)
+        flags[n - 1] = closes
+        return flags
+
+
+    def create_rotational_symmetry(self, n, origin = torch.tensor([0.0, 0.0, 0.0]), rotation_axis = torch.tensor([0.0, 0.0, 1.0]), closes: bool = True) -> dict[str, torch.Tensor]:
         """
         Builds an n-fold rotational symmetry: ``n`` affine matrices rotating evenly by
         ``2*pi/n`` about ``rotation_axis``, through ``origin``.
@@ -1425,11 +1450,16 @@ class StructData(TSMixin, pyg.data.Data):
             n (int): number of rotational positions. Must be at least 1.
             origin (torch.Tensor): a point the rotation axis passes through. Shape [3].
             rotation_axis (torch.Tensor): the axis to rotate about. Shape [3].
+            closes (bool): whether the positions close back onto the first one, i.e. whether an
+                edge between two neighbouring positions is also created between the last and the
+                first position. Defaults to ``True``, since the ``n`` rotations cover the full
+                turn; pass ``False`` to leave the ring open, e.g. for a fan or a partial arc.
 
         Returns:
-            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor}`` -- ``n``
-                affine matrices of shape [n, 4, 4], and a ``symmetry_level`` of shape [n]
-                (all zeros, since this is a single, unnested level). Pass this dict to
+            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor, "closes": torch.Tensor}``
+                -- ``n`` affine matrices of shape [n, 4, 4], a ``symmetry_level`` of shape [n]
+                (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
+                (all ``True`` except the last entry, which is ``closes``). Pass this dict to
                 ``add_symmetry`` directly, or nest it inside another symmetry via
                 ``combine_symmetry``.
 
@@ -1463,7 +1493,77 @@ class StructData(TSMixin, pyg.data.Data):
         affine[:, :3, :3] = R
         affine[:, :3, 3] = origin - R @ origin
 
-        return {"matrices": affine, "symmetry_level": torch.zeros(n, dtype=torch.long)}
+        return {
+            "matrices": affine,
+            "symmetry_level": torch.zeros(n, dtype=torch.long),
+            "closes": self._closing_flags(n, closes),
+        }
+
+
+    def create_translation(self, n, direction = torch.tensor([1.0, 0.0, 0.0]), scaling = None, closes: bool = False) -> dict[str, torch.Tensor]:
+        """
+        Builds a translation operation: ``n`` affine matrices translating along ``direction``,
+        i.e. an array of ``n`` positions. Without ``scaling`` the positions are evenly spaced,
+        one ``direction`` apart; with ``scaling`` each step is scaled individually.
+
+        Args:
+            n (int): number of positions in the array, the seed included. Must be at least 1.
+            direction (torch.Tensor): the step from one position to the next, used as given and
+                not normalized. Shape [3].
+            scaling (torch.Tensor, optional): one factor per step, so shape [n-1]: the step from
+                position ``k`` to position ``k+1`` is ``scaling[k] * direction``. Defaults to
+                ``None``, which spaces the positions evenly, as if every factor were 1.
+            closes (bool): whether the array closes back onto its first position, i.e. whether an
+                edge between two neighbouring positions is also created between the last and the
+                first position. Defaults to ``False``, since an array of translated copies is
+                normally open; pass ``True`` for a periodic array.
+
+        Returns:
+            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor, "closes": torch.Tensor}``
+                -- ``n`` affine matrices of shape [n, 4, 4], a ``symmetry_level`` of shape [n]
+                (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
+                (all ``True`` except the last entry, which is ``closes``). Pass this dict to
+                ``add_symmetry`` directly, or nest it inside another symmetry via
+                ``combine_symmetry``.
+
+        Raises:
+            ValueError: if ``n`` is less than 1.
+            ValueError: if ``direction`` is not a tensor of shape [3] with the default float
+                dtype.
+            ValueError: if ``direction`` is the zero vector.
+            ValueError: if ``scaling`` is given and is not a tensor of shape [n-1].
+        """
+
+        if n < 1:
+            raise ValueError(f"n must be at least 1, got {n}.")
+
+        self._check_vector("direction", direction, nonzero=True)
+
+        if scaling is None:
+            steps = torch.arange(n, dtype=direction.dtype)
+        else:
+            if not isinstance(scaling, torch.Tensor):
+                raise ValueError(
+                    f"scaling must be a torch.Tensor of shape [{n - 1}], got {type(scaling).__name__}."
+                )
+
+            if scaling.shape != (n - 1,):
+                raise ValueError(
+                    f"scaling must have shape [{n - 1}], one factor per step between the {n} "
+                    f"positions, got shape {list(scaling.shape)}."
+                )
+
+            steps = torch.zeros(n, dtype=direction.dtype)
+            steps[1:] = torch.cumsum(scaling.to(direction.dtype), dim=0)
+
+        affine = torch.eye(4).expand(n, 4, 4).clone()
+        affine[:, :3, 3] = steps.unsqueeze(1) * direction
+
+        return {
+            "matrices": affine,
+            "symmetry_level": torch.zeros(n, dtype=torch.long),
+            "closes": self._closing_flags(n, closes),
+        }
 
 
     def create_mirror_symmetry(self, origin = torch.tensor([0.0, 0.0, 0.0]), normal = torch.tensor([1.0, 0.0, 0.0])) -> dict[str, torch.Tensor]:
@@ -1476,11 +1576,12 @@ class StructData(TSMixin, pyg.data.Data):
             normal (torch.Tensor): the mirror plane's normal vector. Shape [3].
 
         Returns:
-            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor}`` -- 2 affine
-                matrices of shape [2, 4, 4], and a ``symmetry_level`` of shape [2] (all
-                zeros, since this is a single, unnested level). Pass this dict to
-                ``add_symmetry`` directly, or nest it inside another symmetry via
-                ``combine_symmetry``.
+            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor, "closes": torch.Tensor}``
+                -- 2 affine matrices of shape [2, 4, 4], a ``symmetry_level`` of shape [2] (all
+                zeros, since this is a single, unnested level), and ``closes`` of shape [2] (all
+                ``True``: a mirror has only two positions, so closing it and leaving it open give
+                the same single edge between them). Pass this dict to ``add_symmetry`` directly,
+                or nest it inside another symmetry via ``combine_symmetry``.
 
         Raises:
             ValueError: if ``origin`` or ``normal`` is not a tensor of shape [3] with the
@@ -1498,7 +1599,11 @@ class StructData(TSMixin, pyg.data.Data):
         affine[1, :3, :3] = M
         affine[1, :3, 3] = origin - M @ origin
 
-        return {"matrices": affine, "symmetry_level": torch.zeros(2, dtype=torch.long)}
+        return {
+            "matrices": affine,
+            "symmetry_level": torch.zeros(2, dtype=torch.long),
+            "closes": torch.ones(2, dtype=torch.bool),
+        }
 
 
     def combine_symmetry(self, symmetry_a, symmetry_b) -> dict[str, torch.Tensor]:
@@ -1514,21 +1619,35 @@ class StructData(TSMixin, pyg.data.Data):
                 same dict form.
 
         Returns:
-            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor}`` -- the
-                combined affine matrices, shape ``[size_a * size_b, 4, 4]``, and the
-                combined ``symmetry_level``, shape ``[size_a * size_b]``.
+            ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor, "closes": torch.Tensor}``
+                -- the combined affine matrices, shape ``[size_a * size_b, 4, 4]``, and the
+                combined ``symmetry_level`` and ``closes``, shape ``[size_a * size_b]`` each.
+                Every level keeps its own closing behaviour, so nesting an open symmetry inside
+                another open one stays open in both directions.
         """
 
         affine = symmetry_b["matrices"].unsqueeze(1) @ symmetry_a["matrices"].unsqueeze(0)
 
         level_a, level_b = symmetry_a["symmetry_level"], symmetry_b["symmetry_level"]
-        size_a = level_a.shape[0]
+        size_a, size_b = level_a.shape[0], level_b.shape[0]
         num_levels_a = int(level_a.max().item()) + 1
 
         combined_level = (level_b + num_levels_a).repeat_interleave(size_a)
         combined_level[:size_a] = level_a
 
-        return {"matrices": affine.reshape(-1, 4, 4), "symmetry_level": combined_level}
+        closes_a = symmetry_a.get("closes", torch.ones(size_a, dtype=torch.bool))
+        closes_b = symmetry_b.get("closes", torch.ones(size_b, dtype=torch.bool))
+
+        combined_closes = torch.ones(size_a * size_b, dtype=torch.bool)
+        combined_closes[:size_a] = closes_a
+        open_b = torch.where(~closes_b)[0]
+        combined_closes[(open_b + 1) * size_a - 1] = False
+
+        return {
+            "matrices": affine.reshape(-1, 4, 4),
+            "symmetry_level": combined_level,
+            "closes": combined_closes,
+        }
 
 
     def set_node_attr(self, attr: str, mask: torch.Tensor, value: torch.Tensor, consider_symmetry: bool = True):
@@ -1796,9 +1915,9 @@ class StructData(TSMixin, pyg.data.Data):
             value (torch.Tensor): one row per ``True`` entry in ``mask``.
             consider_symmetry (bool): if ``True`` (default) and the graph has a registered
                 symmetry, the value of each selected edge is copied verbatim to the rest
-                of its edge family, i.e. to the same copies that ``add_edges`` creates for
-                it. If ``False``, only the selected edges (and their reciprocal
-                edges) are updated.
+                of its edge family, i.e. to exactly the same copies that ``add_edges`` creates
+                for it, so a level that does not close is left open here too. If ``False``,
+                only the selected edges (and their reciprocal edges) are updated.
 
         Raises:
             ValueError: if ``attr`` is not a registered edge attribute.
@@ -1917,8 +2036,9 @@ class StructData(TSMixin, pyg.data.Data):
 
         Args:
             symmetries (dict[str, dict]): mapping of symmetry name to a symmetry dict, as
-                returned by ``create_rotational_symmetry``, ``create_mirror_symmetry``, or
-                ``combine_symmetry``. Each name must not already be registered.
+                returned by ``create_rotational_symmetry``, ``create_translation``,
+                ``create_mirror_symmetry``, or ``combine_symmetry``. Each name must not already be
+                registered. A dict without a ``closes`` entry is taken to close on every level.
             transform_attrs (list[str], optional): node attributes that should be
                 geometrically transformed (rotated/mirrored, via the full affine matrix)
                 per copy. Defaults to ``["coords"]`` when omitted (pass ``[]``
@@ -1932,7 +2052,10 @@ class StructData(TSMixin, pyg.data.Data):
             ValueError: if ``transform_attrs`` contains a registered edge attribute name
                 (edge attributes can only be copy attributes).
             ValueError: if a name in ``symmetries`` is already registered.
-            ValueError: if a symmetry's ``symmetry_level`` does not have one entry per matrix.
+            ValueError: if a symmetry's ``symmetry_level`` or ``closes`` does not have one entry per
+                matrix.
+            ValueError: if a symmetry's ``closes`` is ``False`` anywhere other than at the last
+                matrix of a level.
         """
 
         transform_attrs = transform_attrs if transform_attrs is not None else ["coords"]
@@ -1961,6 +2084,7 @@ class StructData(TSMixin, pyg.data.Data):
             self.metadata["graph_attr_list"].append("symmetry_matrices")
             self.metadata["graph_attr_list"].append("symmetry_matrix_id")
             self.metadata["graph_attr_list"].append("symmetry_level")
+            self.metadata["graph_attr_list"].append("symmetry_closes")
             self.metadata["node_attr_list"].append("orbit_id")
             self.metadata["node_attr_list"].append("orbit_position")
             self.metadata["node_attr_list"].append("symmetry_id")
@@ -1972,6 +2096,7 @@ class StructData(TSMixin, pyg.data.Data):
             self.symmetry_matrices = torch.empty((0, 4, 4))
             self.symmetry_matrix_id = torch.empty((0,), dtype=torch.long)
             self.symmetry_level = torch.empty((0,), dtype=torch.long)
+            self.symmetry_closes = torch.empty((0,), dtype=torch.bool)
             self.orbit_id = torch.full((self.num_nodes, 1), -1, dtype=torch.long)
             self.orbit_position = torch.full((self.num_nodes, 1), -1, dtype=torch.long)
             self.symmetry_id = torch.full((self.num_nodes, 1), -1, dtype=torch.long)
@@ -1992,6 +2117,24 @@ class StructData(TSMixin, pyg.data.Data):
                 raise ValueError(
                     f"symmetry_level for '{name}' must have one entry per matrix ({m}), got {symmetry_level.shape[0]}."
                 )
+
+            symmetry_closes = symmetry.get("closes", torch.ones(m, dtype=torch.bool)).to(torch.bool)
+            if symmetry_closes.shape[0] != m:
+                raise ValueError(
+                    f"closes for '{name}' must have one entry per matrix ({m}), got {symmetry_closes.shape[0]}."
+                )
+
+            boundaries = torch.cumsum(torch.bincount(symmetry_level.to(torch.long)), dim=0)
+            on_boundary = torch.zeros(m, dtype=torch.bool)
+            on_boundary[boundaries - 1] = True
+            misplaced = ~symmetry_closes & ~on_boundary
+            if torch.any(misplaced):
+                raise ValueError(
+                    f"closes for '{name}' may only be False at the last matrix of a symmetry level "
+                    f"(indices {(boundaries - 1).tolist()}), but is False at "
+                    f"{torch.where(misplaced)[0].tolist()}."
+                )
+
             group_id = int(self.symmetry_matrix_id.max().item()) + 1 if self.symmetry_matrix_id.numel() > 0 else 0
 
             self.symmetry_matrices = torch.cat([self.symmetry_matrices, symmetry_matrices], dim=0)
@@ -1999,6 +2142,7 @@ class StructData(TSMixin, pyg.data.Data):
                 [self.symmetry_matrix_id, torch.full((m,), group_id, dtype=torch.long)], dim=0
             )
             self.symmetry_level = torch.cat([self.symmetry_level, symmetry_level.to(torch.long)], dim=0)
+            self.symmetry_closes = torch.cat([self.symmetry_closes, symmetry_closes], dim=0)
 
             name_to_symmetry[name] = group_id
             self.metadata["symmetry_transform_attrs"][group_id] = transform_attrs
@@ -2006,7 +2150,8 @@ class StructData(TSMixin, pyg.data.Data):
 
     def view_symmetries(self):
         """
-        Prints for every registered symmetry its name, its order, its transform attributes and its copy
+        Prints for every registered symmetry its name, its order, the size and closing behaviour of
+        each of its nesting levels (innermost first), its transform attributes and its copy
         attributes.
         """
         if "name_to_symmetry" not in self.metadata:
@@ -2015,9 +2160,17 @@ class StructData(TSMixin, pyg.data.Data):
 
         for name, group_id in self.metadata["name_to_symmetry"].items():
             order = int((self.symmetry_matrix_id == group_id).sum())
+            level_sizes, level_closes = self._infer_level_sizes(group_id)
+            levels = ", ".join(
+                f"{size} ({'closing' if closes else 'open'})"
+                for size, closes in zip(level_sizes, level_closes)
+            )
             transform_attrs = self.metadata["symmetry_transform_attrs"][group_id]
             copy_attrs = self.metadata["symmetry_copy_attrs"][group_id]
-            print(f"{name}: order={order}, transform_attrs={transform_attrs}, copy_attrs={copy_attrs}")
+            print(
+                f"{name}: order={order}, levels=[{levels}], "
+                f"transform_attrs={transform_attrs}, copy_attrs={copy_attrs}"
+            )
 
 
     def add_chain(self, n: int, node_attrs: dict = {}, edge_attrs: dict = {}):
