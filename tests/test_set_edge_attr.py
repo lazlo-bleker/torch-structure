@@ -73,14 +73,17 @@ def test_set_edge_attr_with_combined_symmetry():
     data.add_edges(edge_indices=torch.tensor([[0, 0, 8, 8], [1, 3, 0, 1]]), force=torch.zeros((4, 1)))
 
     # the edges to node 8 are added as given and come first (rows 0-1), then the mirror family
-    # (rows 2-5) and the sector family (rows 6-9); rows 10-19 are the reciprocal rows
-    edge_index_forward_expected = torch.tensor([[8, 8, 0, 2, 4, 6, 0, 2, 4, 6], [0, 1, 1, 3, 5, 7, 3, 5, 7, 1]])
+    # (rows 2-5) and the diagonal family (rows 6-13); rows 14-27 are the reciprocal rows
+    edge_index_forward_expected = torch.tensor([
+        [8, 8, 0, 2, 4, 6, 0, 1, 2, 3, 4, 5, 6, 7],
+        [0, 1, 1, 3, 5, 7, 3, 2, 5, 4, 7, 6, 1, 0],
+    ])
 
-    assert torch.equal(data.edge_index[:, :10], edge_index_forward_expected)
+    assert torch.equal(data.edge_index[:, :14], edge_index_forward_expected)
 
-    # one edge of each family in the same call: row 4 (4 -> 5) and row 8 (4 -> 7)
+    # one edge of each family in the same call: row 4 (4 -> 5) and row 10 (4 -> 7)
     mask = torch.zeros(data.edge_index.shape[1], dtype=torch.bool)
-    mask[[4, 8]] = True
+    mask[[4, 10]] = True
     data.set_edge_attr("force", mask, torch.tensor([[2.], [9.]]))
 
     # an edge to node 8 is set, but not propagated
@@ -89,7 +92,7 @@ def test_set_edge_attr_with_combined_symmetry():
     data.set_edge_attr("force", mask, torch.tensor([[5.]]))
 
     force_expected = torch.tensor(
-        [[5.], [0.]] + [[2.]] * 4 + [[9.]] * 4 + [[5.], [0.]] + [[2.]] * 4 + [[9.]] * 4
+        [[5.], [0.]] + [[2.]] * 4 + [[9.]] * 8 + [[5.], [0.]] + [[2.]] * 4 + [[9.]] * 8
     )
 
     assert torch.equal(data.force, force_expected)

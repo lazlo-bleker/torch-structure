@@ -135,17 +135,22 @@ def test_nested_inner_level_follows_the_inner_flag(outer_closes):
     assert undirected_edges(data) == sorted(INNER_RINGS_CLOSED)
 
 
+OUTER_RUNGS_OPEN = [(i, i + 4) for i in range(4)] + [(i + 4, i + 8) for i in range(4)]
+OUTER_RUNGS_CLOSED = OUTER_RUNGS_OPEN + [(i, i + 8) for i in range(4)]
+
+
 @pytest.mark.parametrize("inner_closes", [True, False])
 def test_nested_outer_level_follows_the_outer_flag(inner_closes):
 
-    # an edge between two 4-fold rings freezes the inner level and sweeps only the outer one
+    # an edge between two 4-fold rings is copied to all four inner positions, so only the outer
+    # flag decides whether the third rung back to the first ring is added
     data = build(nested(inner_closes=inner_closes, outer_closes=False))
     add_family(data, 0, 4)
-    assert undirected_edges(data) == [(0, 4), (4, 8)]
+    assert undirected_edges(data) == sorted(OUTER_RUNGS_OPEN)
 
     data = build(nested(inner_closes=inner_closes, outer_closes=True))
     add_family(data, 0, 4)
-    assert undirected_edges(data) == [(0, 4), (0, 8), (4, 8)]
+    assert undirected_edges(data) == sorted(OUTER_RUNGS_CLOSED)
 
 
 def test_doubly_nested_open_is_open_in_both_directions():
@@ -155,10 +160,10 @@ def test_doubly_nested_open_is_open_in_both_directions():
     add_family(data, 0, 1, force=1.0)   # along the inner level
     add_family(data, 0, 4, force=2.0)   # along the outer level
 
-    expected = sorted(INNER_RINGS_OPEN + [(0, 4), (4, 8)])
+    expected = sorted(INNER_RINGS_OPEN + OUTER_RUNGS_OPEN)
     assert undirected_edges(data) == expected
 
-    # neither level wrapped: no (3, 0)-style edge and no (8, 0)-style edge
+    # neither level wrapped: no (3, 0)-style edge and no (0, 8)-style rung
     assert (0, 3) not in expected
     assert (0, 8) not in expected
 
@@ -288,14 +293,9 @@ def test_doubly_nested_translation_is_open_in_both_directions():
 
     graph = build(open_grid())
 
-    # node index = y * 3 + x, so one seed per column is needed along y: an edge that differs on
-    # the outer level freezes the inner level at its own position
-    add_family(graph, 0, 1)
-    graph.add_edges_by_orbit(
-        src_orbit_ids=[0, 0, 0], dest_orbit_ids=[0, 0, 0],
-        src_orbit_positions=[0, 1, 2], dest_orbit_positions=[3, 4, 5],
-        force=torch.full((3, 1), 2.),
-    )
+    # one seed per direction is enough: each is copied over the whole symmetry
+    add_family(graph, 0, 1)   # along x
+    add_family(graph, 0, 3)   # along y
 
     # the full 3 x 2 grid: 2 edges per row, 1 per column, nothing wrapping in either direction
     assert undirected_edges(graph) == [(0, 1), (0, 3), (1, 2), (1, 4), (2, 5), (3, 4), (4, 5)]
@@ -305,14 +305,14 @@ def test_doubly_nested_translation_is_open_in_both_directions():
     assert level_closes == [False, False]
 
 
-def test_outer_level_edge_freezes_the_inner_level():
+def test_outer_level_edge_reaches_every_inner_position():
 
     graph = build(open_grid())
 
-    # one seed along y reaches only its own column, and does not wrap to the other row
+    # one seed along y reaches all three columns, and does not wrap back to the first row
     add_family(graph, 0, 3)
 
-    assert undirected_edges(graph) == [(0, 3)]
+    assert undirected_edges(graph) == [(0, 3), (1, 4), (2, 5)]
 
 
 def test_translation_validates_its_arguments():
@@ -504,3 +504,192 @@ def test_open_level_inside_a_mirror():
 
     # an open chain of 3 on each side of the mirror
     assert undirected_edges(graph) == [(0, 1), (1, 2), (3, 4), (4, 5)]
+
+
+# --------------------------------------------------------------------------- replicate_levels
+
+def rot_mirror_rot():
+    """A 4-fold rotation (level 0) inside a mirror (level 1) inside a 3-fold rotation (level 2)."""
+    data = StructData()
+    return data.combine_symmetry(
+        data.combine_symmetry(
+            data.create_rotational_symmetry(4),
+            data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.])),
+        ),
+        data.create_rotational_symmetry(3, origin=torch.tensor([5., 0., 0.])),
+    )
+
+
+def seed_with(levels):
+    data = build(rot_mirror_rot())
+    data.add_edges_by_orbit(
+        src_orbit_ids=[0], dest_orbit_ids=[0],
+        src_orbit_positions=[0], dest_orbit_positions=[1],
+        force=torch.tensor([[1.]]), replicate_levels=levels,
+    )
+    return data
+
+
+@pytest.mark.parametrize("levels, expected", [
+    ([True, True, True], 24),     # 4 * 2 * 3
+    ([True, False, True], 12),    # 4 * 3, the mirror frozen between two replicated levels
+    ([True, True, False], 8),     # 4 * 2
+    ([False, True, True], 6),     # 2 * 3
+    ([True, False, False], 4),    # 4
+    ([False, False, False], 1),   # the given edge only
+])
+def test_replicate_levels_selects_the_levels(levels, expected):
+
+    assert len(undirected_edges(seed_with(levels))) == expected
+
+
+def test_replicate_levels_all_true_matches_the_default():
+
+    data = build(rot_mirror_rot())
+    add_family(data, 0, 1)
+
+    assert undirected_edges(seed_with([True, True, True])) == undirected_edges(data)
+
+
+def test_replicate_levels_none_matches_consider_symmetry_false():
+
+    data = build(rot_mirror_rot())
+    data.add_edges_by_orbit(
+        src_orbit_ids=[0], dest_orbit_ids=[0],
+        src_orbit_positions=[0], dest_orbit_positions=[1],
+        force=torch.tensor([[1.]]), consider_symmetry=False,
+    )
+
+    assert undirected_edges(seed_with([False, False, False])) == undirected_edges(data)
+
+
+def test_replicate_levels_keeps_a_frozen_level_on_the_seed_position():
+
+    # the mirror is frozen, so every edge stays on the seed's own side of the mirror plane
+    data = seed_with([True, False, True])
+    positions = data.orbit_position.view(-1)
+
+    for src, dst in undirected_edges(data):
+        assert (int(positions[src]) // 4) % 2 == 0
+        assert (int(positions[dst]) // 4) % 2 == 0
+
+
+def test_replicate_levels_still_respects_the_closing_flag():
+
+    data = StructData()
+    symmetry = data.combine_symmetry(
+        data.create_translation(4, direction=torch.tensor([1., 0., 0.])),
+        data.create_rotational_symmetry(3),
+    )
+    graph = build(symmetry)
+    graph.add_edges_by_orbit(
+        src_orbit_ids=[0], dest_orbit_ids=[0],
+        src_orbit_positions=[0], dest_orbit_positions=[1],
+        force=torch.tensor([[1.]]), replicate_levels=[True, False],
+    )
+
+    # the open array gives 3 steps, not 4, and the frozen rotation keeps them in one sector
+    assert undirected_edges(graph) == [(0, 1), (1, 2), (2, 3)]
+
+
+def test_replicate_levels_applies_to_set_edge_attr():
+
+    data = seed_with([True, False, True])
+
+    mask = torch.zeros(data.num_edges, dtype=torch.bool)
+    mask[0] = True
+    data.set_edge_attr("force", mask, torch.tensor([[9.]]), replicate_levels=[True, False, True])
+
+    assert torch.equal(data.force, torch.full((24, 1), 9.))
+
+
+def test_replicate_levels_validates_its_length():
+
+    data = build(rot_mirror_rot())
+
+    with pytest.raises(ValueError, match="one entry per symmetry level"):
+        data.add_edges_by_orbit(
+            src_orbit_ids=[0], dest_orbit_ids=[0],
+            src_orbit_positions=[0], dest_orbit_positions=[1],
+            force=torch.tensor([[1.]]), replicate_levels=[True, False],
+        )
+
+
+def test_replicate_levels_still_deduplicates():
+
+    # a mirror inside a rotation, replicated on the rotation only: 4 copies, not 8
+    data = StructData()
+    symmetry = data.combine_symmetry(
+        data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.])),
+        data.create_rotational_symmetry(4),
+    )
+    graph = build(symmetry)
+    graph.add_edges_by_orbit(
+        src_orbit_ids=[0], dest_orbit_ids=[0],
+        src_orbit_positions=[0], dest_orbit_positions=[3],
+        force=torch.tensor([[1.]]), replicate_levels=[False, True],
+    )
+
+    assert undirected_edges(graph) == [(0, 3), (1, 6), (2, 5), (4, 7)]
+
+
+def test_set_edge_attr_raises_when_the_full_family_is_absent():
+
+    data = build(rot_mirror_rot())
+    data.add_edges_by_orbit(
+        src_orbit_ids=[0], dest_orbit_ids=[0],
+        src_orbit_positions=[0], dest_orbit_positions=[1],
+        force=torch.zeros(1, 1), replicate_levels=[True, False, True],
+    )
+
+    mask = torch.zeros(data.num_edges, dtype=torch.bool)
+    mask[0] = True
+
+    # the default replicates on every level, but only the frozen family was ever added
+    with pytest.raises(ValueError, match="No edge found for a symmetry copy"):
+        data.set_edge_attr("force", mask, torch.tensor([[9.]]))
+
+
+def test_replicate_levels_rejects_consider_symmetry_false():
+
+    data = build(rot_mirror_rot())
+
+    with pytest.raises(ValueError, match="cannot be combined with consider_symmetry=False"):
+        data.add_edges_by_orbit(
+            src_orbit_ids=[0], dest_orbit_ids=[0],
+            src_orbit_positions=[0], dest_orbit_positions=[1],
+            force=torch.tensor([[1.]]),
+            consider_symmetry=False, replicate_levels=[True, True, True],
+        )
+
+    add_family(data, 0, 1)
+    mask = torch.zeros(data.num_edges, dtype=torch.bool)
+    mask[0] = True
+
+    with pytest.raises(ValueError, match="cannot be combined with consider_symmetry=False"):
+        data.set_edge_attr(
+            "force", mask, torch.tensor([[9.]]),
+            consider_symmetry=False, replicate_levels=[True, True, True],
+        )
+
+
+def test_replicate_levels_rejects_a_graph_without_symmetry():
+
+    data = StructData(
+        node_attrs={"coords": torch.empty((0, 3), dtype=torch.float)},
+        edge_attrs={"force": torch.empty((0, 1), dtype=torch.float)},
+    )
+    data.add_nodes(coords=torch.tensor([[0., 0., 0.], [1., 0., 0.]]))
+
+    with pytest.raises(ValueError, match="no symmetry is registered"):
+        data.add_edges(
+            edge_indices=torch.tensor([[0], [1]]),
+            force=torch.tensor([[1.]]), replicate_levels=[True, True, True],
+        )
+
+    data.add_edges(edge_indices=torch.tensor([[0], [1]]), force=torch.tensor([[1.]]))
+    mask = torch.zeros(data.num_edges, dtype=torch.bool)
+    mask[0] = True
+
+    with pytest.raises(ValueError, match="no symmetry is registered"):
+        data.set_edge_attr("force", mask, torch.tensor([[9.]]), replicate_levels=[True])

@@ -81,9 +81,9 @@ def test_add_edges_with_combined_symmetry():
     # one orbit of 8 nodes: orbit position p is the seed, mirrored if p is odd, then rotated by 90° * (p // 2)
     data.add_nodes(symmetry="d4", coords=torch.tensor([[2., 1., 0.]]))
 
-    # 0 -> 1 differs on the mirror level, so it is copied on both levels; its 8 copies contain every
-    # edge twice, which leaves 4 edges. 0 -> 3 also differs on the rotation level, so it is only
-    # copied on the rotation level.
+    # every edge is copied over the full symmetry. 0 -> 1 differs on the mirror level only, so its
+    # 8 copies contain every edge twice, which leaves 4 edges. 0 -> 3 differs on both levels, and
+    # its 8 copies are all distinct.
     edge_indices = torch.tensor([[0, 0], [1, 3]])
 
     new_edge_attrs = {
@@ -94,10 +94,10 @@ def test_add_edges_with_combined_symmetry():
 
     # each edge family keeps its own force
     edge_index_expected = torch.tensor([
-        [0, 2, 4, 6, 0, 2, 4, 6, 1, 3, 5, 7, 3, 5, 7, 1],
-        [1, 3, 5, 7, 3, 5, 7, 1, 0, 2, 4, 6, 0, 2, 4, 6],
+        [0, 2, 4, 6, 0, 1, 2, 3, 4, 5, 6, 7, 1, 3, 5, 7, 3, 2, 5, 4, 7, 6, 1, 0],
+        [1, 3, 5, 7, 3, 2, 5, 4, 7, 6, 1, 0, 0, 2, 4, 6, 0, 1, 2, 3, 4, 5, 6, 7],
     ])
-    force_expected = torch.tensor([[1.]] * 4 + [[2.]] * 4 + [[1.]] * 4 + [[2.]] * 4)
+    force_expected = torch.tensor([[1.]] * 4 + [[2.]] * 8 + [[1.]] * 4 + [[2.]] * 8)
 
     assert torch.equal(data.edge_index, edge_index_expected)
     assert torch.equal(data.force, force_expected)

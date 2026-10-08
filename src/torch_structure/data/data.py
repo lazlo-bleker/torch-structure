@@ -595,7 +595,7 @@ class StructData(TSMixin, pyg.data.Data):
         return level_sizes, level_closes
 
 
-    def _expand_edge_indices_symmetrically(self, src, dst, group_id):
+    def _expand_edge_indices_symmetrically(self, src, dst, group_id, replicate_levels=None):
     
         orbit_position = self.orbit_position.view(-1)
         src_base = src - orbit_position[src]
@@ -606,9 +606,9 @@ class StructData(TSMixin, pyg.data.Data):
         sizes_t = torch.tensor(level_sizes, dtype=torch.long)
         closes_t = torch.tensor(level_closes, dtype=torch.bool)
 
-        place_full = torch.ones(num_levels, dtype=torch.long)
+        place = torch.ones(num_levels, dtype=torch.long)
         for level in range(1, num_levels):
-            place_full[level] = place_full[level - 1] * level_sizes[level - 1]
+            place[level] = place[level - 1] * level_sizes[level - 1]
 
         def decode_batch(p):
             p = p.clone()
@@ -621,79 +621,71 @@ class StructData(TSMixin, pyg.data.Data):
         src_idx = decode_batch(orbit_position[src])
         dst_idx = decode_batch(orbit_position[dst])
         signed_deltas = dst_idx - src_idx
-        deltas = torch.where(closes_t, signed_deltas % sizes_t, signed_deltas) if num_levels else src_idx
+        deltas = torch.where(closes_t, signed_deltas % sizes_t, signed_deltas) if num_levels else signed_deltas
 
-        diffs = src_idx != dst_idx
-        level_arange = torch.arange(num_levels, dtype=torch.long).unsqueeze(0)
-        max_level = (diffs * level_arange).amax(dim=1) if num_levels else torch.zeros_like(src)
+        if replicate_levels is None:
+            swept = torch.ones(num_levels, dtype=torch.bool)
+        else:
+            swept = torch.as_tensor(replicate_levels, dtype=torch.bool).view(-1)
+            if swept.shape[0] != num_levels:
+                raise ValueError(
+                    f"replicate_levels must have one entry per symmetry level ({num_levels} for "
+                    f"symmetry group {group_id}), got {swept.shape[0]}."
+                )
 
-        src_out, dst_out, seed_edge = [], [], []
+        frozen = ~swept
 
-        for ml in torch.unique(max_level).tolist():
-            bucket = torch.where(max_level == ml)[0]
+        # a frozen level keeps the given edge's own two positions
+        base_src = src_base + (src_idx[:, frozen] * place[frozen]).sum(dim=1)
+        base_dst = dst_base + (dst_idx[:, frozen] * place[frozen]).sum(dim=1)
 
-            frozen_src = src_idx[bucket, :ml]
-            frozen_deltas = deltas[bucket, :ml]
-            frozen_sizes = sizes_t[:ml]
-            frozen_dst = (frozen_src + frozen_deltas) % frozen_sizes if ml else frozen_src
+        swept_sizes = sizes_t[swept]
+        swept_place = place[swept]
+        swept_closes = closes_t[swept]
+        num_swept = swept_sizes.shape[0]
 
-            base_src = src_base[bucket] + (frozen_src * place_full[:ml]).sum(dim=1)
-            base_dst = dst_base[bucket] + (frozen_dst * place_full[:ml]).sum(dim=1)
+        total = int(swept_sizes.prod().item()) if num_swept else 1
+        idx = torch.arange(total)
 
-            swept_sizes = level_sizes[ml:]
-            enc_place = place_full[ml:]
-            num_swept = len(swept_sizes)
+        inner_place = torch.ones(num_swept, dtype=torch.long)
+        for level in range(1, num_swept):
+            inner_place[level] = inner_place[level - 1] * swept_sizes[level - 1]
 
-            total = 1
-            for size in swept_sizes:
-                total *= size
-            idx = torch.arange(total)
+        digits = (idx.unsqueeze(1) // inner_place.unsqueeze(0)) % swept_sizes.unsqueeze(0)
+        src_swept = (digits * swept_place.unsqueeze(0)).sum(dim=1)
 
-            iter_place = torch.ones(num_swept, dtype=torch.long)
-            for level in range(num_swept - 2, -1, -1):
-                iter_place[level] = iter_place[level + 1] * swept_sizes[level + 1]
-            swept_sizes_t = torch.tensor(swept_sizes, dtype=torch.long)
+        raw_dst_digits = digits.unsqueeze(0) + deltas[:, swept].unsqueeze(1)
+        dst_digits = raw_dst_digits % swept_sizes.view(1, 1, -1)
+        dst_swept = (dst_digits * swept_place.view(1, 1, -1)).sum(dim=2)
 
-            digits = (idx.unsqueeze(1) // iter_place.unsqueeze(0)) % swept_sizes_t.unsqueeze(0)
-            src_swept = (digits * enc_place.unsqueeze(0)).sum(dim=1)
+        in_level = (raw_dst_digits >= 0) & (raw_dst_digits < swept_sizes.view(1, 1, -1))
+        exists = (in_level | swept_closes.view(1, 1, -1)).all(dim=2)
 
-            swept_deltas = deltas[bucket, ml:]
-            raw_dst_digits = digits.unsqueeze(0) + swept_deltas.unsqueeze(1)
-            dst_digits = raw_dst_digits % swept_sizes_t.view(1, 1, -1)
-            dst_swept = (dst_digits * enc_place.view(1, 1, -1)).sum(dim=2)
+        src_all = base_src.unsqueeze(1) + src_swept.unsqueeze(0)
+        dst_all = base_dst.unsqueeze(1) + dst_swept
 
-            swept_closes = closes_t[ml:].view(1, 1, -1)
-            in_level = (raw_dst_digits >= 0) & (raw_dst_digits < swept_sizes_t.view(1, 1, -1))
-            exists = (in_level | swept_closes).all(dim=2)
+        pair_min = torch.minimum(src_all, dst_all)
+        pair_max = torch.maximum(src_all, dst_all)
+        keys = pair_min * self.num_nodes + pair_max
+        keys = torch.where(exists, keys, -1 - idx.unsqueeze(0))
 
-            src_all = base_src.unsqueeze(1) + src_swept.unsqueeze(0)
-            dst_all = base_dst.unsqueeze(1) + dst_swept
+        order = torch.argsort(keys, dim=-1, stable=True)
+        sorted_keys = torch.gather(keys, 1, order)
+        first_in_group = torch.cat(
+            [torch.ones(sorted_keys.shape[0], 1, dtype=torch.bool), sorted_keys[:, 1:] != sorted_keys[:, :-1]],
+            dim=1,
+        )
+        keep = torch.zeros_like(keys, dtype=torch.bool)
+        keep.scatter_(1, order, first_in_group)
+        keep &= exists
 
-            pair_min = torch.minimum(src_all, dst_all)
-            pair_max = torch.maximum(src_all, dst_all)
-            keys = pair_min * self.num_nodes + pair_max
-            keys = torch.where(exists, keys, -1 - torch.arange(keys.shape[1]))
+        # index of the input edge each copy was made from
+        seed_edge = torch.arange(src.shape[0]).unsqueeze(1).expand_as(keep)[keep]
 
-            order = torch.argsort(keys, dim=-1, stable=True)
-            sorted_keys = torch.gather(keys, 1, order)
-            first_in_group = torch.cat(
-                [torch.ones(sorted_keys.shape[0], 1, dtype=torch.bool), sorted_keys[:, 1:] != sorted_keys[:, :-1]],
-                dim=1,
-            )
-            keep = torch.zeros_like(keys, dtype=torch.bool)
-            keep.scatter_(1, order, first_in_group)
-            keep &= exists
-
-            src_out.append(src_all[keep])
-            dst_out.append(dst_all[keep])
-            # index of the input edge each copy was made from; the copies are grouped by level,
-            # not in input order
-            seed_edge.append(bucket.unsqueeze(1).expand_as(keep)[keep])
-
-        return torch.cat(src_out), torch.cat(dst_out), torch.cat(seed_edge)
+        return src_all[keep], dst_all[keep], seed_edge
     
 
-    def _expand_edges_symmetrically(self, edge_indices, kwargs):
+    def _expand_edges_symmetrically(self, edge_indices, kwargs, replicate_levels=None):
 
         src, dst = edge_indices[0], edge_indices[1]
 
@@ -726,7 +718,7 @@ class StructData(TSMixin, pyg.data.Data):
             group_edge_idx = sym_idx[sym_group_ids == group_id]
 
             src_orbits, dst_orbits, seed_edge = self._expand_edge_indices_symmetrically(
-                src[group_edge_idx], dst[group_edge_idx], group_id
+                src[group_edge_idx], dst[group_edge_idx], group_id, replicate_levels
             )
             src_expanded.append(src_orbits)
             dst_expanded.append(dst_orbits)
@@ -741,7 +733,7 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     @requires_metadata
-    def add_edges(self, edge_indices, consider_symmetry: bool = True, **kwargs):
+    def add_edges(self, edge_indices, consider_symmetry: bool = True, replicate_levels = None, **kwargs):
         """
         Adds new edges with the given attribute values.
 
@@ -750,18 +742,23 @@ class StructData(TSMixin, pyg.data.Data):
                 indices for each of the ``E`` edges to add. Shape [2, E]. All indices must refer to
                 existing nodes.
             consider_symmetry (bool): if ``True`` (default) and the graph has a registered
-                symmetry, each edge together with its attributes is copied according to the 
-                symmetry of its source and destination nodes. For a combined symmetry, an 
-                edge is only copied on the symmetry levels upwards from the highest level 
-                their two endpoints do not have in common. E.g. in the case of a mirrored 
-                rotation, an edge between two nodes on different sides of the mirror is only 
-                reflected over to the other side, but an edge between two nodes on the same 
-                side of the mirror is rotated n-times and n-times rotary reflected. On a level that
-                does not close (see ``create_translation`` and the ``closes`` argument of
-                ``create_rotational_symmetry``), the copy that would run from the last position of
-                that level back to the first is left out, so an open level yields one copy less than
-                a closing one. The given edge itself is always added. If ``False``, only the given
-                edges are added.
+                symmetry, each edge together with its attributes is copied over the whole
+                symmetry of its source and destination nodes: every element of the symmetry is
+                applied to both endpoints, on every level at once. Copies that land on an edge
+                already produced are added only once, so in a mirrored rotation an edge joining a
+                node to its own mirror image gives one edge per rotational position rather than
+                two. On a level that does not close (see ``create_translation`` and the ``closes``
+                argument of ``create_rotational_symmetry``), the copy that would run from the last
+                position of that level back to the first is left out, so an open level yields one
+                copy less than a closing one. The given edge itself is always added. If ``False``,
+                only the given edges are added.
+            replicate_levels (list[bool], optional): one entry per nesting level of the
+                symmetry, innermost first, selecting the levels each edge is replicated on. A
+                level left out keeps the given edge's own two positions on that level, so no
+                copies are made along it. Any subset works, so a level can be frozen between two
+                replicated ones. Defaults to ``None``, which replicates on every level. This
+                argument must match between ``add_edges`` and ``set_edge_attr`` for the same edge
+                family, since it decides which edges count as copies of each other.
             **kwargs (dict[str, torch.Tensor]): mapping of registered edge attribute
                 names to tensors. The first dimension of each tensor must equal ``E``.
                 Attributes omitted from ``kwargs`` are initialized to their default
@@ -771,6 +768,8 @@ class StructData(TSMixin, pyg.data.Data):
             ValueError: if any index in ``edge_indices`` is out of range.
             ValueError: if any provided attribute name is not a registered edge
                 attribute.
+            ValueError: if ``replicate_levels`` is given together with ``consider_symmetry=False``,
+                or when no symmetry is registered.
             ValueError: if ``consider_symmetry`` is ``True`` and an edge connects nodes
                 from two different registered symmetries.
             ValueError: if an edge already exists, in either direction.
@@ -790,8 +789,22 @@ class StructData(TSMixin, pyg.data.Data):
                 f"Unexpected edge attributes: {unexpected_attrs}. Expected: {list(self.metadata['edge_attr_list'])}"
             )
 
+        if replicate_levels is not None:
+            if not consider_symmetry:
+                raise ValueError(
+                    "replicate_levels selects the symmetry levels each edge is replicated on, so "
+                    "it cannot be combined with consider_symmetry=False, which replicates on none "
+                    "of them."
+                )
+
+            if not hasattr(self, "symmetry_id"):
+                raise ValueError(
+                    "replicate_levels was given, but no symmetry is registered. Register one with "
+                    "add_symmetry() first."
+                )
+
         if consider_symmetry and hasattr(self, "symmetry_id"):
-            edge_indices, kwargs = self._expand_edges_symmetrically(edge_indices, kwargs)
+            edge_indices, kwargs = self._expand_edges_symmetrically(edge_indices, kwargs, replicate_levels)
 
         # every edge may exist only once, in either direction; u -> v and v -> u get the same key
         def undirected_keys(edges):
@@ -868,7 +881,7 @@ class StructData(TSMixin, pyg.data.Data):
             raise ValueError(f"No node found for (orbit_id, orbit_position) pairs at query index {bad}.")
         return indices
 
-    def add_edges_by_orbit(self, src_orbit_ids, dest_orbit_ids, src_orbit_positions, dest_orbit_positions, consider_symmetry: bool = True, **kwargs):
+    def add_edges_by_orbit(self, src_orbit_ids, dest_orbit_ids, src_orbit_positions, dest_orbit_positions, consider_symmetry: bool = True, replicate_levels = None, **kwargs):
         """
         Resolves ``(orbit_id, orbit_position)`` pairs to node indices, then calls
         ``add_edges``.
@@ -879,6 +892,7 @@ class StructData(TSMixin, pyg.data.Data):
             src_orbit_positions (list[int]): position in the orbit for each new edge's source.
             dest_orbit_positions (list[int]): position in the orbit for each new edge's destination.
             consider_symmetry (bool): see ``add_edges``.
+            replicate_levels (list[bool], optional): see ``add_edges``.
             **kwargs (dict[str, torch.Tensor]): see ``add_edges``.
 
         Raises:
@@ -891,7 +905,7 @@ class StructData(TSMixin, pyg.data.Data):
         dest_indices = self._node_indices_from_orbit(lookup, dest_orbit_ids, dest_orbit_positions)
         edge_indices = torch.stack([src_indices, dest_indices], dim=0)
 
-        self.add_edges(edge_indices=edge_indices, consider_symmetry=consider_symmetry, **kwargs)
+        self.add_edges(edge_indices=edge_indices, consider_symmetry=consider_symmetry, replicate_levels=replicate_levels, **kwargs)
 
 
     def delete_edges(self, mask: torch.Tensor):
@@ -1857,7 +1871,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         return sort_idx[pos]
 
-    def set_edge_attr_by_orbit(self, attr: str, src_orbit_ids: list, dest_orbit_ids: list, src_orbit_positions: list, dest_orbit_positions: list, value: torch.Tensor, consider_symmetry: bool = True):
+    def set_edge_attr_by_orbit(self, attr: str, src_orbit_ids: list, dest_orbit_ids: list, src_orbit_positions: list, dest_orbit_positions: list, value: torch.Tensor, consider_symmetry: bool = True, replicate_levels = None):
         """
         Resolves the ``(orbit_id, orbit_position)`` pairs of each edge's endpoints to edge
         indices, then calls ``set_edge_attr``.
@@ -1870,6 +1884,7 @@ class StructData(TSMixin, pyg.data.Data):
             dest_orbit_positions (list[int]): position in the orbit for each edge's destination as given by ``add_nodes``.
             value (torch.Tensor): one row per entry in ``src_orbit_ids``/``dest_orbit_ids``.
             consider_symmetry (bool): see ``set_edge_attr``.
+            replicate_levels (list[bool], optional): see ``set_edge_attr``.
 
         Raises:
             AttributeError: if no symmetry is registered.
@@ -1883,7 +1898,7 @@ class StructData(TSMixin, pyg.data.Data):
         edges = self._edge_indices_for_pairs(src_indices, dest_indices)
         mask, value = self._mask_and_reorder(edges, value, self.edge_index.shape[1])
 
-        self.set_edge_attr(attr, mask, value, consider_symmetry)
+        self.set_edge_attr(attr, mask, value, consider_symmetry, replicate_levels)
 
 
     def _modify_edge_attr_and_reciprocal(self, attr: str, edge_index: torch.Tensor, value: torch.Tensor):
@@ -1903,6 +1918,7 @@ class StructData(TSMixin, pyg.data.Data):
         mask: torch.Tensor,
         value: torch.Tensor,
         consider_symmetry: bool = True,
+        replicate_levels = None,
     ):
         """
         Sets an edge attribute for the edges selected by ``mask``.
@@ -1918,6 +1934,13 @@ class StructData(TSMixin, pyg.data.Data):
                 of its edge family, i.e. to exactly the same copies that ``add_edges`` creates
                 for it, so a level that does not close is left open here too. If ``False``,
                 only the selected edges (and their reciprocal edges) are updated.
+            replicate_levels (list[bool], optional): one entry per nesting level of the
+                symmetry, innermost first, selecting the levels each edge is replicated on. A
+                level left out keeps the given edge's own two positions on that level, so no
+                copies are made along it. Any subset works, so a level can be frozen between two
+                replicated ones. Defaults to ``None``, which replicates on every level. This
+                argument must match between ``add_edges`` and ``set_edge_attr`` for the same edge
+                family, since it decides which edges count as copies of each other.
 
         Raises:
             ValueError: if ``attr`` is not a registered edge attribute.
@@ -1925,6 +1948,8 @@ class StructData(TSMixin, pyg.data.Data):
             ValueError: if ``value`` does not have one row per ``True`` entry in ``mask``.
             ValueError: if ``mask`` selects both the forward and reciprocal row of the
                 same edge.
+            ValueError: if ``replicate_levels`` is given together with ``consider_symmetry=False``,
+                or when no symmetry is registered.
             ValueError: if ``consider_symmetry`` is ``True`` and a selected edge connects
                 nodes from two different registered symmetries.
             ValueError: if ``consider_symmetry`` is ``True`` and ``attr`` is not registered
@@ -1959,6 +1984,20 @@ class StructData(TSMixin, pyg.data.Data):
             raise ValueError(
                 f"mask selects both the forward and reciprocal row of the same edge(s): {bad_pairs}."
             )
+
+        if replicate_levels is not None:
+            if not consider_symmetry:
+                raise ValueError(
+                    "replicate_levels selects the symmetry levels each edge is replicated on, so "
+                    "it cannot be combined with consider_symmetry=False, which replicates on none "
+                    "of them."
+                )
+
+            if not hasattr(self, "symmetry_id"):
+                raise ValueError(
+                    "replicate_levels was given, but no symmetry is registered. Register one with "
+                    "add_symmetry() first."
+                )
 
         if not consider_symmetry or not hasattr(self, "symmetry_id"):
             self._modify_edge_attr_and_reciprocal(attr, edges, value)
@@ -1998,7 +2037,7 @@ class StructData(TSMixin, pyg.data.Data):
             group_idx = torch.where(src_group == group_id)[0]
 
             sib_src, sib_dst, seed_edge = self._expand_edge_indices_symmetrically(
-                src[group_idx], dst[group_idx], group_id
+                src[group_idx], dst[group_idx], group_id, replicate_levels
             )
             sib_value = tracked_value[group_idx][seed_edge]
 
