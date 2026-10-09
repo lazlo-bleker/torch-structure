@@ -8,7 +8,7 @@ node_attrs = {
     "load": torch.empty((0, 3), dtype=torch.float),
 }
 edge_attrs = {"force": torch.empty((0), dtype=torch.long)}
-default_attrs = {"load": 10 * torch.ones((1, 3), dtype=torch.float)}
+default_attrs = {"load": 10 * torch.ones(3, dtype=torch.float)}
 data = StructData(
     node_attrs=node_attrs, edge_attrs=edge_attrs, default_attrs=default_attrs
 )

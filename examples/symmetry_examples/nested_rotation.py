@@ -26,11 +26,11 @@ coords = torch.cat([ones, zeros, height], dim=1)
 headcoord = torch.tensor([[0.0, 0.0, m + .5]])
 
 
-data.add_nodes(symmetry="rotational_symmetry", coords=coords)
-data.add_nodes(symmetry="rotational_symmetry_s", coords=headcoord)
+data.add_nodes_symmetrical(symmetry="rotational_symmetry", coords=coords)
+data.add_nodes_symmetrical(symmetry="rotational_symmetry_s", coords=headcoord)
 
 #rings
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=torch.arange(m),
     dest_orbit_ids=torch.arange(m),
     src_orbit_positions=torch.zeros(m, dtype=torch.long),
@@ -39,7 +39,7 @@ data.add_edges_by_orbit(
 )
 
 #normals
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=torch.arange(m - 1),
     dest_orbit_ids=torch.arange(1, m),
     src_orbit_positions=torch.zeros(m -1, dtype=torch.long),

@@ -19,16 +19,16 @@ def build_structure(symmetric_nodes=True):
 
     if symmetric_nodes:
         # orbit 0 (nodes 0-3) and orbit 1 (nodes 4-7)
-        data.add_nodes(symmetry="rot4", coords=torch.tensor([[1., 0., 0.], [2., 0., 0.]]))
+        data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.], [2., 0., 0.]]))
 
         # radial edges: rows 0-3 (0 -> 4, 1 -> 5, 2 -> 6, 3 -> 7), ring edges: rows 4-7 (0 -> 1, 1 -> 2, 2 -> 3,
         # 3 -> 0), reciprocal rows 8-15
-        data.add_edges(edge_indices=torch.tensor([[0, 0], [4, 1]]), force=torch.tensor([[3.], [-1.]]))
+        data.add_edges_symmetrical(edge_indices=torch.tensor([[0, 0], [4, 1]]), force=torch.tensor([[3.], [-1.]]))
 
     return data
 
 
-def test_set_edge_attr_by_orbit_propagates():
+def test_set_edge_attr_by_orbit_symmetrical_propagates():
 
     data = build_structure()
 
@@ -36,7 +36,7 @@ def test_set_edge_attr_by_orbit_propagates():
     data.add_nodes(coords=torch.tensor([[0., 0., 3.]]))
 
     # the radial edge from orbit 0, position 3 to orbit 1, position 3
-    data.set_edge_attr_by_orbit(
+    data.set_edge_attr_by_orbit_symmetrical(
         "force", src_orbit_ids=[0], dest_orbit_ids=[1], src_orbit_positions=[3], dest_orbit_positions=[3],
         value=torch.tensor([[6.]]),
     )
@@ -52,10 +52,10 @@ def test_set_edge_attr_by_orbit_reversed_direction_and_without_symmetry():
     data = build_structure()
 
     # orbit 1, position 1 -> orbit 0, position 1 is the reciprocal row of the radial edge 1 -> 5
-    data.set_edge_attr_by_orbit("force", [1], [0], [1], [1], torch.tensor([[7.]]))
+    data.set_edge_attr_by_orbit_symmetrical("force", [1], [0], [1], [1], torch.tensor([[7.]]))
 
-    # with consider_symmetry=False only the ring edge 0 -> 1 (row 4) and its reciprocal row change
-    data.set_edge_attr_by_orbit("force", [0], [0], [0], [1], torch.tensor([[4.]]), consider_symmetry=False)
+    # set_edge_attr_by_orbit only changes the ring edge 0 -> 1 (row 4) and its reciprocal row
+    data.set_edge_attr_by_orbit("force", [0], [0], [0], [1], torch.tensor([[4.]]))
 
     force_expected = torch.tensor(
         [[7.]] * 4 + [[4.], [-1.], [-1.], [-1.]] + [[7.]] * 4 + [[4.], [-1.], [-1.], [-1.]]
@@ -64,17 +64,33 @@ def test_set_edge_attr_by_orbit_reversed_direction_and_without_symmetry():
     assert torch.equal(data.force, force_expected)
 
 
-def test_set_edge_attr_by_orbit_invalid_input():
+def test_set_edge_attr_by_orbit_symmetrical_with_replicate_levels():
+
+    data = build_structure()
+
+    # rot4 has a single level: frozen, only the radial edge 3 -> 7 (row 3) and its reciprocal row change
+    data.set_edge_attr_by_orbit_symmetrical(
+        "force", src_orbit_ids=[0], dest_orbit_ids=[1], src_orbit_positions=[3], dest_orbit_positions=[3],
+        value=torch.tensor([[6.]]), replicate_levels=[False],
+    )
+
+    force_expected = torch.tensor([[3.]] * 3 + [[6.]] + [[-1.]] * 4 + [[3.]] * 3 + [[6.]] + [[-1.]] * 4)
+
+    assert torch.equal(data.force, force_expected)
+
+
+@pytest.mark.parametrize("method", ["set_edge_attr_by_orbit", "set_edge_attr_by_orbit_symmetrical"])
+def test_set_edge_attr_by_orbit_invalid_input(method):
 
     data = build_structure()
 
     # orbit 0, position 0 (node 0) and orbit 1, position 2 (node 6) are not connected
     with pytest.raises(ValueError, match="No edge found"):
-        data.set_edge_attr_by_orbit("force", [0], [1], [0], [2], torch.tensor([[1.]]))
+        getattr(data, method)("force", [0], [1], [0], [2], torch.tensor([[1.]]))
 
     # orbit 3 does not exist
     with pytest.raises(ValueError, match="No node found"):
-        data.set_edge_attr_by_orbit("force", [3], [1], [0], [0], torch.tensor([[1.]]))
+        getattr(data, method)("force", [3], [1], [0], [0], torch.tensor([[1.]]))
 
     # a symmetry is registered, but no node belongs to an orbit
     data = build_structure(symmetric_nodes=False)
@@ -82,4 +98,4 @@ def test_set_edge_attr_by_orbit_invalid_input():
     data.add_edges(edge_indices=torch.tensor([[0], [1]]), force=torch.tensor([[1.]]))
 
     with pytest.raises(ValueError, match="No node found"):
-        data.set_edge_attr_by_orbit("force", [0], [0], [0], [1], torch.tensor([[1.]]))
+        getattr(data, method)("force", [0], [0], [0], [1], torch.tensor([[1.]]))

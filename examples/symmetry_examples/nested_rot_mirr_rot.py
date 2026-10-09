@@ -27,35 +27,27 @@ data.add_symmetry({"nested": nested_symmetry}, copy_attrs=["force"])
 data.view_symmetries()
 
 #one seed node, copied to n_corners * 2 * n_sectors positions
-data.add_nodes(symmetry="nested", coords=torch.tensor([[1.0, 0.0, 1.0]]))
+data.add_nodes_symmetrical(symmetry="nested", coords=torch.tensor([[1.0, 0.0, 1.0]]))
 
 #level 0: the sides of each square
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[1],
     force=torch.full((1, 1), 1.0),
 )
 
 #level 1: each corner to its own mirror image, so 4 uprights per box
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[n_corners],
     force=torch.full((1, 1), 2.0),
 )
 
 #level 2: each corner to the matching corner of the next box
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[2 * n_corners],
     force=torch.full((1, 1), 3.0),
-    replicate_levels=[False, True, False],
-)
-
-data.add_edges_by_orbit(
-    src_orbit_ids=[0], dest_orbit_ids=[0],
-    src_orbit_positions=[0], dest_orbit_positions=[2 * n_corners],
-    force=torch.full((1, 1), 3.0),
-    replicate_levels=[False, True, False],
 )
 
 print(f"nodes: {data.num_nodes}, undirected edges: {data.num_edges // 2}")

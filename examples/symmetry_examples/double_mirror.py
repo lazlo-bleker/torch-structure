@@ -19,11 +19,11 @@ double_mirror = data.combine_symmetry(mirror1, mirror2)
 data.add_symmetry({"mirrored_square": double_mirror}, copy_attrs=["force"])
 data.view_symmetries()
 
-data.add_nodes(symmetry="mirrored_square", coords=torch.tensor([[1.0, 1.0, 0.0]]))
+data.add_nodes_symmetrical(symmetry="mirrored_square", coords=torch.tensor([[1.0, 1.0, 0.0]]))
 
 
 
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[2],
     force=torch.full((1, 1), 1.0),

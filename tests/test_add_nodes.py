@@ -41,7 +41,7 @@ def test_add_nodes_with_rotational_symmetry():
         "load": torch.tensor([[0., 0., -1.], [0., 0., -2.]]),
     }
 
-    data.add_nodes(names=["A", "B"], symmetry="rot4", **new_node_attrs)
+    data.add_nodes_symmetrical(names=["A", "B"], symmetry="rot4", **new_node_attrs)
 
     # each seed becomes an orbit of 4 nodes, stored one after the other and ordered by orbit position;
     # coords are rotated per orbit position, load is copied
@@ -78,7 +78,7 @@ def test_add_nodes_with_combined_symmetry():
     rotation = data.create_rotational_symmetry(4)
     data.add_symmetry({"d4": data.combine_symmetry(mirror, rotation)})
 
-    data.add_nodes(symmetry="d4", coords=torch.tensor([[2., 1., 0.], [3., 1., 5.]]))
+    data.add_nodes_symmetrical(symmetry="d4", coords=torch.tensor([[2., 1., 0.], [3., 1., 5.]]))
 
     # orbit position p is the seed, mirrored if p is odd, then rotated by 90° * (p // 2)
     num_nodes_expected = 16
@@ -108,9 +108,9 @@ def test_add_nodes_with_and_without_symmetry():
     data.add_symmetry({"mirror": data.create_mirror_symmetry()})
 
     data.add_nodes(coords=torch.tensor([[0., 0., 0.], [0., 0., 1.]]))
-    data.add_nodes(symmetry="mirror", coords=torch.tensor([[1., 0., 0.]]))
+    data.add_nodes_symmetrical(symmetry="mirror", coords=torch.tensor([[1., 0., 0.]]))
     data.add_nodes(coords=torch.tensor([[0., 0., 2.]]))
-    data.add_nodes(symmetry="mirror", coords=torch.tensor([[2., 0., 0.]]))
+    data.add_nodes_symmetrical(symmetry="mirror", coords=torch.tensor([[2., 0., 0.]]))
 
     # nodes added without a symmetry get -1; orbit ids continue across the additions
     num_nodes_expected = 7
@@ -128,7 +128,55 @@ def test_add_nodes_with_and_without_symmetry():
     assert torch.equal(data.symmetry_id, symmetry_id_expected)
 
     with pytest.raises(ValueError, match="not registered"):
-        data.add_nodes(symmetry="rot4", coords=torch.tensor([[1., 0., 0.]]))
+        data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.]]))
 
 
+def test_add_nodes_symmetrical_without_symmetry():
 
+    node_attrs = {
+        "coords": torch.empty((0, 3), dtype=torch.float),
+    }
+
+    data = StructData(node_attrs=node_attrs)
+
+    with pytest.raises(ValueError, match="not registered"):
+        data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.]]))
+
+    assert data.num_nodes == 0
+
+
+def test_add_nodes_rejects_symmetry_bookkeeping():
+
+    node_attrs = {
+        "coords": torch.empty((0, 3), dtype=torch.float),
+    }
+
+    data = StructData(node_attrs=node_attrs)
+
+    # without a registered symmetry the bookkeeping attributes do not exist
+    with pytest.raises(ValueError, match="Unexpected node attributes"):
+        data.add_nodes(coords=torch.tensor([[0., 0., 5.]]), orbit_id=torch.tensor([[0]]))
+
+    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)})
+
+    # orbit 0 (nodes 0-3)
+    data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.]]))
+
+    # a node added without a symmetry cannot claim a position in orbit 0
+    with pytest.raises(ValueError, match="symmetry bookkeeping"):
+        data.add_nodes(
+            coords=torch.tensor([[0., 0., 5.]]),
+            orbit_id=torch.tensor([[0]]),
+            orbit_position=torch.tensor([[0]]),
+            symmetry_id=torch.tensor([[0]]),
+        )
+
+    # add_nodes_symmetrical sets the bookkeeping itself
+    with pytest.raises(ValueError, match="symmetry bookkeeping"):
+        data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[2., 0., 0.]]), orbit_id=torch.tensor([[5]]))
+
+    # the failed calls left the graph unchanged
+    assert data.num_nodes == 4
+    assert data.coords.shape == (4, 3)
+    assert torch.equal(data.orbit_id, torch.zeros((4, 1), dtype=torch.long))
+    assert torch.equal(data.orbit_position, torch.arange(4).unsqueeze(1))

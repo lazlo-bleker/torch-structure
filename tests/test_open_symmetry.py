@@ -12,7 +12,7 @@ def build(symmetry, n_seeds=1):
     data.add_symmetry({"s": symmetry}, copy_attrs=["force"])
 
     coords = torch.tensor([[1., 0., 0.], [2., 0., 0.], [3., 0., 0.]])[:n_seeds]
-    data.add_nodes(symmetry="s", coords=coords)
+    data.add_nodes_symmetrical(symmetry="s", coords=coords)
     return data
 
 
@@ -27,7 +27,7 @@ def undirected_edges(data):
 
 
 def add_family(data, src_position, dest_position, orbit=0, force=1.0):
-    data.add_edges_by_orbit(
+    data.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[orbit], dest_orbit_ids=[orbit],
         src_orbit_positions=[src_position], dest_orbit_positions=[dest_position],
         force=torch.tensor([[force]]),
@@ -88,7 +88,7 @@ def test_open_rotation_with_two_orbits():
     data = build(StructData().create_rotational_symmetry(3, closes=False), n_seeds=2)
 
     # orbit 0 is nodes 0-2, orbit 1 is nodes 3-5
-    data.add_edges_by_orbit(
+    data.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[1],
         src_orbit_positions=[0], dest_orbit_positions=[1],
         force=torch.tensor([[1.]]),
@@ -448,25 +448,25 @@ def test_scaling_must_be_a_tensor():
 
 # --------------------------------------------------------------------------- setters see the same family
 
-def test_set_edge_attr_follows_the_open_family():
+def test_set_edge_attr_symmetrical_follows_the_open_family():
 
     data = build(StructData().create_rotational_symmetry(4, closes=False))
     add_family(data, 0, 1, force=1.0)
 
     mask = torch.zeros(data.num_edges, dtype=torch.bool)
     mask[0] = True
-    data.set_edge_attr("force", mask, torch.tensor([[7.]]))
+    data.set_edge_attr_symmetrical("force", mask, torch.tensor([[7.]]))
 
     # all three edges of the open family are updated, both directions each
     assert torch.equal(data.force, torch.full((6, 1), 7.))
 
 
-def test_set_edge_attr_by_orbit_follows_the_open_family():
+def test_set_edge_attr_by_orbit_symmetrical_follows_the_open_family():
 
     data = build(StructData().create_rotational_symmetry(4, closes=False))
     add_family(data, 0, 1, force=1.0)
 
-    data.set_edge_attr_by_orbit(
+    data.set_edge_attr_by_orbit_symmetrical(
         "force",
         src_orbit_ids=[0], dest_orbit_ids=[0],
         src_orbit_positions=[1], dest_orbit_positions=[2],
@@ -522,7 +522,7 @@ def rot_mirror_rot():
 
 def seed_with(levels):
     data = build(rot_mirror_rot())
-    data.add_edges_by_orbit(
+    data.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[0],
         src_orbit_positions=[0], dest_orbit_positions=[1],
         force=torch.tensor([[1.]]), replicate_levels=levels,
@@ -551,13 +551,13 @@ def test_replicate_levels_all_true_matches_the_default():
     assert undirected_edges(seed_with([True, True, True])) == undirected_edges(data)
 
 
-def test_replicate_levels_none_matches_consider_symmetry_false():
+def test_replicate_levels_none_matches_add_edges_by_orbit():
 
     data = build(rot_mirror_rot())
     data.add_edges_by_orbit(
         src_orbit_ids=[0], dest_orbit_ids=[0],
         src_orbit_positions=[0], dest_orbit_positions=[1],
-        force=torch.tensor([[1.]]), consider_symmetry=False,
+        force=torch.tensor([[1.]]),
     )
 
     assert undirected_edges(seed_with([False, False, False])) == undirected_edges(data)
@@ -582,7 +582,7 @@ def test_replicate_levels_still_respects_the_closing_flag():
         data.create_rotational_symmetry(3),
     )
     graph = build(symmetry)
-    graph.add_edges_by_orbit(
+    graph.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[0],
         src_orbit_positions=[0], dest_orbit_positions=[1],
         force=torch.tensor([[1.]]), replicate_levels=[True, False],
@@ -592,13 +592,13 @@ def test_replicate_levels_still_respects_the_closing_flag():
     assert undirected_edges(graph) == [(0, 1), (1, 2), (2, 3)]
 
 
-def test_replicate_levels_applies_to_set_edge_attr():
+def test_replicate_levels_applies_to_set_edge_attr_symmetrical():
 
     data = seed_with([True, False, True])
 
     mask = torch.zeros(data.num_edges, dtype=torch.bool)
     mask[0] = True
-    data.set_edge_attr("force", mask, torch.tensor([[9.]]), replicate_levels=[True, False, True])
+    data.set_edge_attr_symmetrical("force", mask, torch.tensor([[9.]]), replicate_levels=[True, False, True])
 
     assert torch.equal(data.force, torch.full((24, 1), 9.))
 
@@ -608,7 +608,7 @@ def test_replicate_levels_validates_its_length():
     data = build(rot_mirror_rot())
 
     with pytest.raises(ValueError, match="one entry per symmetry level"):
-        data.add_edges_by_orbit(
+        data.add_edges_by_orbit_symmetrical(
             src_orbit_ids=[0], dest_orbit_ids=[0],
             src_orbit_positions=[0], dest_orbit_positions=[1],
             force=torch.tensor([[1.]]), replicate_levels=[True, False],
@@ -624,7 +624,7 @@ def test_replicate_levels_still_deduplicates():
         data.create_rotational_symmetry(4),
     )
     graph = build(symmetry)
-    graph.add_edges_by_orbit(
+    graph.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[0],
         src_orbit_positions=[0], dest_orbit_positions=[3],
         force=torch.tensor([[1.]]), replicate_levels=[False, True],
@@ -633,10 +633,10 @@ def test_replicate_levels_still_deduplicates():
     assert undirected_edges(graph) == [(0, 3), (1, 6), (2, 5), (4, 7)]
 
 
-def test_set_edge_attr_raises_when_the_full_family_is_absent():
+def test_set_edge_attr_symmetrical_raises_when_the_full_family_is_absent():
 
     data = build(rot_mirror_rot())
-    data.add_edges_by_orbit(
+    data.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[0],
         src_orbit_positions=[0], dest_orbit_positions=[1],
         force=torch.zeros(1, 1), replicate_levels=[True, False, True],
@@ -647,30 +647,58 @@ def test_set_edge_attr_raises_when_the_full_family_is_absent():
 
     # the default replicates on every level, but only the frozen family was ever added
     with pytest.raises(ValueError, match="No edge found for a symmetry copy"):
-        data.set_edge_attr("force", mask, torch.tensor([[9.]]))
+        data.set_edge_attr_symmetrical("force", mask, torch.tensor([[9.]]))
 
 
-def test_replicate_levels_rejects_consider_symmetry_false():
+def test_replicate_levels_rejects_edges_of_several_symmetries():
 
-    data = build(rot_mirror_rot())
+    data = StructData(
+        node_attrs={"coords": torch.empty((0, 3), dtype=torch.float)},
+        edge_attrs={"force": torch.empty((0, 1), dtype=torch.float)},
+    )
 
-    with pytest.raises(ValueError, match="cannot be combined with consider_symmetry=False"):
-        data.add_edges_by_orbit(
-            src_orbit_ids=[0], dest_orbit_ids=[0],
-            src_orbit_positions=[0], dest_orbit_positions=[1],
-            force=torch.tensor([[1.]]),
-            consider_symmetry=False, replicate_levels=[True, True, True],
+    # two symmetries with two levels each, so the same replicate_levels list fits both of them
+    rotated_box = data.combine_symmetry(
+        data.create_rotational_symmetry(4),
+        data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.])),
+    )
+    grid = data.combine_symmetry(
+        data.create_translation(3, torch.tensor([1., 0., 0.])),
+        data.create_translation(2, torch.tensor([0., 1., 0.])),
+    )
+    data.add_symmetry({"rotated_box": rotated_box, "grid": grid}, copy_attrs=["force"])
+
+    # nodes 0-7: the rotated box, nodes 8-13: the grid
+    data.add_nodes_symmetrical(symmetry="rotated_box", coords=torch.tensor([[1., 0., 1.]]))
+    data.add_nodes_symmetrical(symmetry="grid", coords=torch.tensor([[10., 0., 0.]]))
+
+    with pytest.raises(ValueError, match="several registered symmetries"):
+        data.add_edges_symmetrical(
+            edge_indices=torch.tensor([[0, 8], [1, 9]]),
+            force=torch.tensor([[1.], [2.]]), replicate_levels=[True, False],
         )
 
-    add_family(data, 0, 1)
+    # one call per symmetry: the box's square on the top side only (rows 0-3), the grid's first
+    # row along x only (rows 8-9)
+    data.add_edges_symmetrical(
+        edge_indices=torch.tensor([[0], [1]]), force=torch.tensor([[1.]]), replicate_levels=[True, False],
+    )
+    data.add_edges_symmetrical(
+        edge_indices=torch.tensor([[8], [9]]), force=torch.tensor([[2.]]), replicate_levels=[True, False],
+    )
+
+    assert undirected_edges(data) == [(0, 1), (0, 3), (1, 2), (2, 3), (8, 9), (9, 10)]
+
     mask = torch.zeros(data.num_edges, dtype=torch.bool)
-    mask[0] = True
+    mask[[0, 8]] = True
 
-    with pytest.raises(ValueError, match="cannot be combined with consider_symmetry=False"):
-        data.set_edge_attr(
-            "force", mask, torch.tensor([[9.]]),
-            consider_symmetry=False, replicate_levels=[True, True, True],
+    with pytest.raises(ValueError, match="several registered symmetries"):
+        data.set_edge_attr_symmetrical(
+            "force", mask, torch.tensor([[5.], [6.]]), replicate_levels=[True, False],
         )
+
+    # the failed call left the attribute unchanged
+    assert torch.equal(data.force, torch.tensor([[1.]] * 8 + [[2.]] * 4))
 
 
 def test_replicate_levels_rejects_a_graph_without_symmetry():
@@ -681,8 +709,8 @@ def test_replicate_levels_rejects_a_graph_without_symmetry():
     )
     data.add_nodes(coords=torch.tensor([[0., 0., 0.], [1., 0., 0.]]))
 
-    with pytest.raises(ValueError, match="no symmetry is registered"):
-        data.add_edges(
+    with pytest.raises(ValueError, match="No symmetry is registered"):
+        data.add_edges_symmetrical(
             edge_indices=torch.tensor([[0], [1]]),
             force=torch.tensor([[1.]]), replicate_levels=[True, True, True],
         )
@@ -691,5 +719,5 @@ def test_replicate_levels_rejects_a_graph_without_symmetry():
     mask = torch.zeros(data.num_edges, dtype=torch.bool)
     mask[0] = True
 
-    with pytest.raises(ValueError, match="no symmetry is registered"):
-        data.set_edge_attr("force", mask, torch.tensor([[9.]]), replicate_levels=[True])
+    with pytest.raises(ValueError, match="No symmetry is registered"):
+        data.set_edge_attr_symmetrical("force", mask, torch.tensor([[9.]]), replicate_levels=[True])

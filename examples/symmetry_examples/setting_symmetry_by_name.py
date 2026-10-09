@@ -23,10 +23,10 @@ ones = torch.ones(m, 1)
 coords = torch.cat([ones, zeros, height], dim=1)
 names = [f"node{i}" for i in range(m)]
 
-data.add_nodes(names = names, symmetry="rotational_symmetry", coords=coords)
+data.add_nodes_symmetrical(names = names, symmetry="rotational_symmetry", coords=coords)
 
 #rings
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=torch.arange(m),
     dest_orbit_ids=torch.arange(m),
     src_orbit_positions=torch.zeros(m, dtype=torch.long),
@@ -35,7 +35,7 @@ data.add_edges_by_orbit(
 )
 
 #normals
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=torch.arange(m - 1),
     dest_orbit_ids=torch.arange(1, m),
     src_orbit_positions=torch.zeros(m -1, dtype=torch.long),
@@ -44,8 +44,8 @@ data.add_edges_by_orbit(
 )
 
 #set supports
-data.set_node_attr_by_name(attr = "is_support", names = ["node0"], value = torch.tensor([[True]]))
-data.set_node_attr_by_orbit(attr = "is_support", orbit_ids=[0], orbit_positions=[0], value = torch.tensor([[False]]), consider_symmetry=False)
+data.set_node_attr_by_name_symmetrical(attr = "is_support", names = ["node0"], value = torch.tensor([[True]]))
+data.set_node_attr_by_orbit(attr = "is_support", orbit_ids=[0], orbit_positions=[0], value = torch.tensor([[False]]))
 
 
 data.plot(show_supports=True)

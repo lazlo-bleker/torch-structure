@@ -26,17 +26,17 @@ stacked = data.combine_symmetry(open_rotation, vertical_array)
 data.add_symmetry({"stacked": stacked}, copy_attrs=["force"])
 data.view_symmetries()
 
-data.add_nodes(symmetry="stacked", coords=torch.tensor([[2.0, 0.0, 0.0]]))
+data.add_nodes_symmetrical(symmetry="stacked", coords=torch.tensor([[2.0, 0.0, 0.0]]))
 
 #sliding one side around the open rotation stops after 5 of the 6 sides, on every level
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[1],
     force=torch.full((1, 1), 1.0),
 )
 
 #the uprights
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[n_corners],
     force=torch.full((1, 1), 2.0),
@@ -44,7 +44,7 @@ data.add_edges_by_orbit(
 
 #asking for the closing side itself: it is added, and replicated up the array. sliding it around
 #the open rotation drops every copy but the one given, since the rest run off the end
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[n_corners - 1], dest_orbit_positions=[0],
     force=torch.full((1, 1), 5.0),

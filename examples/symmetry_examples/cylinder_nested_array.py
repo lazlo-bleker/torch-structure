@@ -22,29 +22,29 @@ data.add_symmetry({"cylinder": cylinder_symmetry}, copy_attrs=["force"])
 data.view_symmetries()
 
 #one seed node, copied to n_rings * n_sectors positions
-data.add_nodes(symmetry="cylinder", coords=torch.tensor([[1.0, 0.0, 0.0]]))
+data.add_nodes_symmetrical(symmetry="cylinder", coords=torch.tensor([[1.0, 0.0, 0.0]]))
 
 #verticals: one seed per direction is enough, each is copied over the whole symmetry
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[1],
     force=torch.full((1, 1), 1.0),
 )
 
 #rings
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[n_rings],
     force=torch.full((1, 1), 2.0),
 )
 
-data.add_edges_by_orbit(
+data.add_edges_by_orbit_symmetrical(
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[n_rings+1],
     force=torch.full((1, 1), 2.0),
 )
 
-data.set_edge_attr_by_orbit(
+data.set_edge_attr_by_orbit_symmetrical(
     "force",
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[n_rings],
@@ -52,7 +52,7 @@ data.set_edge_attr_by_orbit(
     replicate_levels=[False, True],
 )
 
-data.set_edge_attr_by_orbit(
+data.set_edge_attr_by_orbit_symmetrical(
     "force",
     src_orbit_ids=[0], dest_orbit_ids=[0],
     src_orbit_positions=[0], dest_orbit_positions=[1],
