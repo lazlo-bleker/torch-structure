@@ -817,60 +817,63 @@ class StructData(TSMixin, pyg.data.Data):
 
         src, dst = edge_indices[0], edge_indices[1]
 
-        symmetry_id = self.symmetry_id.view(-1)
-        src_symmetry_id, dst_symmetry_id = symmetry_id[src], symmetry_id[dst]
-
         for attr, value in kwargs.items():
             if not isinstance(value, torch.Tensor):
                 kwargs[attr] = torch.tensor(value, dtype=getattr(self, attr).dtype)
 
-        outside = (src_symmetry_id == -1) | (dst_symmetry_id == -1)
-        if torch.any(outside):
-            bad = torch.where(outside)[0].tolist()
-            raise ValueError(
-                f"Edge(s) at index {bad} connect a node outside any symmetry. Add them via add_edges()."
-            )
+        group_id = self._single_symmetry_group(src, dst, outside_hint="Add them via add_edges().")
+        if group_id is None:
+            return edge_indices, kwargs
 
-        mismatched = src_symmetry_id != dst_symmetry_id
-        if torch.any(mismatched):
-            bad = torch.where(mismatched)[0].tolist()
-            raise ValueError(
-                f"Edge(s) at index {bad} connect two different registered symmetries; "
-                "add_edges_symmetrical() only supports src and dst from the same registered symmetry."
-            )
+        src_orbits, dst_orbits, seed_edge = self._expand_edge_indices_symmetrically(src, dst, group_id, replicate_levels)
 
-        if torch.unique(src_symmetry_id).numel() > 1:
-            raise ValueError(
-                "The given edges belong to several registered symmetries. Add the edges of each "
-                "symmetry in a separate call."
-            )
+        edge_indices = torch.stack([src_orbits, dst_orbits], dim=0)
+        kwargs_expanded = {attr: value[seed_edge] for attr, value in kwargs.items()}
 
-        # start from empty tensors, so that no edges give empty results instead of failing in torch.cat
-        src_expanded = [src[:0]]
-        dst_expanded = [dst[:0]]
-        kwargs_expanded = {attr: [value[:0]] for attr, value in kwargs.items()}
-
-        for group_id in torch.unique(src_symmetry_id).tolist():
-            group_edge_idx = torch.where(src_symmetry_id == group_id)[0]
-
-            src_orbits, dst_orbits, seed_edge = self._expand_edge_indices_symmetrically(
-                src[group_edge_idx], dst[group_edge_idx], group_id, replicate_levels
-            )
-            src_expanded.append(src_orbits)
-            dst_expanded.append(dst_orbits)
-
-            for attr, value in kwargs.items():
-                kwargs_expanded[attr].append(value[group_edge_idx][seed_edge])
-
-        edge_indices = torch.stack([torch.cat(src_expanded), torch.cat(dst_expanded)], dim=0)
-        kwargs_expanded = {attr: torch.cat(values, dim=0) for attr, values in kwargs_expanded.items()}
-
-        return edge_indices, kwargs_expanded    
+        return edge_indices, kwargs_expanded
 
 
     def _require_symmetry(self):
         if not hasattr(self, "symmetry_id"):
             raise ValueError("No symmetry is registered. Register one with add_symmetry() first.")
+
+
+    def _single_symmetry_group(self, src, dst=None, outside_hint=""):
+        """
+        Returns the id of the one registered symmetry that all given nodes belong to, or
+        ``None`` if no nodes are given. For edges, ``src`` and ``dst`` are their endpoints;
+        for nodes, ``dst`` is left out.
+        """
+        self._require_symmetry()
+
+        symmetry_id = self.symmetry_id.view(-1)
+        src_group = symmetry_id[src]
+        dst_group = src_group if dst is None else symmetry_id[dst]
+
+        outside = (src_group == -1) | (dst_group == -1)
+        if torch.any(outside):
+            if dst is None:
+                raise ValueError(f"Node(s) {src[outside].tolist()} are outside any symmetry. {outside_hint}")
+            bad_pairs = list(zip(src[outside].tolist(), dst[outside].tolist()))
+            raise ValueError(f"Edge(s) {bad_pairs} connect a node outside any symmetry. {outside_hint}")
+
+        mismatched = src_group != dst_group
+        if torch.any(mismatched):
+            bad_pairs = list(zip(src[mismatched].tolist(), dst[mismatched].tolist()))
+            raise ValueError(
+                f"Edge(s) {bad_pairs} connect two different registered symmetries; src and dst must "
+                "belong to the same registered symmetry."
+            )
+
+        groups = torch.unique(src_group)
+        if groups.numel() > 1:
+            group_names = {group: name for name, group in self.metadata["name_to_symmetry"].items()}
+            raise ValueError(
+                f"The given {'nodes' if dst is None else 'edges'} belong to several registered symmetries "
+                f"{[group_names[group] for group in groups.tolist()]}. Use a separate call per symmetry."
+            )
+
+        return int(groups[0]) if groups.numel() > 0 else None
 
 
     def _check_new_edges(self, edge_indices, kwargs):
@@ -1037,7 +1040,6 @@ class StructData(TSMixin, pyg.data.Data):
         """
 
         self._check_new_edges(edge_indices, kwargs)
-        self._require_symmetry()
 
         edge_indices, kwargs = self._expand_edges_symmetrically(edge_indices, kwargs, replicate_levels)
 
@@ -1969,70 +1971,42 @@ class StructData(TSMixin, pyg.data.Data):
         """
 
         nodes = self._nodes_to_set(attr, mask, value)
-        self._require_symmetry()
 
-        orbit_id = self.orbit_id.view(-1)
-        symmetry_id = self.symmetry_id.view(-1)
+        group_id = self._single_symmetry_group(nodes, outside_hint="Set them via set_node_attr().")
+        if group_id is None:
+            return
 
-        node_orbit_ids = orbit_id[nodes]
-
-        outside = node_orbit_ids == -1
-        if torch.any(outside):
-            raise ValueError(
-                f"Selected node(s) {nodes[outside].tolist()} are outside any symmetry. Set them via set_node_attr()."
-            )
-
-        group_ids = symmetry_id[nodes]
-
-        if torch.unique(group_ids).numel() > 1:
-            raise ValueError(
-                "The selected nodes belong to several registered symmetries. Set the nodes of each "
-                "symmetry in a separate call."
-            )
-
-        if torch.any(torch.bincount(node_orbit_ids) > 1):
+        if torch.any(torch.bincount(self.orbit_id.view(-1)[nodes]) > 1):
             raise ValueError("Multiple selected nodes belong to the same orbit. Select only one node per orbit.")
 
-        # compute the new values of every orbit before writing anything, so a failed check leaves
-        # the attribute unchanged
-        orbit_updates = []
-        for group_id in torch.unique(group_ids).tolist():
-            group_mask = group_ids == group_id
-            group_nodes = nodes[group_mask]
-            group_values = value[group_mask]
+        group_matrices = self.symmetry_matrices[self.symmetry_matrix_id == group_id]
+        group_size = group_matrices.shape[0]
 
-            group_matrices = self.symmetry_matrices[self.symmetry_matrix_id == group_id]
-            group_size = group_matrices.shape[0]
+        members, idx = self._orbit_canonical_members(nodes, group_size)
 
-            members, idx = self._orbit_canonical_members(group_nodes, group_size)
+        # the orbit positions each update is propagated to, all of them unless replicate_levels
+        # freezes a level
+        positions = self._replicated_positions(idx, group_id, replicate_levels)
+        members = torch.gather(members, 1, positions)
 
-            # the orbit positions each update is propagated to, all of them unless replicate_levels
-            # freezes a level
-            positions = self._replicated_positions(idx, group_id, replicate_levels)
-            members = torch.gather(members, 1, positions)
+        if attr in self.metadata["symmetry_transform_attrs"][group_id]:
+            effective_seed = self._solve_affine(group_matrices[idx], value)
+            new_values = self._apply_affine(group_matrices, effective_seed)
+            new_values = new_values[torch.arange(new_values.shape[0]).unsqueeze(1), positions]
+            new_values = new_values.reshape(-1, *new_values.shape[2:])
 
-            if attr in self.metadata["symmetry_transform_attrs"][group_id]:
-                effective_seed = self._solve_affine(group_matrices[idx], group_values)
-                new_values = self._apply_affine(group_matrices, effective_seed)
-                new_values = new_values[torch.arange(new_values.shape[0]).unsqueeze(1), positions]
-                new_values = new_values.reshape(-1, *new_values.shape[2:])
+        elif attr in self.metadata["symmetry_copy_attrs"][group_id]:
+            new_values = self._expand_value_over_symmetry(value, value.shape[0], positions.shape[1])
 
-            elif attr in self.metadata["symmetry_copy_attrs"][group_id]:
-                new_values = self._expand_value_over_symmetry(group_values, group_values.shape[0], positions.shape[1])
-
-            else:
-                raise ValueError(
-                    f"Attribute '{attr}' is not classified as a transform or copy attribute for "
-                    f"symmetry group {group_id}. Register it via add_symmetry(transform_attrs=..., "
-                    "copy_attrs=...)."
-                )
-
-            orbit_updates.append((members.reshape(-1), new_values))
+        else:
+            raise ValueError(
+                f"Attribute '{attr}' is not classified as a transform or copy attribute for "
+                f"symmetry group {group_id}. Register it via add_symmetry(transform_attrs=..., "
+                "copy_attrs=...)."
+            )
 
         current = getattr(self, attr)
-        for member_rows, new_values in orbit_updates:
-            current[member_rows] = new_values
-
+        current[members.reshape(-1)] = new_values
         setattr(self, attr, current)
 
     def _mask_and_reorder(self, indices: torch.Tensor, value: torch.Tensor, num_rows: int):
@@ -2392,77 +2366,44 @@ class StructData(TSMixin, pyg.data.Data):
         """
 
         edges = self._edges_to_set(attr, mask, value)
-        self._require_symmetry()
-
-        symmetry_id = self.symmetry_id.view(-1)
 
         src, dst = self.edge_index[0, edges], self.edge_index[1, edges]
-        src_group, dst_group = symmetry_id[src], symmetry_id[dst]
 
-        outside = (src_group == -1) | (dst_group == -1)
-        if torch.any(outside):
-            bad_pairs = list(zip(src[outside].tolist(), dst[outside].tolist()))
+        group_id = self._single_symmetry_group(src, dst, outside_hint="Set them via set_edge_attr().")
+        if group_id is None:
+            return
+
+        if attr not in self.metadata["symmetry_copy_attrs"][group_id]:
             raise ValueError(
-                f"Selected edge(s) {bad_pairs} connect a node outside any symmetry. Set them via set_edge_attr()."
+                f"Attribute '{attr}' is not registered as a copy attribute for symmetry "
+                f"group {group_id}. Register it via add_symmetry(copy_attrs=...)."
             )
 
-        mismatched = src_group != dst_group
-        if torch.any(mismatched):
-            bad_pairs = list(zip(src[mismatched].tolist(), dst[mismatched].tolist()))
-            raise ValueError(
-                f"Selected edge(s) {bad_pairs} connect two different registered symmetries; "
-                "set_edge_attr_symmetrical() only supports src and dst from the same registered symmetry."
-            )
+        sib_src, sib_dst, seed_edge = self._expand_edge_indices_symmetrically(src, dst, group_id, replicate_levels)
+        sib_value = value[seed_edge]
 
-        if torch.unique(src_group).numel() > 1:
-            raise ValueError(
-                "The selected edges belong to several registered symmetries. Set the edges of each "
-                "symmetry in a separate call."
-            )
-
-        directed = self.directed_mask.view(-1)
         all_keys = self.edge_index[0] * self.num_nodes + self.edge_index[1]
         sorted_keys, sort_idx = torch.sort(all_keys)
 
-        # compute the copies of every group before writing anything, so a failed check leaves the
-        # attribute unchanged
-        sibling_updates = []
-        for group_id in torch.unique(src_group).tolist():
-            if attr not in self.metadata["symmetry_copy_attrs"][group_id]:
-                raise ValueError(
-                    f"Attribute '{attr}' is not registered as a copy attribute for symmetry "
-                    f"group {group_id}. Register it via add_symmetry(copy_attrs=...)."
-                )
+        keys = sib_src * self.num_nodes + sib_dst
+        pos = torch.searchsorted(sorted_keys, keys).clamp(max=sorted_keys.numel() - 1)
+        if not torch.all(sorted_keys[pos] == keys):
+            raise ValueError("No edge found for a symmetry copy of a selected edge.")
+        sib_edges = sort_idx[pos]
 
-            group_idx = torch.where(src_group == group_id)[0]
-
-            sib_src, sib_dst, seed_edge = self._expand_edge_indices_symmetrically(
-                src[group_idx], dst[group_idx], group_id, replicate_levels
+        directed = self.directed_mask.view(-1)
+        sib_forward = torch.where(directed[sib_edges], sib_edges, self.reciprocal_edge.view(-1)[sib_edges])
+        order = torch.argsort(sib_forward)
+        same_edge = sib_forward[order][1:] == sib_forward[order][:-1]
+        sorted_value = sib_value[order].reshape(order.shape[0], -1)
+        different_value = torch.any(sorted_value[1:] != sorted_value[:-1], dim=1)
+        if torch.any(same_edge & different_value):
+            raise ValueError(
+                "Multiple selected edges are symmetry copies of each other but were given "
+                "different values. Select one edge per edge family, or give them the same value."
             )
-            sib_value = value[group_idx][seed_edge]
 
-            keys = sib_src * self.num_nodes + sib_dst
-            pos = torch.searchsorted(sorted_keys, keys).clamp(max=sorted_keys.numel() - 1)
-            if not torch.all(sorted_keys[pos] == keys):
-                raise ValueError("No edge found for a symmetry copy of a selected edge.")
-            sib_edges = sort_idx[pos]
-
-            
-            sib_forward = torch.where(directed[sib_edges], sib_edges, self.reciprocal_edge.view(-1)[sib_edges])
-            order = torch.argsort(sib_forward)
-            same_edge = sib_forward[order][1:] == sib_forward[order][:-1]
-            sorted_value = sib_value[order].reshape(order.shape[0], -1)
-            different_value = torch.any(sorted_value[1:] != sorted_value[:-1], dim=1)
-            if torch.any(same_edge & different_value):
-                raise ValueError(
-                    "Multiple selected edges are symmetry copies of each other but were given "
-                    "different values. Select one edge per edge family, or give them the same value."
-                )
-
-            sibling_updates.append((sib_edges, sib_value))
-
-        for sib_edges, sib_value in sibling_updates:
-            self._modify_edge_attr_and_reciprocal(attr, sib_edges, sib_value)
+        self._modify_edge_attr_and_reciprocal(attr, sib_edges, sib_value)
 
     def add_symmetry(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None):
         """
