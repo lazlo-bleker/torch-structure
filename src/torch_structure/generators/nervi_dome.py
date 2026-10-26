@@ -51,7 +51,7 @@ class NerviDome:
         node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
         }
@@ -67,7 +67,7 @@ class NerviDome:
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
         self.graph = StructData(
@@ -137,7 +137,7 @@ class NerviDome:
             load=origin_load,
         )
         for i in range(1, self.n_rings + 1):
-            support_condition = (
+            support_xyz = (
                 torch.tensor([True, True, True])
                 if i == self.n_rings
                 else torch.tensor([False, False, False])
@@ -152,7 +152,7 @@ class NerviDome:
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(i),
                 load=load,
-                support_condition=support_condition,
+                support_xyz=support_xyz,
             )
             self.graph.add_edge(
                 f"trail_{id}_node_{i - 1}",

@@ -14,7 +14,7 @@ class SingleTrailGenerator(BaseGenerator):
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
         }
@@ -29,7 +29,7 @@ class SingleTrailGenerator(BaseGenerator):
         self.default_attrs = {
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
             "sequence": torch.tensor(-1, dtype=torch.long),
             "force": torch.tensor([torch.nan]),
@@ -81,7 +81,7 @@ class SingleTrailGenerator(BaseGenerator):
         origin_node_coords = np.zeros(3)
         nodal_load = np.array(nodal_load)
         origin_node_load = np.array(origin_node_load)
-        support_condition = torch.tensor([False, False, False])
+        support_xyz = torch.tensor([False, False, False])
         
         # Add origin nodes
         graph.add_node(
@@ -99,7 +99,7 @@ class SingleTrailGenerator(BaseGenerator):
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(j),
                 load=nodal_load,
-                support_condition=support_condition,
+                support_xyz=support_xyz,
             )
             # Add new edge with the created node and its previous node
             graph.add_edge(
@@ -117,7 +117,7 @@ class SingleTrailGenerator(BaseGenerator):
             is_origin_node=torch.tensor(False),
             sequence=torch.tensor(j),
             load=nodal_load,
-            support_condition=torch.tensor([True, True, True]),
+            support_xyz=torch.tensor([True, True, True]),
         )
         # Add new edge with the created node and its previous node
         graph.add_edge(

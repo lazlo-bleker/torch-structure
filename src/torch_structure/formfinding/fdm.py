@@ -6,7 +6,7 @@ from torch_structure.formfinding.utils import create_branch_node_matrix
 def fdm(
     coords,
     load,
-    support,
+    is_support,
     edge_index,
     force_density,
     batch=None,
@@ -23,7 +23,7 @@ def fdm(
         coords (torch.Tensor): A tensor of shape (num_nodes, 3) containing the initial 3D coordinates of each node. Only
             coordinates of supported nodes have an effect on the output.
         load (torch.Tensor): A tensor of shape (num_nodes, 3) containing the external load vector for each node.
-        support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating which nodes are fixed (True) or free (False).
+        is_support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating which nodes are fixed (True) or free (False).
         edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge.
         force_density (torch.Tensor): A tensor of shape (num_edges, 1) containing the force density for each edge.
         batch (torch.Tensor, optional): A tensor of shape (num_nodes, 1) indicating the batch assignment for each node. If not supplied
@@ -39,7 +39,7 @@ def fdm(
             - coords (torch.Tensor): A tensor of shape (num_nodes, 3) containing form-found coordinates of each node.
             - force (torch.Tensor): A tensor of shape (num_edges, 1) containing the axial force of each edge.
     """
-    support = support.view(-1)
+    is_support = is_support.view(-1)
     force_density = force_density.view(-1)
 
     device = coords.device
@@ -51,8 +51,8 @@ def fdm(
 
     if C is None:
         C = create_branch_node_matrix(edge_index)
-    C_free = C[:, ~support]
-    C_fixed = C[:, support]
+    C_free = C[:, ~is_support]
+    C_fixed = C[:, is_support]
     C_free_transposed = torch.transpose(C_free, 0, 1)
 
     Q = torch.diag(force_density)
@@ -60,17 +60,17 @@ def fdm(
 
     D_f = torch.mm(torch.mm(C_free_transposed, Q), C_fixed)
     if solve_only_z:
-        b_1 = load[~support, 2]
-        b_2 = torch.mv(D_f, coords[support, 2])
+        b_1 = load[~is_support, 2]
+        b_2 = torch.mv(D_f, coords[is_support, 2])
     else:
-        b_1 = load[~support]
-        b_2 = torch.mm(D_f, coords[support])
+        b_1 = load[~is_support]
+        b_2 = torch.mm(D_f, coords[is_support])
     b = b_1 - b_2
 
     if batch is None:
         form_found_coords = torch.linalg.solve(A, b)
     else:
-        batch_free = batch[~support]
+        batch_free = batch[~is_support]
         n_graphs = batch.max().item() + 1
         node_counts = torch.bincount(batch)
         max_size = node_counts.max().item()
@@ -106,9 +106,9 @@ def fdm(
             # form_found_coords = form_found_coords.reshape(n_graphs*max_size, 3)[pad_mask]
 
     if solve_only_z:
-        coords[~support, 2] = form_found_coords
+        coords[~is_support, 2] = form_found_coords
     else:
-        coords[~support, :] = form_found_coords
+        coords[~is_support, :] = form_found_coords
 
     lengths = torch.norm(torch.mm(C, coords), dim=1)
     force = force_density * lengths

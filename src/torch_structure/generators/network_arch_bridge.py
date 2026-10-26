@@ -65,7 +65,7 @@ class NetworkArchBridge:
         node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
             "target_coords": torch.empty((0, 3), dtype=torch.float),
@@ -84,7 +84,7 @@ class NetworkArchBridge:
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
             "optim_group": torch.tensor(-1, dtype=torch.long),
             "target_coords": torch.full((3,), torch.nan),
@@ -111,7 +111,7 @@ class NetworkArchBridge:
                 bridge_side=i % 2,
             )
             for j in range(1, self.n_trail_edges + 1):
-                support_condition = (
+                support_xyz = (
                     torch.tensor([True, True, True])
                     if j == self.n_trail_edges
                     else torch.tensor([False, False, False])
@@ -129,7 +129,7 @@ class NetworkArchBridge:
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
                     load=load,
-                    support_condition=support_condition,
+                    support_xyz=support_xyz,
                     target_coords=deck_origin_coords[i]
                     + torch.tensor([x_target, 0.0, 0.0]),
                     bridge_side=i % 2,
@@ -181,7 +181,7 @@ class NetworkArchBridge:
                 bridge_side=i % 2,
             )
             for j in range(1, self.n_trail_edges + 1):
-                support_condition = (
+                support_xyz = (
                     torch.tensor([True, True, True])
                     if j == self.n_trail_edges
                     else torch.tensor([False, False, False])
@@ -198,7 +198,7 @@ class NetworkArchBridge:
                     f"arch_trail_{i}_node_{j}",
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
-                    support_condition=support_condition,
+                    support_xyz=support_xyz,
                     target_coords=target_coords,
                     bridge_side=i % 2,
                 )

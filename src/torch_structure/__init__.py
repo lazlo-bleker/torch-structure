@@ -5,6 +5,7 @@ and engineering.
 
 from importlib.metadata import version, PackageNotFoundError
 
+from . import analysis
 from . import data
 from . import formfinding
 from . import generators
@@ -21,6 +22,7 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 __all__ = [
+    "analysis",
     "data",
     "formfinding",
     "generators",

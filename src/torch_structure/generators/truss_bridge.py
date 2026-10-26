@@ -26,7 +26,7 @@ class TrussBridgeGenerator(BaseGenerator):
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.bool),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
             "is_deck_node": torch.empty((0, 1), dtype=torch.bool),
             "is_left_side_node": torch.empty((0, 1), dtype=torch.bool),
@@ -36,7 +36,7 @@ class TrussBridgeGenerator(BaseGenerator):
         self.default_attrs = {
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_deck_node": torch.tensor(0, dtype=torch.bool),
             "is_left_side_node": torch.tensor(0, dtype=torch.bool),
             "is_right_side_node": torch.tensor(0, dtype=torch.bool),
@@ -256,13 +256,13 @@ class TrussBridgeGenerator(BaseGenerator):
                     if j == n_bays - 1 and is_deck:
                         y_fixed = (profile_side[i] == "left" and side == 1)
                         y_fixed = True
-                        support_condition = torch.tensor([True, y_fixed, True]) if side == -1 else torch.tensor([False, y_fixed, True])
+                        support_xyz = torch.tensor([True, y_fixed, True]) if side == -1 else torch.tensor([False, y_fixed, True])
                     else:
-                        support_condition = torch.tensor([False, False, False])
+                        support_xyz = torch.tensor([False, False, False])
                     data.add_node(
                         f"trail_{i}_node_{j+1}_side_{side}",
                         load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
-                        support_condition=support_condition,
+                        support_xyz=support_xyz,
                         coords=coord,
                         sequence=torch.tensor([j + 1], dtype=torch.long),
                         is_deck_node=torch.tensor(is_deck),
@@ -336,7 +336,7 @@ class TrussBridgeGenerator(BaseGenerator):
 
         # Analysis
         if self.analysis:
-            support = data.support_condition
+            support = data.support_xyz
             load = data.load
 
             coords = torch.clone(data.coords)  # check if this is necessary

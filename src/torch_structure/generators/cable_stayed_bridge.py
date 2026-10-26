@@ -15,7 +15,7 @@ class CableStayedBridge(BaseGenerator):
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
         }
@@ -30,7 +30,7 @@ class CableStayedBridge(BaseGenerator):
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
 
@@ -94,7 +94,7 @@ class CableStayedBridge(BaseGenerator):
                     if j == n_deck_trail_edges
                     else deck_load
                 )
-                support_condition = (
+                support_xyz = (
                     torch.tensor([True, True, True])
                     if j == n_deck_trail_edges
                     else torch.tensor([False, False, False])
@@ -105,7 +105,7 @@ class CableStayedBridge(BaseGenerator):
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
                     load=load,
-                    support_condition=support_condition,
+                    support_xyz=support_xyz,
                 )
                 # Add new edge with the created node and its previous node
                 graph.add_edge(
@@ -140,7 +140,7 @@ class CableStayedBridge(BaseGenerator):
                 sequence=torch.tensor(0),
             )
             for j in range(1, n_cables + 1):
-                support_condition = (
+                support_xyz = (
                     torch.tensor([True, True, True])
                     if j == n_cables
                     else torch.tensor([False, False, False])
@@ -150,7 +150,7 @@ class CableStayedBridge(BaseGenerator):
                     f"tower_trail_{i}_node_{j}",
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
-                    support_condition=support_condition,
+                    support_xyz=support_xyz,
                 )
                 graph.add_edge(
                     f"tower_trail_{i}_node_{j - 1}",
@@ -174,7 +174,7 @@ class CableStayedBridge(BaseGenerator):
                 f"backstay_trail_{i}_node_1",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(1),
-                support_condition=[True, True, True],
+                support_xyz=[True, True, True],
             )
             graph.add_edge(
                 f"backstay_trail_{i}_node_0",

@@ -27,7 +27,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "constraint_plane": torch.empty((0, 6), dtype=torch.float),
             "sequence": torch.empty((0, 1), dtype=torch.long),
@@ -52,7 +52,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
             "constraint_plane": torch.full((6,), torch.nan),
             "is_mod_v": torch.tensor(0, dtype=torch.bool),
@@ -245,7 +245,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 data.add_node(
                     f"trail_{i}_node_{j+1}",
                     load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
-                    support_condition=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
+                    support_xyz=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
                     constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
                     sequence=torch.tensor([j + 1], dtype=torch.long),
                     deck_slope=torch.tensor(side*8*deck_rise/span * (j + 2) / (n_bays + 0.5)),
