@@ -22,7 +22,7 @@ class DomeGenerator(BaseGenerator):
         self.node_attrs = {
             "coords": torch.empty((0, 3), dtype=torch.float),
             "load": torch.empty((0, 3), dtype=torch.float),
-            "support_condition": torch.empty((0, 3), dtype=torch.long),
+            "support_xyz": torch.empty((0, 3), dtype=torch.bool),
             "is_origin_node": torch.empty((0, 1), dtype=torch.bool),
             "sequence": torch.empty((0, 1), dtype=torch.long),
         }
@@ -37,7 +37,7 @@ class DomeGenerator(BaseGenerator):
             "length": torch.tensor([torch.nan]),
             "coords": torch.full((3,), torch.nan),
             "load": torch.zeros(3, dtype=torch.float),
-            "support_condition": torch.zeros(3, dtype=torch.bool),
+            "support_xyz": torch.zeros(3, dtype=torch.bool),
             "is_origin_node": torch.tensor(0, dtype=torch.bool),
         }
 
@@ -190,7 +190,7 @@ class DomeGenerator(BaseGenerator):
             load=origin_load,
         )
         for i in range(1, n_rings + 1):
-            support_condition = (
+            support_xyz = (
                 torch.tensor([True, True, True])
                 if i == n_rings
                 else torch.tensor([False, False, False])
@@ -200,7 +200,7 @@ class DomeGenerator(BaseGenerator):
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(i),
                 load=torch.tensor([0.0, 0.0, -1.0]),
-                support_condition=support_condition,
+                support_xyz=support_xyz,
             )
             data.add_edge(
                 f"trail_{id}_node_{i - 1}",

@@ -18,7 +18,7 @@ class FEM(MessagePassing):
         x,
         load,
         u,
-        support,
+        is_support,
         effective_stiffness,
         edge_index,
         length,
@@ -34,7 +34,7 @@ class FEM(MessagePassing):
                 propagate's argument resolution but not used by ``message``.
             load (torch.Tensor [N, 3]): externally applied nodal loads.
             u (torch.Tensor [N, 3]): current nodal displacements.
-            support (torch.Tensor [N], bool): mask of supported (fixed) nodes,
+            is_support (torch.Tensor [N], bool): mask of supported (fixed) nodes,
                 whose displacement is reset to zero after the update.
             effective_stiffness (torch.Tensor [N]): per-node diagonal
                 stiffness used to convert residual force into a displacement
@@ -64,7 +64,7 @@ class FEM(MessagePassing):
         )
         effective_stiffness = effective_stiffness.view(-1, 1) + 1e-9
         u_new = u + residual_force / effective_stiffness
-        u_new[support] = 0
+        u_new[is_support] = 0
         return u_new, residual_force
 
     def message(self, u_i, u_j, length, A, E, direction, transformation_matrix):

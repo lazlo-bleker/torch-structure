@@ -252,7 +252,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         else:
             value = torch.empty(
-                (self.num_edges, 1), dtype=edge_attr.dtype, device=device
+                (self.num_edges, *edge_attr.shape[1:]), dtype=edge_attr.dtype, device=device
             )
 
             # set defined values
@@ -290,25 +290,67 @@ class StructData(TSMixin, pyg.data.Data):
     def is_support(self):
         """torch.Tensor [N, 1]: boolean mask of supported (fixed) nodes.
 
-        Falls back to ``any(support_condition, dim=1)`` if ``is_support``
+        Falls back to ``any(support_xyz, dim=1)`` if ``is_support``
         was not set directly.
         """
         if "is_support" in self._store:
             return self["is_support"]
 
-        # If 'is_support' is missing, fall back to support_condition if available
-        elif "support_condition" in self._store:
-            return torch.any(self.support_condition, dim=1, keepdim=True)  # ToDO: check per dim
+        if "support_xyz" in self._store:
+            return torch.any(self["support_xyz"], dim=1, keepdim=True)
 
-        else:
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute 'is_support' or 'support_condition'"
-            )
-        
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute 'is_support' or 'support_xyz'"
+        )
+
     @property
-    def support(self):
-        """torch.Tensor [N, 1]: alias for [is_support][torch_structure.data.data.StructData.is_support]."""
-        return self.is_support  ### REMOVE LATER TEMP
+    def support_xyz(self):
+        """torch.Tensor [N, 3]: boolean mask of restrained translations per global axis.
+
+        Falls back to ``is_support`` repeated over the three axes, i.e. a pin, if ``support_xyz``
+        was not set directly.
+        """
+        if "support_xyz" in self._store:
+            return self["support_xyz"]
+
+        if "is_support" in self._store:
+            return self["is_support"].view(-1, 1).repeat(1, 3)
+
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute 'is_support' or 'support_xyz'"
+        )
+
+    @property
+    def support_rxyz(self):
+        """torch.Tensor [N, 3]: boolean mask of restrained rotations per global axis.
+
+        Defaults to all rotations free if ``support_rxyz`` was not set directly.
+        """
+        if "support_rxyz" in self._store:
+            return self["support_rxyz"]
+
+        support_xyz = self.support_xyz
+        return torch.zeros_like(support_xyz, dtype=torch.bool)
+
+    @property
+    def support_dofs(self):
+        """torch.Tensor [N, 6]: restrained DOFs ``[ux, uy, uz, rx, ry, rz]`` per node.
+
+        Concatenates [support_xyz][torch_structure.data.data.StructData.support_xyz] and
+        [support_rxyz][torch_structure.data.data.StructData.support_rxyz]. Warns if both
+        ``is_support`` and ``support_xyz`` are stored and disagree, in which case ``support_xyz``
+        is used.
+        """
+        support_xyz = self.support_xyz.to(torch.bool)
+
+        if "is_support" in self._store and "support_xyz" in self._store:
+            if not torch.equal(self["is_support"].view(-1).to(torch.bool), support_xyz.any(dim=1)):
+                warnings.warn(
+                    "'is_support' and 'support_xyz' disagree; using 'support_xyz'.",
+                    stacklevel=2,
+                )
+
+        return torch.cat([support_xyz, self.support_rxyz.to(torch.bool)], dim=1)
 
     @property
     def length_from_coords(self):

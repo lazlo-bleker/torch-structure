@@ -9,7 +9,7 @@ class FDMMixin(OverrideResolveMixin):
         inplace: bool=False,
         coords=None,
         load=None,
-        support=None,
+        is_support=None,
         edge_index=None,
         force_density=None,
         use_batching=False,
@@ -29,7 +29,7 @@ class FDMMixin(OverrideResolveMixin):
         # Node inputs
         coords = self._resolve_override("coords", coords)
         load = self._resolve_override("load", load)
-        support = self._resolve_override("support", support)
+        is_support = self._resolve_override("is_support", is_support)
 
         # Edge inputs
         edge_mask = self.directed_mask.view(-1)
@@ -44,7 +44,7 @@ class FDMMixin(OverrideResolveMixin):
         new_coords, new_directed_force = fdm(
             coords,
             load,
-            support,
+            is_support,
             edge_index,
             force_density,
             batch=batch,
