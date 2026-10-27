@@ -1,5 +1,5 @@
 import torch
-from torch_scatter import scatter
+from torch_geometric.utils import scatter
 from torch_structure.message_passing import ResidualForce
 from torch_structure.geometry import line_plane_intersect, point_normal_to_plane, graph_edge_lengths, line_direction
 
