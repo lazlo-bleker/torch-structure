@@ -82,7 +82,7 @@ class CableStayedBridge(BaseGenerator):
         for i in range(2):
             # Add origin nodes
             graph.add_node(
-                f"deck_trail_{i}_node_0",
+                f"dt{i}n0",
                 coords=deck_origin_coords[i],
                 is_origin_node=torch.tensor(True),
                 sequence=torch.tensor(0),
@@ -101,7 +101,7 @@ class CableStayedBridge(BaseGenerator):
                 )
                 # Add node
                 graph.add_node(
-                    f"deck_trail_{i}_node_{j}",
+                    f"dt{i}n{j}",
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
                     load=load,
@@ -109,8 +109,8 @@ class CableStayedBridge(BaseGenerator):
                 )
                 # Add new edge with the created node and its previous node
                 graph.add_edge(
-                    f"deck_trail_{i}_node_{j - 1}",
-                    f"deck_trail_{i}_node_{j}",
+                    f"dt{i}n{j - 1}",
+                    f"dt{i}n{j}",
                     is_trail_edge=torch.tensor(True),
                     length=deck_trail_length,
                     force_sign=torch.tensor(-1.0),
@@ -118,8 +118,8 @@ class CableStayedBridge(BaseGenerator):
 
         # Add element connecting rails
         graph.add_edge(
-            "deck_trail_0_node_0",
-            "deck_trail_1_node_0",
+            "dt0n0",
+            "dt1n0",
             is_trail_edge=torch.tensor(False),
             force=center_deviation_force,
         )
@@ -134,7 +134,7 @@ class CableStayedBridge(BaseGenerator):
                 [tower_x[i], applied_tower_offset, tower_height]
             )
             graph.add_node(
-                f"tower_trail_{i}_node_0",
+                f"tt{i}n0",
                 coords=tower_origin_coords,
                 is_origin_node=torch.tensor(True),
                 sequence=torch.tensor(0),
@@ -147,14 +147,14 @@ class CableStayedBridge(BaseGenerator):
                 )
                 length = tower_height * 0.8 if j == n_cables else tower_trail_length
                 graph.add_node(
-                    f"tower_trail_{i}_node_{j}",
+                    f"tt{i}n{j}",
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
                     support_xyz=support_xyz,
                 )
                 graph.add_edge(
-                    f"tower_trail_{i}_node_{j - 1}",
-                    f"tower_trail_{i}_node_{j}",
+                    f"tt{i}n{j - 1}",
+                    f"tt{i}n{j}",
                     is_trail_edge=torch.tensor(True),
                     length=length,
                     force_sign=torch.tensor(-1.0),
@@ -165,37 +165,37 @@ class CableStayedBridge(BaseGenerator):
                 [tower_x[i], applied_back_stay_offset, 0.01]
             )
             graph.add_node(
-                f"backstay_trail_{i}_node_0",
+                f"bt{i}n0",
                 coords=backstay_origin_coords,
                 is_origin_node=torch.tensor(True),
                 sequence=torch.tensor(0),
             )
             graph.add_node(
-                f"backstay_trail_{i}_node_1",
+                f"bt{i}n1",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(1),
                 support_xyz=[True, True, True],
             )
             graph.add_edge(
-                f"backstay_trail_{i}_node_0",
-                f"backstay_trail_{i}_node_1",
+                f"bt{i}n0",
+                f"bt{i}n1",
                 is_trail_edge=torch.tensor(True),
                 length=0.4 * tower_height,
                 force_sign=torch.tensor(1.0),
             )
             graph.add_edge(
-                f"tower_trail_{i}_node_0",
-                f"backstay_trail_{i}_node_0",
+                f"tt{i}n0",
+                f"bt{i}n0",
                 is_trail_edge=torch.tensor(False),
                 force=back_stay_force,
             )
 
         # Cables
         deck_nodes = [
-            f"deck_trail_0_node_{i}" for i in reversed(range(n_deck_trail_edges))
-        ] + [f"deck_trail_1_node_{i}" for i in range(n_deck_trail_edges)]
+            f"dt0n{i}" for i in reversed(range(n_deck_trail_edges))
+        ] + [f"dt1n{i}" for i in range(n_deck_trail_edges)]
         cable_nodes = [
-            f"tower_trail_{i}_node_{j}"
+            f"tt{i}n{j}"
             for i in range(n_towers)
             for reverse in [False, True]
             for j in (reversed(range(n_cables)) if reverse else range(n_cables))

@@ -85,7 +85,7 @@ class SingleTrailGenerator(BaseGenerator):
         
         # Add origin nodes
         graph.add_node(
-            f"node_0",
+            f"n0",
             coords=origin_node_coords,
             is_origin_node=torch.tensor(True),
             sequence=torch.tensor(0),
@@ -95,7 +95,7 @@ class SingleTrailGenerator(BaseGenerator):
 
             # Add node
             graph.add_node(
-                f"node_{j}",
+                f"n{j}",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(j),
                 load=nodal_load,
@@ -103,8 +103,8 @@ class SingleTrailGenerator(BaseGenerator):
             )
             # Add new edge with the created node and its previous node
             graph.add_edge(
-                f"node_{j-1}",
-                f"node_{j}",
+                f"n{j-1}",
+                f"n{j}",
                 is_trail_edge=torch.tensor(True),
                 length=trail_element_length,
                 force_sign=torch.tensor(-1.0),
@@ -113,7 +113,7 @@ class SingleTrailGenerator(BaseGenerator):
         # Add node
         j = n_nodes - 1 
         graph.add_node(
-            f"node_{j}",
+            f"n{j}",
             is_origin_node=torch.tensor(False),
             sequence=torch.tensor(j),
             load=nodal_load,
@@ -121,8 +121,8 @@ class SingleTrailGenerator(BaseGenerator):
         )
         # Add new edge with the created node and its previous node
         graph.add_edge(
-            f"node_{j-1}",
-            f"node_{j}",
+            f"n{j-1}",
+            f"n{j}",
             is_trail_edge=torch.tensor(True),
             length=trail_element_length,
             force_sign=torch.tensor(-1.0),

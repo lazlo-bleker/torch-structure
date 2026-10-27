@@ -18,17 +18,10 @@ class Collater:
         self.exclude_keys = exclude_keys
 
     def __call__(self, batch: List[StructData]) -> StructData:
-        pyg_list = [struct_data.data for struct_data in batch]
-        batched = Batch.from_data_list(
-            pyg_list, follow_batch=self.follow_batch, exclude_keys=self.exclude_keys
+        # StructData subclasses pyg Data, so the batch keeps all StructData methods
+        return Batch.from_data_list(
+            batch, follow_batch=self.follow_batch, exclude_keys=self.exclude_keys
         )
-        struct_data = StructData.from_pyg_data(batched)
-
-        struct_data.node_attr_list = batch[0].node_attr_list
-        struct_data.edge_attr_list = batch[0].edge_attr_list
-        struct_data.graph_attr_list = batch[0].graph_attr_list
-
-        return struct_data
 
 
 class DataLoader(torch.utils.data.DataLoader):

@@ -279,7 +279,7 @@ class GridShellGenerator(BaseGenerator):
                     + centroid
                 )
                 graph.add_node(
-                    f"opening_{i}",
+                    f"o{i}",
                     pattern_coords=pattern_coord,
                     is_support=centroid_support,
                     is_boundary=torch.tensor(True),
@@ -288,7 +288,7 @@ class GridShellGenerator(BaseGenerator):
         # add corner points
         for i, point in enumerate(corner_points):
             graph.add_node(
-                f"corner_{i}",
+                f"c{i}",
                 pattern_coords=point,
                 is_support=torch.tensor(True),
                 is_boundary=torch.tensor(True),
@@ -319,10 +319,10 @@ class GridShellGenerator(BaseGenerator):
                     end_boundary,
                     boundary_density * 2 + 3,
                 )[1:-1]
-            prev_node = f"corner_{i}"
+            prev_node = f"c{i}"
 
             for j, point in enumerate(boundary_curve):
-                next_node = f"boundary_{i}_{j}"
+                next_node = f"b{i}_{j}"
                 graph.add_node(
                     next_node,
                     pattern_coords=point,
@@ -337,7 +337,7 @@ class GridShellGenerator(BaseGenerator):
             if not is_support:
                 graph.add_edge(
                     next_node,
-                    f"corner_{(i + 1) % n}",
+                    f"c{(i + 1) % n}",
                     is_boundary_edge=torch.tensor(True),
                 )
 
@@ -348,9 +348,9 @@ class GridShellGenerator(BaseGenerator):
                     centroid,
                     boundary_density + 2,
                 )[1:-1]
-                prev_node = f"boundary_{i}_{len(boundary_curve) // 2}"
+                prev_node = f"b{i}_{len(boundary_curve) // 2}"
                 for j, point in enumerate(internal_boundary):
-                    next_node = f"skeleton_{i}_{j}"
+                    next_node = f"s{i}_{j}"
                     graph.add_node(
                         next_node,
                         pattern_coords=point,
@@ -368,9 +368,9 @@ class GridShellGenerator(BaseGenerator):
                 internal_boundary = self.nd_linspace(
                     corner_points[i], centroid, boundary_density + 2
                 )[1:-1]
-                prev_node = f"corner_{i}"
+                prev_node = f"c{i}"
                 for j, point in enumerate(internal_boundary):
-                    next_node = f"skeleton_{i}_{j}"
+                    next_node = f"s{i}_{j}"
                     graph.add_node(
                         next_node,
                         pattern_coords=point,
@@ -387,12 +387,12 @@ class GridShellGenerator(BaseGenerator):
             elif pattern == "opening":
                 internal_boundary = self.nd_linspace(
                     corner_points[i],
-                    graph.nodes[f"opening_{i}"]["pattern_coords"],
+                    graph.nodes[f"o{i}"]["pattern_coords"],
                     boundary_density + 2,
                 )[1:-1]
-                prev_node = f"corner_{i}"
+                prev_node = f"c{i}"
                 for j, point in enumerate(internal_boundary):
-                    next_node = f"skeleton_{i}_{j}"
+                    next_node = f"s{i}_{j}"
                     graph.add_node(
                         next_node,
                         pattern_coords=point,
@@ -404,17 +404,17 @@ class GridShellGenerator(BaseGenerator):
                     )
                     prev_node = next_node
                 graph.add_edge(
-                    next_node, f"opening_{i}", is_boundary_edge=torch.tensor(False)
+                    next_node, f"o{i}", is_boundary_edge=torch.tensor(False)
                 )
                 opening_boundary = self.circular_arc(
-                    graph.nodes[f"opening_{i}"]["pattern_coords"],
-                    graph.nodes[f"opening_{(i + 1) % n}"]["pattern_coords"],
+                    graph.nodes[f"o{i}"]["pattern_coords"],
+                    graph.nodes[f"o{(i + 1) % n}"]["pattern_coords"],
                     centroid,
                     2 * boundary_density + 3,
                 )[1:-1]
-                prev_node = f"opening_{i}"
+                prev_node = f"o{i}"
                 for j, point in enumerate(opening_boundary):
-                    next_node = f"opening_skeleton_{i}_{j}"
+                    next_node = f"os{i}_{j}"
                     graph.add_node(
                         next_node,
                         pattern_coords=point,
@@ -430,7 +430,7 @@ class GridShellGenerator(BaseGenerator):
                     prev_node = next_node
                 graph.add_edge(
                     next_node,
-                    f"opening_{(i + 1) % n}",
+                    f"o{(i + 1) % n}",
                     is_boundary_edge=torch.tensor(False),
                     is_opening_edge=torch.tensor(True),
                 )
@@ -439,23 +439,23 @@ class GridShellGenerator(BaseGenerator):
 
         # add sub quad meshes
         for i in range(n):
-            boundary_1 = [f"skeleton_{i}_{j}" for j in range(boundary_density)]
+            boundary_1 = [f"s{i}_{j}" for j in range(boundary_density)]
             boundary_2 = [
-                f"boundary_{(i + 1) % n}_{j}" for j in range(0, boundary_density)
+                f"b{(i + 1) % n}_{j}" for j in range(0, boundary_density)
             ]
             boundary_3 = [
-                f"skeleton_{(i + 1) % n}_{j}" for j in range(boundary_density)
+                f"s{(i + 1) % n}_{j}" for j in range(boundary_density)
             ]
             boundary_4 = list(
                 reversed(
                     [
-                        f"boundary_{i}_{j}"
+                        f"b{i}_{j}"
                         for j in range(boundary_density + 1, 2 * boundary_density + 1)
                     ]
                 )
             )
             boundary_5 = [
-                f"boundary_{i}_{j}" for j in range(0, 2 * boundary_density + 1)
+                f"b{i}_{j}" for j in range(0, 2 * boundary_density + 1)
             ]
 
             # add nodes
@@ -472,7 +472,7 @@ class GridShellGenerator(BaseGenerator):
                         )
                         intersection = self.line_intersection(line_1, line_2)
                         graph.add_node(
-                            f"quad_{i}_{j}_{k}",
+                            f"q{i}_{j}_{k}",
                             pattern_coords=intersection,
                             is_support=torch.tensor(False),
                             is_boundary=torch.tensor(False),
@@ -489,14 +489,14 @@ class GridShellGenerator(BaseGenerator):
                         )
                         intersection = self.line_intersection(line_1, line_2)
                         graph.add_node(
-                            f"quad_{i}_{j}_{k}",
+                            f"q{i}_{j}_{k}",
                             pattern_coords=intersection,
                             is_support=torch.tensor(False),
                             is_boundary=torch.tensor(False),
                         )
             elif pattern == "opening":
                 boundary_opening = [
-                    f"opening_skeleton_{i}_{j}" for j in range(2 * boundary_density + 1)
+                    f"os{i}_{j}" for j in range(2 * boundary_density + 1)
                 ]
                 for j in range(boundary_density):
                     for k in range(2 * boundary_density + 1):
@@ -510,7 +510,7 @@ class GridShellGenerator(BaseGenerator):
                         )
                         intersection = self.line_intersection(line_1, line_2)
                         graph.add_node(
-                            f"quad_{i}_{j}_{k}",
+                            f"q{i}_{j}_{k}",
                             pattern_coords=intersection,
                             is_support=torch.tensor(False),
                             is_boundary=torch.tensor(False),
@@ -523,7 +523,7 @@ class GridShellGenerator(BaseGenerator):
                 for j in range(boundary_density):
                     prev_node = boundary_2[j]
                     for k in range(boundary_density):
-                        next_node = f"quad_{i}_{j}_{k}"
+                        next_node = f"q{i}_{j}_{k}"
                         graph.add_edge(
                             prev_node, next_node, is_boundary_edge=torch.tensor(False)
                         )
@@ -535,7 +535,7 @@ class GridShellGenerator(BaseGenerator):
                 for j in range(2 * boundary_density + 1):
                     prev_node = boundary_5[j]
                     for k in range(boundary_density):
-                        next_node = f"quad_{i}_{k}_{j}"
+                        next_node = f"q{i}_{k}_{j}"
                         graph.add_edge(
                             prev_node, next_node, is_boundary_edge=torch.tensor(False)
                         )
@@ -549,7 +549,7 @@ class GridShellGenerator(BaseGenerator):
                 for j in range(2 * boundary_density + 1):
                     prev_node = boundary_5[j]
                     for k in range(boundary_density):
-                        next_node = f"quad_{i}_{k}_{j}"
+                        next_node = f"q{i}_{k}_{j}"
                         graph.add_edge(
                             prev_node, next_node, is_boundary_edge=torch.tensor(False)
                         )
@@ -567,7 +567,7 @@ class GridShellGenerator(BaseGenerator):
                 for j in range(boundary_density):
                     prev_node = boundary_4[j]
                     for k in range(boundary_density):
-                        next_node = f"quad_{i}_{k}_{j}"
+                        next_node = f"q{i}_{k}_{j}"
                         graph.add_edge(
                             prev_node, next_node, is_boundary_edge=torch.tensor(False)
                         )
@@ -579,7 +579,7 @@ class GridShellGenerator(BaseGenerator):
                 for j in range(boundary_density):
                     prev_node = boundary_1[j]
                     for k in range(2 * boundary_density + 1):
-                        next_node = f"quad_{i}_{j}_{k}"
+                        next_node = f"q{i}_{j}_{k}"
                         graph.add_edge(
                             prev_node,
                             next_node,
@@ -602,9 +602,9 @@ class GridShellGenerator(BaseGenerator):
                     raise ValueError(
                         "Diagonals are only supported for the standard pattern."
                     )
-                prev_node = f"corner_{(i + 1) % n}"
+                prev_node = f"c{(i + 1) % n}"
                 for j in range(boundary_density):
-                    next_node = f"quad_{i}_{j}_{j}"
+                    next_node = f"q{i}_{j}_{j}"
                     graph.add_edge(
                         prev_node,
                         next_node,
