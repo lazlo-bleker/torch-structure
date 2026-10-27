@@ -1,4 +1,4 @@
-from torch_structure.plot import plot_data
+from torch_structure.plot import plot_data, plot_pattern
 from torch_structure.mixins.utils import OverrideResolveMixin
 
 class PlotMixin(OverrideResolveMixin):
@@ -31,3 +31,10 @@ class PlotMixin(OverrideResolveMixin):
             load=load,
             **kwargs
         )
+
+    def plot_pattern(self, **kwargs):
+        """Plot this structure with the mirror planes, rotation axes and translations of its patterns.
+
+        See [`torch_structure.plot.plot_pattern`](../plot/pattern.md).
+        """
+        return plot_pattern(self, **kwargs)
