@@ -998,10 +998,10 @@ class StructData(TSMixin, pyg.data.Data):
         of the symmetry is applied to both endpoints, on every level at once. Copies that land
         on an edge already produced are added only once, so in a mirrored rotation an edge
         joining a node to its own mirror image gives one edge per rotational position rather
-        than two. On a level that does not close (see ``create_translation`` and the ``closes``
-        argument of ``create_rotational_symmetry``), the copy that would run from the last
-        position of that level back to the first is left out, so an open level yields one copy
-        less than a closing one. The given edge itself is always added.
+        than two. On a level that does not close (see ``create_translational_symmetry`` and the
+        ``closes`` argument of ``create_rotational_symmetry``), the copy that would run from the
+        last position of that level back to the first is left out, so an open level yields one
+        copy less than a closing one. The given edge itself is always added.
 
         Args:
             edge_indices (torch.Tensor): source and destination node
@@ -1735,7 +1735,7 @@ class StructData(TSMixin, pyg.data.Data):
         }
 
 
-    def create_translation(self, n, direction = torch.tensor([1.0, 0.0, 0.0]), scaling = None, closes: bool = False) -> dict[str, torch.Tensor]:
+    def create_translational_symmetry(self, n, direction = torch.tensor([1.0, 0.0, 0.0]), scaling = None, closes: bool = False) -> dict[str, torch.Tensor]:
         """
         Builds a translation operation: ``n`` affine matrices translating along ``direction``,
         i.e. an array of ``n`` positions. Without ``scaling`` the positions are evenly spaced,
@@ -1848,7 +1848,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         Args:
             symmetries (list[dict]): the symmetries to nest, innermost first, each as returned
-                by ``create_rotational_symmetry``, ``create_translation``,
+                by ``create_rotational_symmetry``, ``create_translational_symmetry``,
                 ``create_mirror_symmetry``, or a previous ``nest_symmetries`` call.
 
         Returns:
@@ -2487,7 +2487,7 @@ class StructData(TSMixin, pyg.data.Data):
 
         Args:
             symmetries (dict[str, dict]): mapping of symmetry name to a symmetry dict, as
-                returned by ``create_rotational_symmetry``, ``create_translation``,
+                returned by ``create_rotational_symmetry``, ``create_translational_symmetry``,
                 ``create_mirror_symmetry``, or ``nest_symmetries``. Each name must not already be
                 registered. A dict without a ``closes`` entry is taken to close on every level.
             transform_attrs (list[str], optional): node attributes that should be

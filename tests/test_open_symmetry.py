@@ -250,7 +250,7 @@ def test_symmetry_dict_without_flags_closes():
 
 def test_translation_is_open_by_default():
 
-    symmetry = StructData().create_translation(4, torch.tensor([2., 0., 0.]))
+    symmetry = StructData().create_translational_symmetry(4, torch.tensor([2., 0., 0.]))
 
     assert torch.equal(symmetry["closes"], torch.tensor([True, True, True, False]))
     assert torch.equal(symmetry["symmetry_level"], torch.zeros(4, dtype=torch.long))
@@ -261,7 +261,7 @@ def test_translation_is_open_by_default():
 
 def test_translation_builds_an_open_chain():
 
-    data = build(StructData().create_translation(4, torch.tensor([1., 0., 0.])))
+    data = build(StructData().create_translational_symmetry(4, torch.tensor([1., 0., 0.])))
 
     add_family(data, 0, 1)
 
@@ -273,7 +273,7 @@ def test_translation_builds_an_open_chain():
 
 def test_translation_can_close():
 
-    data = build(StructData().create_translation(4, torch.tensor([1., 0., 0.]), closes=True))
+    data = build(StructData().create_translational_symmetry(4, torch.tensor([1., 0., 0.]), closes=True))
 
     add_family(data, 0, 1)
 
@@ -284,8 +284,8 @@ def open_grid():
     """3 positions along x (level 0) nested inside 2 positions along y (level 1), both open."""
     data = StructData()
     return data.nest_symmetries([
-        data.create_translation(3, torch.tensor([1., 0., 0.])),
-        data.create_translation(2, torch.tensor([0., 1., 0.])),
+        data.create_translational_symmetry(3, torch.tensor([1., 0., 0.])),
+        data.create_translational_symmetry(2, torch.tensor([0., 1., 0.])),
     ])
 
 
@@ -320,20 +320,20 @@ def test_translation_validates_its_arguments():
     data = StructData()
 
     with pytest.raises(ValueError, match="n must be at least 1"):
-        data.create_translation(0)
+        data.create_translational_symmetry(0)
 
     with pytest.raises(ValueError, match="must not be the zero vector"):
-        data.create_translation(3, torch.zeros(3))
+        data.create_translational_symmetry(3, torch.zeros(3))
 
     with pytest.raises(ValueError, match="must have shape"):
-        data.create_translation(3, torch.tensor([1., 0.]))
+        data.create_translational_symmetry(3, torch.tensor([1., 0.]))
 
 
 # --------------------------------------------------------------------------- per step scaling
 
 def test_scaling_scales_each_step_individually():
 
-    symmetry = StructData().create_translation(
+    symmetry = StructData().create_translational_symmetry(
         4, torch.tensor([1., 0., 0.]), scaling=torch.tensor([1., 2., 3.])
     )
 
@@ -345,7 +345,7 @@ def test_scaling_scales_each_step_individually():
 
 def test_scaling_applies_to_the_whole_direction_vector():
 
-    symmetry = StructData().create_translation(
+    symmetry = StructData().create_translational_symmetry(
         3, torch.tensor([2., 0., 1.]), scaling=torch.tensor([1., 0.5])
     )
 
@@ -357,15 +357,15 @@ def test_scaling_applies_to_the_whole_direction_vector():
 def test_scaling_of_ones_matches_the_default():
 
     data = StructData()
-    default = data.create_translation(4, torch.tensor([2., 0., 0.]))
-    explicit = data.create_translation(4, torch.tensor([2., 0., 0.]), scaling=torch.ones(3))
+    default = data.create_translational_symmetry(4, torch.tensor([2., 0., 0.]))
+    explicit = data.create_translational_symmetry(4, torch.tensor([2., 0., 0.]), scaling=torch.ones(3))
 
     assert torch.equal(default["matrices"], explicit["matrices"])
 
 
 def test_scaling_accepts_a_non_float_dtype():
 
-    symmetry = StructData().create_translation(
+    symmetry = StructData().create_translational_symmetry(
         3, torch.tensor([1., 0., 0.]), scaling=torch.tensor([2, 3])
     )
 
@@ -376,7 +376,7 @@ def test_scaling_accepts_a_non_float_dtype():
 
 def test_scaling_may_be_negative():
 
-    symmetry = StructData().create_translation(
+    symmetry = StructData().create_translational_symmetry(
         3, torch.tensor([1., 0., 0.]), scaling=torch.tensor([2., -1.])
     )
 
@@ -387,7 +387,7 @@ def test_scaling_may_be_negative():
 
 def test_scaling_keeps_the_closing_flag_and_level():
 
-    symmetry = StructData().create_translation(
+    symmetry = StructData().create_translational_symmetry(
         4, torch.tensor([1., 0., 0.]), scaling=torch.tensor([1., 2., 3.]), closes=True
     )
 
@@ -397,7 +397,7 @@ def test_scaling_keeps_the_closing_flag_and_level():
 
 def test_scaled_translation_builds_an_unevenly_spaced_chain():
 
-    data = build(StructData().create_translation(
+    data = build(StructData().create_translational_symmetry(
         4, torch.tensor([1., 0., 0.]), scaling=torch.tensor([1., 2., 3.])
     ))
 
@@ -412,8 +412,8 @@ def test_scaling_can_be_nested():
 
     data = StructData()
     symmetry = data.nest_symmetries([
-        data.create_translation(3, torch.tensor([1., 0., 0.]), scaling=torch.tensor([1., 3.])),
-        data.create_translation(2, torch.tensor([0., 1., 0.]), scaling=torch.tensor([5.])),
+        data.create_translational_symmetry(3, torch.tensor([1., 0., 0.]), scaling=torch.tensor([1., 3.])),
+        data.create_translational_symmetry(2, torch.tensor([0., 1., 0.]), scaling=torch.tensor([5.])),
     ])
 
     graph = build(symmetry)
@@ -432,10 +432,10 @@ def test_scaling_must_have_one_entry_per_step():
     data = StructData()
 
     with pytest.raises(ValueError, match=r"scaling must have shape \[3\]"):
-        data.create_translation(4, torch.tensor([1., 0., 0.]), scaling=torch.ones(4))
+        data.create_translational_symmetry(4, torch.tensor([1., 0., 0.]), scaling=torch.ones(4))
 
     with pytest.raises(ValueError, match=r"scaling must have shape \[0\]"):
-        data.create_translation(1, torch.tensor([1., 0., 0.]), scaling=torch.ones(1))
+        data.create_translational_symmetry(1, torch.tensor([1., 0., 0.]), scaling=torch.ones(1))
 
 
 def test_scaling_must_be_a_tensor():
@@ -443,7 +443,7 @@ def test_scaling_must_be_a_tensor():
     data = StructData()
 
     with pytest.raises(ValueError, match="scaling must be a torch.Tensor"):
-        data.create_translation(3, torch.tensor([1., 0., 0.]), scaling=[1., 2.])
+        data.create_translational_symmetry(3, torch.tensor([1., 0., 0.]), scaling=[1., 2.])
 
 
 # --------------------------------------------------------------------------- setters see the same family
@@ -495,7 +495,7 @@ def test_open_level_inside_a_mirror():
 
     data = StructData()
     symmetry = data.nest_symmetries([
-        data.create_translation(3, torch.tensor([1., 0., 0.])),
+        data.create_translational_symmetry(3, torch.tensor([1., 0., 0.])),
         data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.])),
     ])
 
@@ -576,7 +576,7 @@ def test_replicate_levels_still_respects_the_closing_flag():
 
     data = StructData()
     symmetry = data.nest_symmetries([
-        data.create_translation(4, direction=torch.tensor([1., 0., 0.])),
+        data.create_translational_symmetry(4, direction=torch.tensor([1., 0., 0.])),
         data.create_rotational_symmetry(3),
     ])
     graph = build(symmetry)
@@ -661,8 +661,8 @@ def test_replicate_levels_rejects_edges_of_several_symmetries():
         data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.])),
     ])
     grid = data.nest_symmetries([
-        data.create_translation(3, torch.tensor([1., 0., 0.])),
-        data.create_translation(2, torch.tensor([0., 1., 0.])),
+        data.create_translational_symmetry(3, torch.tensor([1., 0., 0.])),
+        data.create_translational_symmetry(2, torch.tensor([0., 1., 0.])),
     ])
     data.add_symmetries({"rotated_box": rotated_box, "grid": grid}, copy_attrs=["force"])
 

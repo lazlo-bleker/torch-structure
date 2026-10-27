@@ -74,7 +74,7 @@ def test_nest_symmetries_is_associative():
 
     inner = data.create_rotational_symmetry(4, closes=False)
     middle = data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.]))
-    outer = data.create_translation(3, torch.tensor([10., 0., 0.]))
+    outer = data.create_translational_symmetry(3, torch.tensor([10., 0., 0.]))
 
     flat = data.nest_symmetries([inner, middle, outer])
     nested_inner = data.nest_symmetries([data.nest_symmetries([inner, middle]), outer])
