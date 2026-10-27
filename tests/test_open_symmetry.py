@@ -9,7 +9,7 @@ def build(symmetry, n_seeds=1):
     edge_attrs = {"force": torch.empty((0, 1), dtype=torch.float)}
 
     data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
-    data.add_symmetry({"s": symmetry}, copy_attrs=["force"])
+    data.add_symmetries({"s": symmetry}, copy_attrs=["force"])
 
     coords = torch.tensor([[1., 0., 0.], [2., 0., 0.], [3., 0., 0.]])[:n_seeds]
     data.add_nodes_symmetrical(symmetry="s", coords=coords)
@@ -221,7 +221,7 @@ def test_add_symmetry_rejects_a_flag_off_a_level_boundary():
     symmetry["closes"] = torch.tensor([True, False, True, True])
 
     with pytest.raises(ValueError, match="only be False at the last matrix"):
-        data.add_symmetry({"bad": symmetry})
+        data.add_symmetries({"bad": symmetry})
 
 
 def test_add_symmetry_rejects_wrongly_sized_flags():
@@ -231,7 +231,7 @@ def test_add_symmetry_rejects_wrongly_sized_flags():
     symmetry["closes"] = torch.ones(3, dtype=torch.bool)
 
     with pytest.raises(ValueError, match="one entry per matrix"):
-        data.add_symmetry({"bad": symmetry})
+        data.add_symmetries({"bad": symmetry})
 
 
 def test_symmetry_dict_without_flags_closes():
@@ -664,7 +664,7 @@ def test_replicate_levels_rejects_edges_of_several_symmetries():
         data.create_translation(3, torch.tensor([1., 0., 0.])),
         data.create_translation(2, torch.tensor([0., 1., 0.])),
     ])
-    data.add_symmetry({"rotated_box": rotated_box, "grid": grid}, copy_attrs=["force"])
+    data.add_symmetries({"rotated_box": rotated_box, "grid": grid}, copy_attrs=["force"])
 
     # nodes 0-7: the rotated box, nodes 8-13: the grid
     data.add_nodes_symmetrical(symmetry="rotated_box", coords=torch.tensor([[1., 0., 1.]]))

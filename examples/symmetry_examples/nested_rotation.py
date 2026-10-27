@@ -15,8 +15,8 @@ rotational_symmetry_n = data.create_rotational_symmetry(n)
 rotational_symmetry_s = data.create_rotational_symmetry(s, origin = torch.tensor([5.0, 0.0, 0.0]))
 nested_rotational_symmetry = data.nest_symmetries([rotational_symmetry_n, rotational_symmetry_s])
 
-data.add_symmetry({"rotational_symmetry": nested_rotational_symmetry})
-data.add_symmetry({"rotational_symmetry_s": rotational_symmetry_s})
+data.add_symmetries({"rotational_symmetry": nested_rotational_symmetry})
+data.add_symmetries({"rotational_symmetry_s": rotational_symmetry_s})
 
 height = torch.arange(m).unsqueeze(1)
 zeros = torch.zeros(m, 1)

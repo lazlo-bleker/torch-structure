@@ -29,8 +29,8 @@ def test_view_symmetries_lists_each_symmetry(capsys):
 
     rotation = data.create_rotational_symmetry(4)
     mirror = data.create_mirror_symmetry()
-    data.add_symmetry({"rot4": rotation, "mirror": mirror}, copy_attrs=["load", "force"])
-    data.add_symmetry({"d4": data.nest_symmetries([mirror, rotation])}, transform_attrs=[])
+    data.add_symmetries({"rot4": rotation, "mirror": mirror}, copy_attrs=["load", "force"])
+    data.add_symmetries({"d4": data.nest_symmetries([mirror, rotation])}, transform_attrs=[])
 
     data.view_symmetries()
 

@@ -18,7 +18,7 @@ rotation = data.create_rotational_symmetry(n_sectors, closes=True)
 
 cylinder_symmetry = data.nest_symmetries([vertical_array, rotation])
 
-data.add_symmetry({"cylinder": cylinder_symmetry}, copy_attrs=["force"])
+data.add_symmetries({"cylinder": cylinder_symmetry}, copy_attrs=["force"])
 data.view_symmetries()
 
 #one seed node, copied to n_rings * n_sectors positions

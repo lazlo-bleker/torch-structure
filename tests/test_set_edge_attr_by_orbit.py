@@ -15,7 +15,7 @@ def build_structure(symmetric_nodes=True):
 
     data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["force"])
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["force"])
 
     if symmetric_nodes:
         # orbit 0 (nodes 0-3) and orbit 1 (nodes 4-7)

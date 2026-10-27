@@ -12,7 +12,7 @@ m = 5
 
 rotational_symmetry = data.create_rotational_symmetry(n)
 
-data.add_symmetry({"rotational_symmetry": rotational_symmetry})
+data.add_symmetries({"rotational_symmetry": rotational_symmetry})
 
 height = torch.arange(m).unsqueeze(1)
 zeros = torch.zeros(m, 1)

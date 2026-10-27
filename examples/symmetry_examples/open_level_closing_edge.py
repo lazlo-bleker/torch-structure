@@ -23,7 +23,7 @@ vertical_array = data.create_translation(n_levels, direction=torch.tensor([0.0, 
 
 stacked = data.nest_symmetries([open_rotation, vertical_array])
 
-data.add_symmetry({"stacked": stacked}, copy_attrs=["force"])
+data.add_symmetries({"stacked": stacked}, copy_attrs=["force"])
 data.view_symmetries()
 
 data.add_nodes_symmetrical(symmetry="stacked", coords=torch.tensor([[2.0, 0.0, 0.0]]))

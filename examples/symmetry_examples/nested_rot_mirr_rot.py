@@ -24,7 +24,7 @@ nested_symmetry = data.nest_symmetries([
     outer_rotation,
 ])
 
-data.add_symmetry({"nested": nested_symmetry}, copy_attrs=["force"])
+data.add_symmetries({"nested": nested_symmetry}, copy_attrs=["force"])
 data.view_symmetries()
 
 #one seed node, copied to n_corners * 2 * n_sectors positions

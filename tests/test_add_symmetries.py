@@ -17,12 +17,12 @@ def build_structure():
     return StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 
-def test_add_symmetry_registers_symmetry():
+def test_add_symmetries_registers_symmetry():
 
     data = build_structure()
 
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"rot4": rotation}, copy_attrs=["load", "force"])
+    data.add_symmetries({"rot4": rotation}, copy_attrs=["load", "force"])
 
     name_to_symmetry_expected = {"rot4": 0}
     symmetry_matrix_id_expected = torch.zeros(4, dtype=torch.long)
@@ -46,7 +46,7 @@ def test_add_symmetry_registers_symmetry():
         assert attr in data.metadata["graph_attr_list"]
 
 
-def test_add_symmetry_several_symmetries_with_existing_nodes():
+def test_add_symmetries_several_symmetries_with_existing_nodes():
 
     data = build_structure()
 
@@ -54,8 +54,8 @@ def test_add_symmetry_several_symmetries_with_existing_nodes():
 
     rotation = data.create_rotational_symmetry(4)
     mirror = data.create_mirror_symmetry()
-    data.add_symmetry({"rot4": rotation, "mirror": mirror}, copy_attrs=["load"])
-    data.add_symmetry({"d4": data.nest_symmetries([mirror, rotation])}, transform_attrs=[])
+    data.add_symmetries({"rot4": rotation, "mirror": mirror}, copy_attrs=["load"])
+    data.add_symmetries({"d4": data.nest_symmetries([mirror, rotation])}, transform_attrs=[])
 
     name_to_symmetry_expected = {"rot4": 0, "mirror": 1, "d4": 2}
     symmetry_matrix_id_expected = torch.tensor([0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2])
@@ -77,24 +77,24 @@ def test_add_symmetry_several_symmetries_with_existing_nodes():
     assert torch.equal(data.symmetry_id, bookkeeping_expected)
 
 
-def test_add_symmetry_invalid_input():
+def test_add_symmetries_invalid_input():
 
     data = build_structure()
 
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"rot4": rotation})
+    data.add_symmetries({"rot4": rotation})
 
     with pytest.raises(ValueError, match="already exists"):
-        data.add_symmetry({"rot4": rotation})
+        data.add_symmetries({"rot4": rotation})
 
     with pytest.raises(ValueError, match="symmetry bookkeeping"):
-        data.add_symmetry({"rot4_b": rotation}, copy_attrs=["orbit_id"])
+        data.add_symmetries({"rot4_b": rotation}, copy_attrs=["orbit_id"])
 
     with pytest.raises(ValueError, match="registered edge attribute"):
-        data.add_symmetry({"rot4_b": rotation}, transform_attrs=["force"])
+        data.add_symmetries({"rot4_b": rotation}, transform_attrs=["force"])
 
     with pytest.raises(ValueError, match="one entry per matrix"):
-        data.add_symmetry({"rot4_b": {"matrices": rotation["matrices"], "symmetry_level": torch.zeros(3, dtype=torch.long)}})
+        data.add_symmetries({"rot4_b": {"matrices": rotation["matrices"], "symmetry_level": torch.zeros(3, dtype=torch.long)}})
 
     # the failed calls did not register anything
     assert data.metadata["name_to_symmetry"] == {"rot4": 0}

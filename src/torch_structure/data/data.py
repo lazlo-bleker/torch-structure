@@ -599,7 +599,7 @@ class StructData(TSMixin, pyg.data.Data):
         """
 
         if symmetry not in self.metadata.get("name_to_symmetry", {}):
-            raise ValueError(f"Symmetry '{symmetry}' is not registered. Please register the symmetry first using add_symmetry().")
+            raise ValueError(f"Symmetry '{symmetry}' is not registered. Please register the symmetry first using add_symmetries().")
 
         num_seed_nodes = self._prepare_node_kwargs(names, kwargs)
 
@@ -870,7 +870,7 @@ class StructData(TSMixin, pyg.data.Data):
 
     def _require_symmetry(self):
         if not hasattr(self, "symmetry_id"):
-            raise ValueError("No symmetry is registered. Register one with add_symmetry() first.")
+            raise ValueError("No symmetry is registered. Register one with add_symmetries() first.")
 
 
     def _check_new_edges(self, edge_indices, kwargs):
@@ -1695,7 +1695,7 @@ class StructData(TSMixin, pyg.data.Data):
                 -- ``n`` affine matrices of shape [n, 4, 4], a ``symmetry_level`` of shape [n]
                 (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
                 (all ``True`` except the last entry, which is ``closes``). Pass this dict to
-                ``add_symmetry`` directly, or nest it inside another symmetry via
+                ``add_symmetries`` directly, or nest it inside another symmetry via
                 ``nest_symmetries``.
 
         Raises:
@@ -1758,7 +1758,7 @@ class StructData(TSMixin, pyg.data.Data):
                 -- ``n`` affine matrices of shape [n, 4, 4], a ``symmetry_level`` of shape [n]
                 (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
                 (all ``True`` except the last entry, which is ``closes``). Pass this dict to
-                ``add_symmetry`` directly, or nest it inside another symmetry via
+                ``add_symmetries`` directly, or nest it inside another symmetry via
                 ``nest_symmetries``.
 
         Raises:
@@ -1815,7 +1815,7 @@ class StructData(TSMixin, pyg.data.Data):
                 -- 2 affine matrices of shape [2, 4, 4], a ``symmetry_level`` of shape [2] (all
                 zeros, since this is a single, unnested level), and ``closes`` of shape [2] (all
                 ``True``: a mirror has only two positions, so closing it and leaving it open give
-                the same single edge between them). Pass this dict to ``add_symmetry`` directly,
+                the same single edge between them). Pass this dict to ``add_symmetries`` directly,
                 or nest it inside another symmetry via ``nest_symmetries``.
 
         Raises:
@@ -2035,7 +2035,7 @@ class StructData(TSMixin, pyg.data.Data):
             else:
                 raise ValueError(
                     f"Attribute '{attr}' is not classified as a transform or copy attribute for "
-                    f"symmetry group {group_id}. Register it via add_symmetry(transform_attrs=..., "
+                    f"symmetry group {group_id}. Register it via add_symmetries(transform_attrs=..., "
                     "copy_attrs=...)."
                 )
 
@@ -2443,7 +2443,7 @@ class StructData(TSMixin, pyg.data.Data):
             if attr not in self.metadata["symmetry_copy_attrs"][group_id]:
                 raise ValueError(
                     f"Attribute '{attr}' is not registered as a copy attribute for symmetry "
-                    f"group {group_id}. Register it via add_symmetry(copy_attrs=...)."
+                    f"group {group_id}. Register it via add_symmetries(copy_attrs=...)."
                 )
 
             group_idx = torch.where(src_group == group_id)[0]
@@ -2476,7 +2476,7 @@ class StructData(TSMixin, pyg.data.Data):
         for sib_edges, sib_value in sibling_updates:
             self._modify_edge_attr_and_reciprocal(attr, sib_edges, sib_value)
 
-    def add_symmetry(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None):
+    def add_symmetries(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None):
         """
         Registers one or more symmetries on the graph, so ``add_nodes_symmetrical``,
         ``add_edges_symmetrical``, ``set_node_attr_symmetrical``, and ``set_edge_attr_symmetrical``
