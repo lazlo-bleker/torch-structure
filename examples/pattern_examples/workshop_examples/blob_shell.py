@@ -83,4 +83,6 @@ data.fdm(inplace=True)
 
 data.plot(show_supports=True, lw_scale=0.3)
 
+data.plot_pattern()
+
 plt.show()
