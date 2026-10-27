@@ -29,16 +29,16 @@ def test_view_symmetries_lists_each_symmetry(capsys):
 
     rotation = data.create_rotational_symmetry(4)
     mirror = data.create_mirror_symmetry()
-    data.add_symmetry({"rot4": rotation, "mirror": mirror}, copy_attrs=["load", "force"])
-    data.add_symmetry({"d4": data.combine_symmetry(mirror, rotation)}, transform_attrs=[])
+    data.add_symmetries({"rot4": rotation, "mirror": mirror}, copy_attrs=["load", "force"])
+    data.add_symmetries({"d4": data.nest_symmetries([mirror, rotation])}, transform_attrs=[])
 
     data.view_symmetries()
 
     # the order is the number of matrices, the levels are listed innermost first
     output_expected = (
-        "rot4: order=4, levels=[4 (closing)], transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
-        "mirror: order=2, levels=[2 (closing)], transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
-        "d4: order=8, levels=[2 (closing), 4 (closing)], transform_attrs=[], copy_attrs=[]\n"
+        "rot4: size=4, levels=[4 (closing)], transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
+        "mirror: size=2, levels=[2 (closing)], transform_attrs=['coords'], copy_attrs=['load', 'force']\n"
+        "d4: size=8, levels=[2 (closing), 4 (closing)], transform_attrs=[], copy_attrs=[]\n"
     )
 
     assert capsys.readouterr().out == output_expected

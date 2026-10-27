@@ -14,7 +14,7 @@ def build_structure():
 
     data = StructData(node_attrs=node_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["load"])
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["load"])
 
     # orbit 0 (nodes 0-3) and orbit 1 (nodes 4-7)
     data.add_nodes_symmetrical(
@@ -140,9 +140,9 @@ def build_nested_structure():
     data = StructData(node_attrs=node_attrs)
 
     # level 0: 3 rings stacked along z, level 1: 4 sectors around the z axis
-    stacked = data.create_translation(3, torch.tensor([0., 0., 1.]))
+    stacked = data.create_translational_symmetry(3, torch.tensor([0., 0., 1.]))
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"cylinder": data.combine_symmetry(stacked, rotation)}, copy_attrs=["load"])
+    data.add_symmetries({"cylinder": data.nest_symmetries([stacked, rotation])}, copy_attrs=["load"])
 
     # one orbit of 12 nodes: orbit position p is ring p % 3 of sector p // 3
     data.add_nodes_symmetrical(symmetry="cylinder", coords=torch.tensor([[1., 0., 0.]]), load=torch.zeros((1, 1)))
@@ -210,7 +210,7 @@ def test_set_node_attr_symmetrical_rejects_several_symmetries():
 
     data = StructData(node_attrs=node_attrs)
 
-    data.add_symmetry(
+    data.add_symmetries(
         {"rot4": data.create_rotational_symmetry(4), "mirror": data.create_mirror_symmetry()}, copy_attrs=["load"]
     )
 

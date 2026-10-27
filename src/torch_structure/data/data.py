@@ -599,21 +599,21 @@ class StructData(TSMixin, pyg.data.Data):
         """
 
         if symmetry not in self.metadata.get("name_to_symmetry", {}):
-            raise ValueError(f"Symmetry '{symmetry}' is not registered. Please register the symmetry first using add_symmetry().")
+            raise ValueError(f"Symmetry '{symmetry}' is not registered. Please register the symmetry first using add_symmetries().")
 
         num_seed_nodes = self._prepare_node_kwargs(names, kwargs)
 
         symmetry_id = self.metadata["name_to_symmetry"][symmetry]
-        group_matrices = self.symmetry_matrices[self.symmetry_matrix_id == symmetry_id]
-        group_size = group_matrices.shape[0]
+        matrices = self.symmetry_matrices[self.symmetry_matrix_id == symmetry_id]
+        symmetry_size = matrices.shape[0]
         transform_attrs = self.metadata["symmetry_transform_attrs"][symmetry_id]
 
-        num_new_nodes = num_seed_nodes * group_size
+        num_new_nodes = num_seed_nodes * symmetry_size
         self.num_nodes += num_new_nodes
 
         base_orbit_id = int(self.orbit_id.max().item()) + 1 if self.orbit_id.numel() > 0 else 0
-        new_orbit_id = (base_orbit_id + torch.arange(num_seed_nodes)).repeat_interleave(group_size).unsqueeze(1)
-        new_orbit_position = torch.arange(group_size).repeat(num_seed_nodes).unsqueeze(1)
+        new_orbit_id = (base_orbit_id + torch.arange(num_seed_nodes)).repeat_interleave(symmetry_size).unsqueeze(1)
+        new_orbit_position = torch.arange(symmetry_size).repeat(num_seed_nodes).unsqueeze(1)
         new_symmetry_id = torch.full((num_new_nodes, 1), symmetry_id, dtype=torch.long)
 
         self.orbit_id = torch.cat([self.orbit_id, new_orbit_id], dim=0)
@@ -629,10 +629,10 @@ class StructData(TSMixin, pyg.data.Data):
 
             if attr in kwargs:
                 if attr in transform_attrs:
-                    value = self._apply_affine(group_matrices, value)
+                    value = self._apply_affine(matrices, value)
                     value = value.reshape(num_new_nodes, *value.shape[2:])
                 else:
-                    value = self._expand_value_over_symmetry(value, num_seed_nodes, group_size)
+                    value = self._expand_value_over_symmetry(value, num_seed_nodes, symmetry_size)
 
             setattr(
                 self,
@@ -640,23 +640,23 @@ class StructData(TSMixin, pyg.data.Data):
                 torch.cat([getattr(self, attr), value], dim=0),
             )
 
-    def _orbit_canonical_members(self, nodes, full_group_size):
+    def _orbit_canonical_members(self, nodes, symmetry_size):
         orbit_id = self.orbit_id.view(-1)
         orbit_position = self.orbit_position.view(-1)
         num_nodes = nodes.shape[0]
 
         idx = orbit_position[nodes]
         base = nodes - idx
-        if torch.any(base < 0) or torch.any(base + full_group_size > orbit_id.numel()):
+        if torch.any(base < 0) or torch.any(base + symmetry_size > orbit_id.numel()):
             raise ValueError(
                 "Orbit of some node(s) does not fit within the current node range; "
                 "its nodes may have been merged or removed."
             )
 
-        members = base.unsqueeze(1) + torch.arange(full_group_size, device=nodes.device) 
-        group = orbit_id[nodes].unsqueeze(1)
-        expected_index = torch.arange(full_group_size, device=nodes.device, dtype=orbit_position.dtype).unsqueeze(0).expand(num_nodes, full_group_size)
-        if not torch.all(orbit_id[members] == group) or not torch.equal(orbit_position[members], expected_index):
+        members = base.unsqueeze(1) + torch.arange(symmetry_size, device=nodes.device) 
+        expected_orbit = orbit_id[nodes].unsqueeze(1)
+        expected_index = torch.arange(symmetry_size, device=nodes.device, dtype=orbit_position.dtype).unsqueeze(0).expand(num_nodes, symmetry_size)
+        if not torch.all(orbit_id[members] == expected_orbit) or not torch.equal(orbit_position[members], expected_index):
             raise ValueError(
                 "Some orbit(s) are not contiguous or intact; their nodes may have been merged or removed."
             )
@@ -664,15 +664,15 @@ class StructData(TSMixin, pyg.data.Data):
         return members, idx
 
 
-    def _infer_level_sizes(self, group_id):
+    def _infer_level_sizes(self, symmetry_id):
 
-        group = self.symmetry_matrix_id == group_id
-        levels = self.symmetry_level[group]
+        in_symmetry = self.symmetry_matrix_id == symmetry_id
+        levels = self.symmetry_level[in_symmetry]
         counts = torch.bincount(levels)
         boundaries = torch.cumsum(counts, dim=0)
 
         closes = getattr(self, "symmetry_closes", None)
-        closes = torch.ones_like(levels, dtype=torch.bool) if closes is None else closes[group]
+        closes = torch.ones_like(levels, dtype=torch.bool) if closes is None else closes[in_symmetry]
 
         level_sizes, level_closes = [], []
         prev = 1
@@ -684,7 +684,7 @@ class StructData(TSMixin, pyg.data.Data):
         return level_sizes, level_closes
 
 
-    def _swept_levels(self, replicate_levels, num_levels, group_id):
+    def _swept_levels(self, replicate_levels, num_levels, symmetry_id):
 
         if replicate_levels is None:
             return torch.ones(num_levels, dtype=torch.bool)
@@ -693,19 +693,19 @@ class StructData(TSMixin, pyg.data.Data):
         if swept.shape[0] != num_levels:
             raise ValueError(
                 f"replicate_levels must have one entry per symmetry level ({num_levels} for "
-                f"symmetry group {group_id}), got {swept.shape[0]}."
+                f"symmetry '{self._symmetry_name(symmetry_id)}'), got {swept.shape[0]}."
             )
 
         return swept
 
 
-    def _replicated_positions(self, positions, group_id, replicate_levels=None):
+    def _replicated_positions(self, positions, symmetry_id, replicate_levels=None):
 
-        level_sizes, _ = self._infer_level_sizes(group_id)
+        level_sizes, _ = self._infer_level_sizes(symmetry_id)
         num_levels = len(level_sizes)
         sizes_t = torch.tensor(level_sizes, dtype=torch.long)
 
-        swept = self._swept_levels(replicate_levels, num_levels, group_id)
+        swept = self._swept_levels(replicate_levels, num_levels, symmetry_id)
 
         place = torch.ones(num_levels, dtype=torch.long)
         for level in range(1, num_levels):
@@ -732,13 +732,13 @@ class StructData(TSMixin, pyg.data.Data):
         return base.unsqueeze(1) + offsets.unsqueeze(0)
 
 
-    def _expand_edge_indices_symmetrically(self, src, dst, group_id, replicate_levels=None):
+    def _expand_edge_indices_symmetrically(self, src, dst, symmetry_id, replicate_levels=None):
     
         orbit_position = self.orbit_position.view(-1)
         src_base = src - orbit_position[src]
         dst_base = dst - orbit_position[dst]
 
-        level_sizes, level_closes = self._infer_level_sizes(group_id)
+        level_sizes, level_closes = self._infer_level_sizes(symmetry_id)
         num_levels = len(level_sizes)
         sizes_t = torch.tensor(level_sizes, dtype=torch.long)
         closes_t = torch.tensor(level_closes, dtype=torch.bool)
@@ -760,7 +760,7 @@ class StructData(TSMixin, pyg.data.Data):
         signed_deltas = dst_idx - src_idx
         deltas = torch.where(closes_t, signed_deltas % sizes_t, signed_deltas) if num_levels else signed_deltas
 
-        swept = self._swept_levels(replicate_levels, num_levels, group_id)
+        swept = self._swept_levels(replicate_levels, num_levels, symmetry_id)
         frozen = ~swept
 
         # a frozen level keeps the given edge's own two positions
@@ -817,8 +817,8 @@ class StructData(TSMixin, pyg.data.Data):
 
         src, dst = edge_indices[0], edge_indices[1]
 
-        symmetry_id = self.symmetry_id.view(-1)
-        src_symmetry_id, dst_symmetry_id = symmetry_id[src], symmetry_id[dst]
+        node_symmetry_id = self.symmetry_id.view(-1)
+        src_symmetry_id, dst_symmetry_id = node_symmetry_id[src], node_symmetry_id[dst]
 
         for attr, value in kwargs.items():
             if not isinstance(value, torch.Tensor):
@@ -850,17 +850,17 @@ class StructData(TSMixin, pyg.data.Data):
         dst_expanded = [dst[:0]]
         kwargs_expanded = {attr: [value[:0]] for attr, value in kwargs.items()}
 
-        for group_id in torch.unique(src_symmetry_id).tolist():
-            group_edge_idx = torch.where(src_symmetry_id == group_id)[0]
+        for symmetry_id in torch.unique(src_symmetry_id).tolist():
+            symmetry_edge_idx = torch.where(src_symmetry_id == symmetry_id)[0]
 
             src_orbits, dst_orbits, seed_edge = self._expand_edge_indices_symmetrically(
-                src[group_edge_idx], dst[group_edge_idx], group_id, replicate_levels
+                src[symmetry_edge_idx], dst[symmetry_edge_idx], symmetry_id, replicate_levels
             )
             src_expanded.append(src_orbits)
             dst_expanded.append(dst_orbits)
 
             for attr, value in kwargs.items():
-                kwargs_expanded[attr].append(value[group_edge_idx][seed_edge])
+                kwargs_expanded[attr].append(value[symmetry_edge_idx][seed_edge])
 
         edge_indices = torch.stack([torch.cat(src_expanded), torch.cat(dst_expanded)], dim=0)
         kwargs_expanded = {attr: torch.cat(values, dim=0) for attr, values in kwargs_expanded.items()}
@@ -868,9 +868,15 @@ class StructData(TSMixin, pyg.data.Data):
         return edge_indices, kwargs_expanded    
 
 
+    def _symmetry_name(self, symmetry_id):
+        for name, registered_id in self.metadata["name_to_symmetry"].items():
+            if registered_id == symmetry_id:
+                return name
+        raise ValueError(f"No symmetry is registered with id {symmetry_id}.")
+
     def _require_symmetry(self):
         if not hasattr(self, "symmetry_id"):
-            raise ValueError("No symmetry is registered. Register one with add_symmetry() first.")
+            raise ValueError("No symmetry is registered. Register one with add_symmetries() first.")
 
 
     def _check_new_edges(self, edge_indices, kwargs):
@@ -998,10 +1004,10 @@ class StructData(TSMixin, pyg.data.Data):
         of the symmetry is applied to both endpoints, on every level at once. Copies that land
         on an edge already produced are added only once, so in a mirrored rotation an edge
         joining a node to its own mirror image gives one edge per rotational position rather
-        than two. On a level that does not close (see ``create_translation`` and the ``closes``
-        argument of ``create_rotational_symmetry``), the copy that would run from the last
-        position of that level back to the first is left out, so an open level yields one copy
-        less than a closing one. The given edge itself is always added.
+        than two. On a level that does not close (see ``create_translational_symmetry`` and the
+        ``closes`` argument of ``create_rotational_symmetry``), the copy that would run from the
+        last position of that level back to the first is left out, so an open level yields one
+        copy less than a closing one. The given edge itself is always added.
 
         Args:
             edge_indices (torch.Tensor): source and destination node
@@ -1695,8 +1701,8 @@ class StructData(TSMixin, pyg.data.Data):
                 -- ``n`` affine matrices of shape [n, 4, 4], a ``symmetry_level`` of shape [n]
                 (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
                 (all ``True`` except the last entry, which is ``closes``). Pass this dict to
-                ``add_symmetry`` directly, or nest it inside another symmetry via
-                ``combine_symmetry``.
+                ``add_symmetries`` directly, or nest it inside another symmetry via
+                ``nest_symmetries``.
 
         Raises:
             ValueError: if ``n`` is less than 1.
@@ -1735,7 +1741,7 @@ class StructData(TSMixin, pyg.data.Data):
         }
 
 
-    def create_translation(self, n, direction = torch.tensor([1.0, 0.0, 0.0]), scaling = None, closes: bool = False) -> dict[str, torch.Tensor]:
+    def create_translational_symmetry(self, n, direction = torch.tensor([1.0, 0.0, 0.0]), scaling = None, closes: bool = False) -> dict[str, torch.Tensor]:
         """
         Builds a translation operation: ``n`` affine matrices translating along ``direction``,
         i.e. an array of ``n`` positions. Without ``scaling`` the positions are evenly spaced,
@@ -1758,8 +1764,8 @@ class StructData(TSMixin, pyg.data.Data):
                 -- ``n`` affine matrices of shape [n, 4, 4], a ``symmetry_level`` of shape [n]
                 (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
                 (all ``True`` except the last entry, which is ``closes``). Pass this dict to
-                ``add_symmetry`` directly, or nest it inside another symmetry via
-                ``combine_symmetry``.
+                ``add_symmetries`` directly, or nest it inside another symmetry via
+                ``nest_symmetries``.
 
         Raises:
             ValueError: if ``n`` is less than 1.
@@ -1815,8 +1821,8 @@ class StructData(TSMixin, pyg.data.Data):
                 -- 2 affine matrices of shape [2, 4, 4], a ``symmetry_level`` of shape [2] (all
                 zeros, since this is a single, unnested level), and ``closes`` of shape [2] (all
                 ``True``: a mirror has only two positions, so closing it and leaving it open give
-                the same single edge between them). Pass this dict to ``add_symmetry`` directly,
-                or nest it inside another symmetry via ``combine_symmetry``.
+                the same single edge between them). Pass this dict to ``add_symmetries`` directly,
+                or nest it inside another symmetry via ``nest_symmetries``.
 
         Raises:
             ValueError: if ``origin`` or ``normal`` is not a tensor of shape [3] with the
@@ -1841,25 +1847,37 @@ class StructData(TSMixin, pyg.data.Data):
         }
 
 
-    def combine_symmetry(self, symmetry_a, symmetry_b) -> dict[str, torch.Tensor]:
+    def nest_symmetries(self, symmetries: list) -> dict[str, torch.Tensor]:
         """
-        Nests ``symmetry_a`` inside ``symmetry_b``, producing every combination of the
-        two.
+        Nests symmetries inside each other, innermost first, producing every combination of
+        them.
 
         Args:
-            symmetry_a (dict): the inner symmetry, as returned by
-                ``create_rotational_symmetry``, ``create_mirror_symmetry``, or a previous
-                ``combine_symmetry`` call.
-            symmetry_b (dict): the outer symmetry to nest around ``symmetry_a``, in the
-                same dict form.
+            symmetries (list[dict]): the symmetries to nest, innermost first, each as returned
+                by ``create_rotational_symmetry``, ``create_translational_symmetry``,
+                ``create_mirror_symmetry``, or a previous ``nest_symmetries`` call.
 
         Returns:
             ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor, "closes": torch.Tensor}``
-                -- the combined affine matrices, shape ``[size_a * size_b, 4, 4]``, and the
-                combined ``symmetry_level`` and ``closes``, shape ``[size_a * size_b]`` each.
-                Every level keeps its own closing behaviour, so nesting an open symmetry inside
-                another open one stays open in both directions.
+                -- the nested affine matrices, shape ``[size, 4, 4]`` with ``size`` the product
+                of the symmetries' sizes, and the nested ``symmetry_level`` and ``closes``, shape
+                ``[size]`` each. Every level keeps its own closing behaviour, so nesting an open
+                symmetry inside another open one stays open in both directions.
+
+        Raises:
+            ValueError: if ``symmetries`` is empty.
         """
+        if len(symmetries) == 0:
+            raise ValueError("nest_symmetries() needs at least one symmetry.")
+
+        nested = symmetries[0]
+        for outer in symmetries[1:]:
+            nested = self._nest_symmetry_pair(nested, outer)
+        return nested
+
+
+    def _nest_symmetry_pair(self, symmetry_a, symmetry_b):
+        # nests the inner symmetry_a inside the outer symmetry_b
 
         affine = symmetry_b["matrices"].unsqueeze(1) @ symmetry_a["matrices"].unsqueeze(0)
 
@@ -1964,7 +1982,7 @@ class StructData(TSMixin, pyg.data.Data):
                 its nodes were merged or removed.
             ValueError: if ``replicate_levels`` does not have one entry per nesting level of
                 the symmetry.
-            ValueError: if a selected node's symmetry group has ``attr`` classified as neither
+            ValueError: if a selected node's symmetry has ``attr`` classified as neither
                 a transform nor a copy attribute.
         """
 
@@ -1972,7 +1990,6 @@ class StructData(TSMixin, pyg.data.Data):
         self._require_symmetry()
 
         orbit_id = self.orbit_id.view(-1)
-        symmetry_id = self.symmetry_id.view(-1)
 
         node_orbit_ids = orbit_id[nodes]
 
@@ -1982,9 +1999,9 @@ class StructData(TSMixin, pyg.data.Data):
                 f"Selected node(s) {nodes[outside].tolist()} are outside any symmetry. Set them via set_node_attr()."
             )
 
-        group_ids = symmetry_id[nodes]
+        node_symmetry_ids = self.symmetry_id.view(-1)[nodes]
 
-        if torch.unique(group_ids).numel() > 1:
+        if torch.unique(node_symmetry_ids).numel() > 1:
             raise ValueError(
                 "The selected nodes belong to several registered symmetries. Set the nodes of each "
                 "symmetry in a separate call."
@@ -1996,34 +2013,35 @@ class StructData(TSMixin, pyg.data.Data):
         # compute the new values of every orbit before writing anything, so a failed check leaves
         # the attribute unchanged
         orbit_updates = []
-        for group_id in torch.unique(group_ids).tolist():
-            group_mask = group_ids == group_id
-            group_nodes = nodes[group_mask]
-            group_values = value[group_mask]
+        for symmetry_id in torch.unique(node_symmetry_ids).tolist():
+            in_symmetry = node_symmetry_ids == symmetry_id
+            symmetry_nodes = nodes[in_symmetry]
+            symmetry_values = value[in_symmetry]
 
-            group_matrices = self.symmetry_matrices[self.symmetry_matrix_id == group_id]
-            group_size = group_matrices.shape[0]
+            matrices = self.symmetry_matrices[self.symmetry_matrix_id == symmetry_id]
+            symmetry_size = matrices.shape[0]
 
-            members, idx = self._orbit_canonical_members(group_nodes, group_size)
+            members, idx = self._orbit_canonical_members(symmetry_nodes, symmetry_size)
 
             # the orbit positions each update is propagated to, all of them unless replicate_levels
             # freezes a level
-            positions = self._replicated_positions(idx, group_id, replicate_levels)
+            positions = self._replicated_positions(idx, symmetry_id, replicate_levels)
             members = torch.gather(members, 1, positions)
 
-            if attr in self.metadata["symmetry_transform_attrs"][group_id]:
-                effective_seed = self._solve_affine(group_matrices[idx], group_values)
-                new_values = self._apply_affine(group_matrices, effective_seed)
+            if attr in self.metadata["symmetry_transform_attrs"][symmetry_id]:
+                effective_seed = self._solve_affine(matrices[idx], symmetry_values)
+                new_values = self._apply_affine(matrices, effective_seed)
                 new_values = new_values[torch.arange(new_values.shape[0]).unsqueeze(1), positions]
                 new_values = new_values.reshape(-1, *new_values.shape[2:])
 
-            elif attr in self.metadata["symmetry_copy_attrs"][group_id]:
-                new_values = self._expand_value_over_symmetry(group_values, group_values.shape[0], positions.shape[1])
+            elif attr in self.metadata["symmetry_copy_attrs"][symmetry_id]:
+                new_values = self._expand_value_over_symmetry(symmetry_values, symmetry_values.shape[0], positions.shape[1])
 
             else:
                 raise ValueError(
                     f"Attribute '{attr}' is not classified as a transform or copy attribute for "
-                    f"symmetry group {group_id}. Register it via add_symmetry(transform_attrs=..., "
+                    f"symmetry '{self._symmetry_name(symmetry_id)}'. Register it via "
+                    "add_symmetries(transform_attrs=..., "
                     "copy_attrs=...)."
                 )
 
@@ -2135,8 +2153,8 @@ class StructData(TSMixin, pyg.data.Data):
             repeated = torch.zeros_like(orbit_id, dtype=torch.bool)
             repeated[1:] = orbit_id[1:] == orbit_id[:-1]
 
-            repeated_groups = self.symmetry_id.view(-1)[nodes[repeated]].unique().tolist()
-            if any(attr in self.metadata["symmetry_transform_attrs"][group] for group in repeated_groups):
+            repeated_symmetries = self.symmetry_id.view(-1)[nodes[repeated]].unique().tolist()
+            if any(attr in self.metadata["symmetry_transform_attrs"][symmetry_id] for symmetry_id in repeated_symmetries):
                 raise ValueError(
                     f"Name '{name}' matches several nodes of the same orbit, but '{attr}' is a "
                     "transform attribute. Select one node per orbit, e.g. via set_node_attr_by_orbit_symmetrical()."
@@ -2394,19 +2412,19 @@ class StructData(TSMixin, pyg.data.Data):
         edges = self._edges_to_set(attr, mask, value)
         self._require_symmetry()
 
-        symmetry_id = self.symmetry_id.view(-1)
+        node_symmetry_id = self.symmetry_id.view(-1)
 
         src, dst = self.edge_index[0, edges], self.edge_index[1, edges]
-        src_group, dst_group = symmetry_id[src], symmetry_id[dst]
+        src_symmetry_id, dst_symmetry_id = node_symmetry_id[src], node_symmetry_id[dst]
 
-        outside = (src_group == -1) | (dst_group == -1)
+        outside = (src_symmetry_id == -1) | (dst_symmetry_id == -1)
         if torch.any(outside):
             bad_pairs = list(zip(src[outside].tolist(), dst[outside].tolist()))
             raise ValueError(
                 f"Selected edge(s) {bad_pairs} connect a node outside any symmetry. Set them via set_edge_attr()."
             )
 
-        mismatched = src_group != dst_group
+        mismatched = src_symmetry_id != dst_symmetry_id
         if torch.any(mismatched):
             bad_pairs = list(zip(src[mismatched].tolist(), dst[mismatched].tolist()))
             raise ValueError(
@@ -2414,7 +2432,7 @@ class StructData(TSMixin, pyg.data.Data):
                 "set_edge_attr_symmetrical() only supports src and dst from the same registered symmetry."
             )
 
-        if torch.unique(src_group).numel() > 1:
+        if torch.unique(src_symmetry_id).numel() > 1:
             raise ValueError(
                 "The selected edges belong to several registered symmetries. Set the edges of each "
                 "symmetry in a separate call."
@@ -2424,22 +2442,22 @@ class StructData(TSMixin, pyg.data.Data):
         all_keys = self.edge_index[0] * self.num_nodes + self.edge_index[1]
         sorted_keys, sort_idx = torch.sort(all_keys)
 
-        # compute the copies of every group before writing anything, so a failed check leaves the
+        # compute the copies of every symmetry before writing anything, so a failed check leaves the
         # attribute unchanged
         sibling_updates = []
-        for group_id in torch.unique(src_group).tolist():
-            if attr not in self.metadata["symmetry_copy_attrs"][group_id]:
+        for symmetry_id in torch.unique(src_symmetry_id).tolist():
+            if attr not in self.metadata["symmetry_copy_attrs"][symmetry_id]:
                 raise ValueError(
                     f"Attribute '{attr}' is not registered as a copy attribute for symmetry "
-                    f"group {group_id}. Register it via add_symmetry(copy_attrs=...)."
+                    f"'{self._symmetry_name(symmetry_id)}'. Register it via add_symmetries(copy_attrs=...)."
                 )
 
-            group_idx = torch.where(src_group == group_id)[0]
+            symmetry_idx = torch.where(src_symmetry_id == symmetry_id)[0]
 
             sib_src, sib_dst, seed_edge = self._expand_edge_indices_symmetrically(
-                src[group_idx], dst[group_idx], group_id, replicate_levels
+                src[symmetry_idx], dst[symmetry_idx], symmetry_id, replicate_levels
             )
-            sib_value = value[group_idx][seed_edge]
+            sib_value = value[symmetry_idx][seed_edge]
 
             keys = sib_src * self.num_nodes + sib_dst
             pos = torch.searchsorted(sorted_keys, keys).clamp(max=sorted_keys.numel() - 1)
@@ -2464,7 +2482,7 @@ class StructData(TSMixin, pyg.data.Data):
         for sib_edges, sib_value in sibling_updates:
             self._modify_edge_attr_and_reciprocal(attr, sib_edges, sib_value)
 
-    def add_symmetry(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None):
+    def add_symmetries(self, symmetries: dict, transform_attrs: list = None, copy_attrs: list = None):
         """
         Registers one or more symmetries on the graph, so ``add_nodes_symmetrical``,
         ``add_edges_symmetrical``, ``set_node_attr_symmetrical``, and ``set_edge_attr_symmetrical``
@@ -2475,8 +2493,8 @@ class StructData(TSMixin, pyg.data.Data):
 
         Args:
             symmetries (dict[str, dict]): mapping of symmetry name to a symmetry dict, as
-                returned by ``create_rotational_symmetry``, ``create_translation``,
-                ``create_mirror_symmetry``, or ``combine_symmetry``. Each name must not already be
+                returned by ``create_rotational_symmetry``, ``create_translational_symmetry``,
+                ``create_mirror_symmetry``, or ``nest_symmetries``. Each name must not already be
                 registered. A dict without a ``closes`` entry is taken to close on every level.
             transform_attrs (list[str], optional): node attributes that should be
                 geometrically transformed (rotated/mirrored, via the full affine matrix)
@@ -2574,40 +2592,40 @@ class StructData(TSMixin, pyg.data.Data):
                     f"{torch.where(misplaced)[0].tolist()}."
                 )
 
-            group_id = int(self.symmetry_matrix_id.max().item()) + 1 if self.symmetry_matrix_id.numel() > 0 else 0
+            symmetry_id = int(self.symmetry_matrix_id.max().item()) + 1 if self.symmetry_matrix_id.numel() > 0 else 0
 
             self.symmetry_matrices = torch.cat([self.symmetry_matrices, symmetry_matrices], dim=0)
             self.symmetry_matrix_id = torch.cat(
-                [self.symmetry_matrix_id, torch.full((m,), group_id, dtype=torch.long)], dim=0
+                [self.symmetry_matrix_id, torch.full((m,), symmetry_id, dtype=torch.long)], dim=0
             )
             self.symmetry_level = torch.cat([self.symmetry_level, symmetry_level.to(torch.long)], dim=0)
             self.symmetry_closes = torch.cat([self.symmetry_closes, symmetry_closes], dim=0)
 
-            name_to_symmetry[name] = group_id
-            self.metadata["symmetry_transform_attrs"][group_id] = transform_attrs
-            self.metadata["symmetry_copy_attrs"][group_id] = list(copy_attrs)
+            name_to_symmetry[name] = symmetry_id
+            self.metadata["symmetry_transform_attrs"][symmetry_id] = transform_attrs
+            self.metadata["symmetry_copy_attrs"][symmetry_id] = list(copy_attrs)
 
     def view_symmetries(self):
         """
-        Prints for every registered symmetry its name, its order, the size and closing behaviour of
-        each of its nesting levels (innermost first), its transform attributes and its copy
-        attributes.
+        Prints for every registered symmetry its name, its total size, the size and closing
+        behaviour of each of its nesting levels (innermost first), its transform attributes and its
+        copy attributes.
         """
         if "name_to_symmetry" not in self.metadata:
             print("No symmetries registered.")
             return
 
-        for name, group_id in self.metadata["name_to_symmetry"].items():
-            order = int((self.symmetry_matrix_id == group_id).sum())
-            level_sizes, level_closes = self._infer_level_sizes(group_id)
+        for name, symmetry_id in self.metadata["name_to_symmetry"].items():
+            size = int((self.symmetry_matrix_id == symmetry_id).sum())
+            level_sizes, level_closes = self._infer_level_sizes(symmetry_id)
             levels = ", ".join(
-                f"{size} ({'closing' if closes else 'open'})"
-                for size, closes in zip(level_sizes, level_closes)
+                f"{level_size} ({'closing' if closes else 'open'})"
+                for level_size, closes in zip(level_sizes, level_closes)
             )
-            transform_attrs = self.metadata["symmetry_transform_attrs"][group_id]
-            copy_attrs = self.metadata["symmetry_copy_attrs"][group_id]
+            transform_attrs = self.metadata["symmetry_transform_attrs"][symmetry_id]
+            copy_attrs = self.metadata["symmetry_copy_attrs"][symmetry_id]
             print(
-                f"{name}: order={order}, levels=[{levels}], "
+                f"{name}: size={size}, levels=[{levels}], "
                 f"transform_attrs={transform_attrs}, copy_attrs={copy_attrs}"
             )
 

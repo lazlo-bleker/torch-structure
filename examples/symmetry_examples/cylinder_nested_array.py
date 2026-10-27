@@ -13,12 +13,12 @@ n_sectors = 12
 n_rings = 5
 
 #the array stacks the rings and stays open, the rotation closes each ring
-vertical_array = data.create_translation(n_rings, direction=torch.tensor([0.0, 0.0, 1.0]))
+vertical_array = data.create_translational_symmetry(n_rings, direction=torch.tensor([0.0, 0.0, 1.0]))
 rotation = data.create_rotational_symmetry(n_sectors, closes=True)
 
-cylinder_symmetry = data.combine_symmetry(vertical_array, rotation)
+cylinder_symmetry = data.nest_symmetries([vertical_array, rotation])
 
-data.add_symmetry({"cylinder": cylinder_symmetry}, copy_attrs=["force"])
+data.add_symmetries({"cylinder": cylinder_symmetry}, copy_attrs=["force"])
 data.view_symmetries()
 
 #one seed node, copied to n_rings * n_sectors positions

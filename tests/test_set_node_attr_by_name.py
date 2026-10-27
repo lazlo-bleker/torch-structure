@@ -12,7 +12,7 @@ def build_structure():
 
     data = StructData(node_attrs=node_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["load"])
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["load"])
 
     # orbit 0 named "A" (nodes 0-3), orbit 1 named "B" (nodes 4-7), and node 8, also named "A" but
     # outside any symmetry

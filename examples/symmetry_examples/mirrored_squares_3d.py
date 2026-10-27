@@ -15,9 +15,9 @@ n_corners = 4
 rotation = data.create_rotational_symmetry(n_corners)
 mirror = data.create_mirror_symmetry(normal=torch.tensor([0.0, 0.0, 1.0]))
 
-mirrored_square = data.combine_symmetry(rotation, mirror)
+mirrored_square = data.nest_symmetries([rotation, mirror])
 
-data.add_symmetry({"mirrored_square": mirrored_square}, copy_attrs=["force"])
+data.add_symmetries({"mirrored_square": mirrored_square}, copy_attrs=["force"])
 data.view_symmetries()
 
 #one seed node, copied to the 4 corners of each of the 2 squares

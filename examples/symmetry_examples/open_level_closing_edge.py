@@ -19,11 +19,11 @@ n_levels = 3
 
 #an open rotation, so each polygon is missing its closing side, stacked by an open array
 open_rotation = data.create_rotational_symmetry(n_corners, closes=False)
-vertical_array = data.create_translation(n_levels, direction=torch.tensor([0.0, 0.0, 1.5]))
+vertical_array = data.create_translational_symmetry(n_levels, direction=torch.tensor([0.0, 0.0, 1.5]))
 
-stacked = data.combine_symmetry(open_rotation, vertical_array)
+stacked = data.nest_symmetries([open_rotation, vertical_array])
 
-data.add_symmetry({"stacked": stacked}, copy_attrs=["force"])
+data.add_symmetries({"stacked": stacked}, copy_attrs=["force"])
 data.view_symmetries()
 
 data.add_nodes_symmetrical(symmetry="stacked", coords=torch.tensor([[2.0, 0.0, 0.0]]))

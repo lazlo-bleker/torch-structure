@@ -14,9 +14,9 @@ data = ts.data.StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 mirror1 = data.create_mirror_symmetry(normal=torch.tensor([1.0, 0.0, 0.0]))
 mirror2 = data.create_mirror_symmetry(normal=torch.tensor([0.0, 1.0, 0.0]))
 
-double_mirror = data.combine_symmetry(mirror1, mirror2)
+double_mirror = data.nest_symmetries([mirror1, mirror2])
 
-data.add_symmetry({"mirrored_square": double_mirror}, copy_attrs=["force"])
+data.add_symmetries({"mirrored_square": double_mirror}, copy_attrs=["force"])
 data.view_symmetries()
 
 data.add_nodes_symmetrical(symmetry="mirrored_square", coords=torch.tensor([[1.0, 1.0, 0.0]]))

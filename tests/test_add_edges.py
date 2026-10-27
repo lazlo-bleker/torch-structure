@@ -34,7 +34,7 @@ def test_add_edges_with_rotational_symmetry():
 
     data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)})
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)})
 
     # orbit 0 (nodes 0-3) and orbit 1 (nodes 4-7)
     data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.], [2., 0., 0.]]))
@@ -76,7 +76,7 @@ def test_add_edges_with_combined_symmetry():
 
     mirror = data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.]))
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"d4": data.combine_symmetry(mirror, rotation)})
+    data.add_symmetries({"d4": data.nest_symmetries([mirror, rotation])})
 
     # one orbit of 8 nodes: orbit position p is the seed, mirrored if p is odd, then rotated by 90° * (p // 2)
     data.add_nodes_symmetrical(symmetry="d4", coords=torch.tensor([[2., 1., 0.]]))
@@ -115,7 +115,7 @@ def test_add_edges_symmetry_exceptions():
 
     data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4), "mirror": data.create_mirror_symmetry()})
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4), "mirror": data.create_mirror_symmetry()})
 
     # nodes 0-7: two rot4 orbits, node 8: outside any symmetry, nodes 9-10: a mirror orbit
     data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.], [2., 0., 0.]]))
@@ -163,7 +163,7 @@ def test_add_edges_rejects_repeated_and_existing_edges():
 
     data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)})
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)})
 
     # orbit 0 (nodes 0-3) and orbit 1 (nodes 4-7)
     data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.], [2., 0., 0.]]))
@@ -224,7 +224,7 @@ def test_add_edges_rejects_attributes_without_one_row_per_edge():
 
     data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["force"])
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["force"])
 
     # orbit 0 (nodes 0-3) and orbit 1 (nodes 4-7)
     data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.], [2., 0., 0.]]))

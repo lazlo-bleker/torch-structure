@@ -34,7 +34,7 @@ def test_add_nodes_with_rotational_symmetry():
 
     data = StructData(node_attrs=node_attrs)
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["load"])
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)}, copy_attrs=["load"])
 
     new_node_attrs = {
         "coords": torch.tensor([[1., 0., 0.], [2., 0., 0.]]),
@@ -76,7 +76,7 @@ def test_add_nodes_with_combined_symmetry():
 
     mirror = data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.]))
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"d4": data.combine_symmetry(mirror, rotation)})
+    data.add_symmetries({"d4": data.nest_symmetries([mirror, rotation])})
 
     data.add_nodes_symmetrical(symmetry="d4", coords=torch.tensor([[2., 1., 0.], [3., 1., 5.]]))
 
@@ -105,7 +105,7 @@ def test_add_nodes_with_and_without_symmetry():
 
     data = StructData(node_attrs=node_attrs)
 
-    data.add_symmetry({"mirror": data.create_mirror_symmetry()})
+    data.add_symmetries({"mirror": data.create_mirror_symmetry()})
 
     data.add_nodes(coords=torch.tensor([[0., 0., 0.], [0., 0., 1.]]))
     data.add_nodes_symmetrical(symmetry="mirror", coords=torch.tensor([[1., 0., 0.]]))
@@ -157,7 +157,7 @@ def test_add_nodes_rejects_symmetry_bookkeeping():
     with pytest.raises(ValueError, match="Unexpected node attributes"):
         data.add_nodes(coords=torch.tensor([[0., 0., 5.]]), orbit_id=torch.tensor([[0]]))
 
-    data.add_symmetry({"rot4": data.create_rotational_symmetry(4)})
+    data.add_symmetries({"rot4": data.create_rotational_symmetry(4)})
 
     # orbit 0 (nodes 0-3)
     data.add_nodes_symmetrical(symmetry="rot4", coords=torch.tensor([[1., 0., 0.]]))
