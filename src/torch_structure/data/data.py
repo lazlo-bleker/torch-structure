@@ -26,7 +26,7 @@ class StructData(TSMixin, pyg.data.Data):
     ``name`` attribute enabling NetworkX-style access via
     [nodes][torch_structure.data.data.StructData.nodes] and name-based
     editing methods such as
-    [add_edge][torch_structure.data.data.StructData.add_edge]/[add_edges_by_names][torch_structure.data.data.StructData.add_edges_by_names].
+    [add_edge][torch_structure.data.data.StructData.add_edge].
     """
 
     def __init__(self,
@@ -52,7 +52,9 @@ class StructData(TSMixin, pyg.data.Data):
                 "'name' is always a default node attribute key and cannot be defined as a new default attribute."
             )
 
-        node_attrs = {**node_attrs, "name": torch.empty(0, dtype=torch.long)}
+        # "name" is already in kwargs when PyG rebuilds a saved StructData via from_dict
+        if "name" not in kwargs:
+            node_attrs = {**node_attrs, "name": torch.empty(0, dtype=torch.long)}
         default_attrs = {**default_attrs, "name": torch.tensor(0, dtype=torch.long)}
 
         
@@ -72,8 +74,6 @@ class StructData(TSMixin, pyg.data.Data):
         if edge_index.numel() == 0:
             self.metadata = {
                 "default_attrs": default_attrs,
-                "node_name_to_index": {},
-                "edge_name_to_index": {},
                 "node_attr_list": [kwarg for kwarg in node_attrs.keys()],
                 "edge_attr_list": [kwarg for kwarg in edge_attrs.keys()],
                 "graph_attr_list": [kwarg for kwarg in graph_attrs.keys()],
@@ -400,55 +400,51 @@ class StructData(TSMixin, pyg.data.Data):
         """
         Provides networkx-style access to node attributes without caching.
         """
-        return NodeView(self, self.metadata["node_name_to_index"], self.metadata["node_attr_list"])
+        return NodeView(self, self.metadata["node_attr_list"])
 
     @requires_metadata
     def add_node(self, name: str, **kwargs):
         """
-        Adds a new node.
-        """
-        # Check for unexpected attributes
-        unexpected_attrs = set(kwargs.keys()) - set(self.metadata["node_attr_list"])
-        if unexpected_attrs:
-            raise ValueError(
-                f"Unexpected node attributes: {unexpected_attrs}. Expected: {list(self.metadata['node_attr_list'])}"
-            )
+        Adds a single named node. Shorthand for ``add_nodes`` with one node, where each attribute
+        value is given for that node alone, e.g. ``coords=[0.0, 0.0, 1.0]``.
 
-        # Check if node already exists
-        if name in self.metadata["node_name_to_index"]:
+        Args:
+            name (str): node name; must be unique and encode to at most 8 bytes (see
+                [encode][torch_structure.data.data.encode]).
+            **kwargs: registered node attribute values for the new node. Attributes omitted
+                are initialized to their default values or to zero if no default value exists.
+
+        Raises:
+            ValueError: if a node named ``name`` already exists.
+        """
+        if self.get_node_index_from_name(name).numel() > 0:
             raise ValueError(f"Node '{name}' already exists!")
 
-        self.metadata["node_name_to_index"][name] = self.num_nodes  # Add node to node_name_to_index
-        self.num_nodes += 1  # Increment number of nodes
-        
-        # Add node attributes
-        for attr in self.metadata["node_attr_list"]:
-            if attr in kwargs:
-                value = kwargs[attr]
+        if not kwargs:
+            self.add_n_empty_nodes(1, names=[name])
+            return
 
-                # Cast non-tensor attributes to tensor
-                if not isinstance(value, torch.Tensor):
-                    value = torch.tensor(value, dtype=getattr(self, attr).dtype)
-                    # warnings.warn(f"Node '{name}' attribute '{attr}' was automatically cast to a torch tensor.", UserWarning)
+        rows = self._as_single_rows(kwargs, self.metadata["node_attr_list"])
+        self.add_nodes(names=[name], **rows)
 
-            # If attribute is not provided, set it to default value
-            elif attr in self.metadata["default_attrs"]:
-                value = self.metadata["default_attrs"][attr]
+    def _as_single_rows(self, kwargs, attr_list):
+        # one node's or edge's values, e.g. scalars or [3] vectors, as [1, *] rows of each attribute;
+        # unregistered attributes are passed through so add_nodes/add_edges can reject them
+        rows = {}
+        for attr, value in kwargs.items():
+            if attr in attr_list:
+                existing = getattr(self, attr)
+                value = torch.as_tensor(value, dtype=existing.dtype).reshape(1, *existing.shape[1:])
+            rows[attr] = value
+        return rows
 
-            # If attribute has no default value, set it to zero
-            else:
-                attr_shape = getattr(self, attr).shape[1:]
-                value = getattr(self, attr).new_zeros(attr_shape)
-                # warnings.warn(f"Node '{name}' attribute '{attr}' initialized to zeros (no default value provided).", UserWarning)
-
-            if value.dim() == 0:
-                value = value.unsqueeze(0)
-
-            setattr(
-                self,
-                attr,
-                torch.cat([getattr(self, attr), value.unsqueeze(0)], dim=0),
-            )
+    def _single_node_index(self, name):
+        nodes = self.get_node_index_from_name(name)
+        if nodes.numel() == 0:
+            raise ValueError(f"No node found with name '{name}'.")
+        if nodes.numel() > 1:
+            raise ValueError(f"Name '{name}' is ambiguous: it matches nodes {nodes.tolist()}.")
+        return nodes.item()
 
     @requires_metadata
     def add_n_empty_nodes(self, n, names = None):
@@ -1395,80 +1391,24 @@ class StructData(TSMixin, pyg.data.Data):
 
 
     @requires_metadata
-    def add_edge(self, src: str, dst: str, name=None, **kwargs):
+    def add_edge(self, src: str, dst: str, **kwargs):
         """
-        Adds a new edge from `src` to `dst`.
+        Adds a single edge between the nodes named ``src`` and ``dst``. Shorthand for
+        ``add_edges`` with one edge, where each attribute value is given for that edge alone.
+
+        Args:
+            src (str): name of the source node.
+            dst (str): name of the destination node.
+            **kwargs: registered edge attribute values for the new edge. Attributes omitted
+                are initialized to their default values or to zero if no default value exists.
+
+        Raises:
+            ValueError: if ``src`` or ``dst`` matches no node, or more than one node.
+            ValueError: any error raised by ``add_edges``, e.g. if the edge already exists.
         """
-        # Check for unexpected attributes
-        unexpected_attrs = set(kwargs.keys()) - set(self.metadata["edge_attr_list"])
-        if unexpected_attrs:
-            raise ValueError(
-                f"Unexpected edge attributes: {unexpected_attrs}. Expected: {list(self.metadata['edge_attr_list'])}"
-            )
-
-        # Add nodes if they do not exist
-        if src not in self.metadata["node_name_to_index"]:
-            self.add_node(src)
-        if dst not in self.metadata["node_name_to_index"]:
-            self.add_node(dst)
-
-        # Add edge to edge_name_to_index
-        main_name = f"{src}-{dst}" if name is None else name
-        self.metadata["edge_name_to_index"][main_name] = self.num_edges
-        reciprocal_name = f"{dst}-{src}" if name is None else f"{name}_reciprocal"
-        self.metadata["edge_name_to_index"][reciprocal_name] = self.num_edges + 1
-
-        # Update directed mask and reciprocal edge
-        self.directed_mask = torch.cat(
-            [self.directed_mask, torch.tensor([[True], [False]])], dim=0
-        )
-        self.reciprocal_edge = torch.cat(
-            [
-                self.reciprocal_edge,
-                torch.tensor([[self.num_edges + 1], [self.num_edges]]),
-            ],
-            dim=0,
-        )
-
-        # Add edge to edge_index
-        src_index, dst_index = (
-            self.metadata["node_name_to_index"][src],
-            self.metadata["node_name_to_index"][dst],
-        )
-        new_edge = torch.tensor([[src_index, dst_index], [dst_index, src_index]])
-        self.edge_index = torch.cat([self.edge_index, new_edge], dim=1)
-
-        # Add edge attributes
-        for attr in self.metadata["edge_attr_list"]:
-            if attr in kwargs:
-                value = kwargs[attr]
-
-                # Cast non-tensor attributes to tensor
-                if not isinstance(value, torch.Tensor):
-                    value = torch.tensor(value, dtype=getattr(self, attr).dtype)
-                    # warnings.warn(f"Edge '({src}, {dst})' attribute '{attr}' was automatically cast to a tensor.", UserWarning)
-
-            # If attribute is not provided, set it to default value
-            elif attr in self.metadata["default_attrs"]:
-                value = self.metadata["default_attrs"][attr]
-
-            # If attribute has no default value, set it to zero
-            else:
-                attr_shape = getattr(self, attr).shape[1:]
-                value = getattr(self, attr).new_zeros(attr_shape)
-                # warnings.warn(f"Edge '({src}, {dst})' attribute '{attr}' initialized to zeros (no default value provided).", UserWarning)
-
-            if value.dim() == 0:
-                value = value.unsqueeze(0)
-
-            setattr(
-                self,
-                attr,
-                torch.cat(
-                    [getattr(self, attr), value.unsqueeze(0), value.unsqueeze(0)],
-                    dim=0,
-                ),
-            )
+        edge_index = torch.tensor([[self._single_node_index(src)], [self._single_node_index(dst)]])
+        rows = self._as_single_rows(kwargs, self.metadata["edge_attr_list"])
+        self.add_edges(edge_index, **rows)
 
     @requires_metadata
     def successors(self, node_name):
@@ -1855,52 +1795,25 @@ class StructData(TSMixin, pyg.data.Data):
         Merges multiple nodes into a single node. The node inherits the set of edges connected to the
         merged nodes. Edges between merged nodes are removed.
         """
-        # Check if node exists
-        if name not in self.metadata["node_name_to_index"]:
-            raise ValueError(f"Node '{name}' does not exist!")
+        main_node_index = self._single_node_index(name)
+        node_indices = torch.tensor([self._single_node_index(node) for node in nodes], dtype=torch.long)
 
-        main_node_index = self.metadata["node_name_to_index"][name]
+        # replace all occurences of the merged nodes with main_node_index
+        self.edge_index = torch.where(
+            torch.isin(self.edge_index, node_indices),
+            main_node_index,
+            self.edge_index,
+        )
 
-        for node in nodes:
-            if node not in self.metadata["node_name_to_index"]:
-                raise ValueError(f"Node '{node}' does not exist!")
+        # remove the merged nodes from all node attributes and renumber the rest
+        keep = torch.ones(self.num_nodes, dtype=torch.bool)
+        keep[node_indices] = False
+        for attr in self.metadata["node_attr_list"]:
+            setattr(self, attr, getattr(self, attr)[keep])
 
-            node_index = self.metadata["node_name_to_index"][node]
-
-            # replace all occurence of node_index with main_node_index
-            self.edge_index = torch.where(
-                self.edge_index == node_index,
-                main_node_index,
-                self.edge_index,
-            )
-
-        for node in nodes:
-            del_node_index = self.metadata["node_name_to_index"][node]
-
-            # remove node from all node attributes
-            for attr in self.metadata["node_attr_list"]:
-                values = getattr(self, attr)
-                values = torch.cat(
-                    [values[:del_node_index], values[del_node_index + 1 :]], dim=0
-                )
-                setattr(self, attr, values)
-            # remove node from node_name_to_index
-            del self.metadata["node_name_to_index"][node]
-
-            # decrement number of nodes
-            self.num_nodes -= 1
-
-            # update node_name_to_index
-            for node_name, node_index in self.metadata["node_name_to_index"].items():
-                if node_index > del_node_index:
-                    self.metadata["node_name_to_index"][node_name] = node_index - 1
-
-            # update edge_index
-            self.edge_index = torch.where(
-                self.edge_index > del_node_index,
-                self.edge_index - 1,
-                self.edge_index,
-            )
+        old_to_new = torch.cumsum(keep, dim=0) - 1
+        self.edge_index = old_to_new[self.edge_index]
+        self.num_nodes = int(keep.sum().item())
 
     def __repr__(self):
         attrs = {k: v for k, v in self._store.items() if k != "metadata"}
@@ -3753,6 +3666,7 @@ def encode(string: str):
     Raises:
         ValueError: if ``string`` encodes to more than 8 bytes.
     """
+    string = str(string)
     encoded = string.encode("utf-8")
     if len(encoded) > 8:
         raise ValueError(f"String '{string}' encodes to {len(encoded)} bytes, which exceeds the 8-byte limit.")

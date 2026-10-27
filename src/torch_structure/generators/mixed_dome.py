@@ -179,8 +179,8 @@ class MixedDomeGenerator(BaseGenerator):
                 force = force_signs[i] * np.random.uniform(20.0, 40.0)
             for j in range(n_trails):
                 data.add_edge(
-                    f"trail_{j}_node_{i}",
-                    f"trail_{(j + 1) % n_trails}_node_{i}",
+                    f"t{j}n{i}",
+                    f"t{(j + 1) % n_trails}n{i}",
                     is_trail_edge=torch.tensor(False),
                     force=force,
                 )
@@ -191,8 +191,8 @@ class MixedDomeGenerator(BaseGenerator):
             )
             for i in range(n_trails):
                 data.add_edge(
-                    f"trail_{i}_node_0",
-                    f"trail_{(i + 1) % n_trails}_node_0",
+                    f"t{i}n0",
+                    f"t{(i + 1) % n_trails}n0",
                     is_trail_edge=torch.tensor(False),
                     force=ring_force,
                 )
@@ -234,7 +234,7 @@ class MixedDomeGenerator(BaseGenerator):
     ):
         """Add a single radial CEM trail, applying ``force_signs[i]`` to each ring's edge, in place."""
         data.add_node(
-            f"trail_{id}_node_0",
+            f"t{id}n0",
             coords=origin_coords,
             is_origin_node=torch.tensor(True),
             sequence=torch.tensor(0),
@@ -247,15 +247,15 @@ class MixedDomeGenerator(BaseGenerator):
                 else torch.tensor([False, False, False])
             )
             data.add_node(
-                f"trail_{id}_node_{i}",
+                f"t{id}n{i}",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(i),
                 load=torch.tensor([0.0, 0.0, -1.0]),
                 support_xyz=support_xyz,
             )
             data.add_edge(
-                f"trail_{id}_node_{i - 1}",
-                f"trail_{id}_node_{i}",
+                f"t{id}n{i - 1}",
+                f"t{id}n{i}",
                 is_trail_edge=torch.tensor(True),
                 length=trail_length,
                 force_sign=torch.tensor(force_signs[i - 1]),
@@ -268,5 +268,5 @@ class MixedDomeGenerator(BaseGenerator):
             coords=torch.tensor([0.0, 0.0, 0.0]),
             load=torch.tensor([0.0, 0.0, -1.0]),
         )
-        merge_nodes = [f"trail_{i}_node_0" for i in range(n_trails)]
+        merge_nodes = [f"t{i}n0" for i in range(n_trails)]
         data.merge_nodes("centroid", merge_nodes)

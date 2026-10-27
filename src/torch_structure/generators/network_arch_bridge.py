@@ -103,7 +103,7 @@ class NetworkArchBridge:
         ]
         for i in range(len(deck_origin_coords)):
             self.graph.add_node(
-                f"deck_trail_{i}_node_0",
+                f"dt{i}n0",
                 coords=deck_origin_coords[i],
                 is_origin_node=torch.tensor(True),
                 sequence=torch.tensor(0),
@@ -125,7 +125,7 @@ class NetworkArchBridge:
                     j * self.deck_trail_length * torch.sign(deck_origin_coords[i][0])
                 )
                 self.graph.add_node(
-                    f"deck_trail_{i}_node_{j}",
+                    f"dt{i}n{j}",
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
                     load=load,
@@ -135,22 +135,22 @@ class NetworkArchBridge:
                     bridge_side=i % 2,
                 )
                 self.graph.add_edge(
-                    f"deck_trail_{i}_node_{j - 1}",
-                    f"deck_trail_{i}_node_{j}",
+                    f"dt{i}n{j - 1}",
+                    f"dt{i}n{j}",
                     is_trail_edge=torch.tensor(True),
                     length=self.deck_trail_length,
                     force_sign=torch.tensor(1.0),
                 )
         self.graph.add_edge(
-            "deck_trail_0_node_0",
-            "deck_trail_1_node_0",
+            "dt0n0",
+            "dt1n0",
             is_trail_edge=torch.tensor(False),
             force=self.deck_force,
             optim_group=self.n_optim_groups,
         )
         self.graph.add_edge(
-            "deck_trail_2_node_0",
-            "deck_trail_3_node_0",
+            "dt2n0",
+            "dt3n0",
             is_trail_edge=torch.tensor(False),
             force=self.deck_force,
             optim_group=self.n_optim_groups,
@@ -174,7 +174,7 @@ class NetworkArchBridge:
         ]
         for i in range(len(arch_origin_coords)):
             self.graph.add_node(
-                f"arch_trail_{i}_node_0",
+                f"at{i}n0",
                 coords=arch_origin_coords[i],
                 is_origin_node=torch.tensor(True),
                 sequence=torch.tensor(0),
@@ -195,7 +195,7 @@ class NetworkArchBridge:
                     else torch.full((3,), torch.nan)
                 )
                 self.graph.add_node(
-                    f"arch_trail_{i}_node_{j}",
+                    f"at{i}n{j}",
                     is_origin_node=torch.tensor(False),
                     sequence=torch.tensor(j),
                     support_xyz=support_xyz,
@@ -203,8 +203,8 @@ class NetworkArchBridge:
                     bridge_side=i % 2,
                 )
                 self.graph.add_edge(
-                    f"arch_trail_{i}_node_{j - 1}",
-                    f"arch_trail_{i}_node_{j}",
+                    f"at{i}n{j - 1}",
+                    f"at{i}n{j}",
                     is_trail_edge=torch.tensor(True),
                     length=self.arch_trail_length,
                     force_sign=torch.tensor(-1.0),
@@ -212,15 +212,15 @@ class NetworkArchBridge:
                 )
         self.n_optim_groups += 1
         self.graph.add_edge(
-            "arch_trail_0_node_0",
-            "arch_trail_1_node_0",
+            "at0n0",
+            "at1n0",
             is_trail_edge=torch.tensor(False),
             force=self.arch_force,
             optim_group=self.n_optim_groups,
         )
         self.graph.add_edge(
-            "arch_trail_2_node_0",
-            "arch_trail_3_node_0",
+            "at2n0",
+            "at3n0",
             is_trail_edge=torch.tensor(False),
             force=self.arch_force,
             optim_group=self.n_optim_groups,
@@ -229,17 +229,17 @@ class NetworkArchBridge:
 
         # Prepare node lists
         deck_nodes_0 = [
-            f"deck_trail_0_node_{i}" for i in reversed(range(self.n_trail_edges + 1))
-        ] + [f"deck_trail_1_node_{i}" for i in range(self.n_trail_edges + 1)]
+            f"dt0n{i}" for i in reversed(range(self.n_trail_edges + 1))
+        ] + [f"dt1n{i}" for i in range(self.n_trail_edges + 1)]
         deck_nodes_1 = [
-            f"deck_trail_2_node_{i}" for i in reversed(range(self.n_trail_edges + 1))
-        ] + [f"deck_trail_3_node_{i}" for i in range(self.n_trail_edges + 1)]
+            f"dt2n{i}" for i in reversed(range(self.n_trail_edges + 1))
+        ] + [f"dt3n{i}" for i in range(self.n_trail_edges + 1)]
         arch_nodes_0 = [
-            f"arch_trail_0_node_{i}" for i in reversed(range(self.n_trail_edges + 1))
-        ] + [f"arch_trail_1_node_{i}" for i in range(self.n_trail_edges + 1)]
+            f"at0n{i}" for i in reversed(range(self.n_trail_edges + 1))
+        ] + [f"at1n{i}" for i in range(self.n_trail_edges + 1)]
         arch_nodes_1 = [
-            f"arch_trail_2_node_{i}" for i in reversed(range(self.n_trail_edges + 1))
-        ] + [f"arch_trail_3_node_{i}" for i in range(self.n_trail_edges + 1)]
+            f"at2n{i}" for i in reversed(range(self.n_trail_edges + 1))
+        ] + [f"at3n{i}" for i in range(self.n_trail_edges + 1)]
 
         # Cables
         if self.kinematic_cable_arrangement:

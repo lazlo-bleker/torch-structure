@@ -230,7 +230,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             side = 1 if origin_coord[0] > 0 else -1
             is_deck = i < 4
             data.add_node(
-                f"trail_{i}_node_0",
+                f"t{i}n0",
                 coords=origin_coord,
                 is_origin_node=torch.tensor(True),
                 load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
@@ -243,7 +243,7 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             )
             for j in range(n_bays):
                 data.add_node(
-                    f"trail_{i}_node_{j+1}",
+                    f"t{i}n{j+1}",
                     load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
                     support_xyz=torch.tensor([True, True, True]) if j == n_bays - 1 else torch.tensor([False, False, False]),
                     constraint_plane=torch.tensor([side*(j + 1.5)*bay_size, 0.0, 0.0, 1.0, 0.0, 0.0]),
@@ -256,8 +256,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
                 )
                 # Trail edges
                 data.add_edge(
-                    f"trail_{i}_node_{j}",
-                    f"trail_{i}_node_{j+1}",
+                    f"t{i}n{j}",
+                    f"t{i}n{j+1}",
                     is_trail_edge=torch.tensor(True),
                     is_deck_trail_edge=torch.tensor(is_deck),
                 )
@@ -277,8 +277,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         # Center deck edges
         for pair in center_deck_pairs:
             data.add_edge(
-                f"trail_{pair[0]}_node_0",
-                f"trail_{pair[1]}_node_0",
+                f"t{pair[0]}n0",
+                f"t{pair[1]}n0",
                 is_trail_edge=torch.tensor(False),
                 force=deck_force,
                 is_center_deviation_edge=torch.tensor(True),
@@ -287,8 +287,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
         # Center cable edges
         for pair in center_cable_pairs:
             data.add_edge(
-                f"trail_{pair[0]}_node_0",
-                f"trail_{pair[1]}_node_0",
+                f"t{pair[0]}n0",
+                f"t{pair[1]}n0",
                 is_trail_edge=torch.tensor(False),
                 force=cable_force,
                 is_center_deviation_edge=torch.tensor(True),
@@ -299,8 +299,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             # Inter-deck edges
             for pair in inter_deck_pairs:
                 data.add_edge(
-                    f"trail_{pair[0]}_node_{i}",
-                    f"trail_{pair[1]}_node_{i}",
+                    f"t{pair[0]}n{i}",
+                    f"t{pair[1]}n{i}",
                     is_trail_edge=torch.tensor(False),
                     is_mod_h=torch.tensor(True),
                     force=temp_force,
@@ -309,8 +309,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             # Deck-cable edges
             for pair in deck_cable_pairs:
                 data.add_edge(
-                    f"trail_{pair[0]}_node_{i}",
-                    f"trail_{pair[1]}_node_{i}",
+                    f"t{pair[0]}n{i}",
+                    f"t{pair[1]}n{i}",
                     is_trail_edge=torch.tensor(False),
                     is_mod_v=torch.tensor(True),
                     force=temp_force,
@@ -320,8 +320,8 @@ class ArchSuspensionBridgeGenerator(BaseGenerator):
             if connected_cables:
                 for pair in inter_cable_pairs:
                     data.add_edge(
-                        f"trail_{pair[0]}_node_{i}",
-                        f"trail_{pair[1]}_node_{i}",
+                        f"t{pair[0]}n{i}",
+                        f"t{pair[1]}n{i}",
                         is_trail_edge=torch.tensor(False),
                         force=inter_cable_force,
                     )

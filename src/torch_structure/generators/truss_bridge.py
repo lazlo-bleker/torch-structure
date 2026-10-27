@@ -227,7 +227,7 @@ class TrussBridgeGenerator(BaseGenerator):
         for i, center_coord in enumerate(center_coords):
             is_deck = i < 2
             data.add_node(
-                f"trail_{i}_node_0",
+                f"t{i}n0",
                 coords=center_coord,
                 load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
                 sequence=torch.tensor([0], dtype=torch.long),
@@ -260,7 +260,7 @@ class TrussBridgeGenerator(BaseGenerator):
                     else:
                         support_xyz = torch.tensor([False, False, False])
                     data.add_node(
-                        f"trail_{i}_node_{j+1}_side_{side}",
+                        f"t{i}n{j+1}s{side}",
                         load=load if is_deck else torch.tensor([0.0, 0.0, 0.0]),
                         support_xyz=support_xyz,
                         coords=coord,
@@ -272,8 +272,8 @@ class TrussBridgeGenerator(BaseGenerator):
                     )
                     # Trail edges
                     data.add_edge(
-                        f"trail_{i}_node_{j}_side_{side}" if j > 0 else f"trail_{i}_node_0",
-                        f"trail_{i}_node_{j+1}_side_{side}",
+                        f"t{i}n{j}s{side}" if j > 0 else f"t{i}n0",
+                        f"t{i}n{j+1}s{side}",
                     )
 
         # diagonals and verticals
@@ -292,18 +292,18 @@ class TrussBridgeGenerator(BaseGenerator):
                     if truss_type in ["pratt", "parker"]:
                         if truss_type == "parker" and not deck_truss and j == n_bays - 1:
                             data.add_edge(
-                                f"trail_{pair[0]}_node_{index_1}_side_{side}" if index_1 > 0 else f"trail_{pair[0]}_node_0",
-                                f"trail_{pair[1]}_node_{index_0}_side_{side}" if index_0 > 0 else f"trail_{pair[1]}_node_0",
+                                f"t{pair[0]}n{index_1}s{side}" if index_1 > 0 else f"t{pair[0]}n0",
+                                f"t{pair[1]}n{index_0}s{side}" if index_0 > 0 else f"t{pair[1]}n0",
                             )
                         else:
                             data.add_edge(
-                                f"trail_{pair[0]}_node_{index_0}_side_{side}" if index_0 > 0 else f"trail_{pair[0]}_node_0",
-                                f"trail_{pair[1]}_node_{index_1}_side_{side}" if index_1 > 0 else f"trail_{pair[1]}_node_0",
+                                f"t{pair[0]}n{index_0}s{side}" if index_0 > 0 else f"t{pair[0]}n0",
+                                f"t{pair[1]}n{index_1}s{side}" if index_1 > 0 else f"t{pair[1]}n0",
                             )
                     if truss_type == "howe":
                         data.add_edge(
-                            f"trail_{pair[0]}_node_{index_1}_side_{side}" if index_1 > 0 else f"trail_{pair[0]}_node_0",
-                            f"trail_{pair[1]}_node_{index_0}_side_{side}" if index_0 > 0 else f"trail_{pair[1]}_node_0",
+                            f"t{pair[0]}n{index_1}s{side}" if index_1 > 0 else f"t{pair[0]}n0",
+                            f"t{pair[1]}n{index_0}s{side}" if index_0 > 0 else f"t{pair[1]}n0",
                         )
                     if j == n_bays - 1:
                         if truss_type == "parker":
@@ -313,12 +313,12 @@ class TrussBridgeGenerator(BaseGenerator):
                         elif truss_type == "howe" and not deck_truss:
                             continue
                     data.add_edge(
-                        f"trail_{pair[0]}_node_{j+1}_side_{side}",
-                        f"trail_{pair[1]}_node_{j+1}_side_{side}",
+                        f"t{pair[0]}n{j+1}s{side}",
+                        f"t{pair[1]}n{j+1}s{side}",
                     )
             data.add_edge(
-                f"trail_{pair[0]}_node_0",
-                f"trail_{pair[1]}_node_0",
+                f"t{pair[0]}n0",
+                f"t{pair[1]}n0",
             )
 
         if inclined_truss or triangle:
@@ -326,13 +326,13 @@ class TrussBridgeGenerator(BaseGenerator):
                 for i in range(n_bays - 1):
                     # Inter-deck edges
                     data.add_edge(
-                        f"trail_0_node_{i+1}_side_{side}",
-                        f"trail_1_node_{i+1}_side_{side}",
+                        f"t0n{i+1}s{side}",
+                        f"t1n{i+1}s{side}",
                     )
-                data.add_edge(
-                    "trail_0_node_0",
-                    "trail_1_node_0",
-                )
+            data.add_edge(
+                "t0n0",
+                "t1n0",
+            )
 
         # Analysis
         if self.analysis:

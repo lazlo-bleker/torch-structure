@@ -110,8 +110,8 @@ class NerviDome:
         for i in range(0, self.n_rings):
             for j in range(self.n_trails):
                 self.graph.add_edge(
-                    f"trail_{j}_node_{i}",
-                    f"trail_{(j + 1) % self.n_trails}_node_{i + 1}",
+                    f"t{j}n{i}",
+                    f"t{(j + 1) % self.n_trails}n{i + 1}",
                     is_trail_edge=torch.tensor(False),
                     force=self.deviation_force,
                     source_sequence=torch.tensor(i),
@@ -120,8 +120,8 @@ class NerviDome:
         if self.opening:
             for i in range(self.n_trails):
                 self.graph.add_edge(
-                    f"trail_{i}_node_0",
-                    f"trail_{(i + 1) % self.n_trails}_node_0",
+                    f"t{i}n0",
+                    f"t{(i + 1) % self.n_trails}n0",
                     is_trail_edge=torch.tensor(False),
                     force=self.ring_force,
                     source_sequence=torch.tensor(-1),
@@ -130,7 +130,7 @@ class NerviDome:
     def generate_trail(self, origin_coords, origin_load, id):
         """Add a single radial CEM trail (``n_rings`` edges) from an origin node to a supported outer node, in place."""
         self.graph.add_node(
-            f"trail_{id}_node_0",
+            f"t{id}n0",
             coords=origin_coords,
             is_origin_node=torch.tensor(True),
             sequence=torch.tensor(0),
@@ -148,15 +148,15 @@ class NerviDome:
                 else torch.tensor([0.0, 0.0, -1.0])
             )
             self.graph.add_node(
-                f"trail_{id}_node_{i}",
+                f"t{id}n{i}",
                 is_origin_node=torch.tensor(False),
                 sequence=torch.tensor(i),
                 load=load,
                 support_xyz=support_xyz,
             )
             self.graph.add_edge(
-                f"trail_{id}_node_{i - 1}",
-                f"trail_{id}_node_{i}",
+                f"t{id}n{i - 1}",
+                f"t{id}n{i}",
                 is_trail_edge=torch.tensor(True),
                 length=self.trail_length,
                 force_sign=torch.tensor(-1.0),
@@ -170,5 +170,5 @@ class NerviDome:
             coords=torch.tensor([0.0, 0.0, 0.0]),
             load=torch.tensor([0.0, 0.0, 0.0]),
         )
-        merge_nodes = [f"trail_{i}_node_0" for i in range(self.n_trails)]
+        merge_nodes = [f"t{i}n0" for i in range(self.n_trails)]
         self.graph.merge_nodes("centroid", merge_nodes)
