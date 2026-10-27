@@ -16,7 +16,7 @@ n_rings = 5
 vertical_array = data.create_translation(n_rings, direction=torch.tensor([0.0, 0.0, 1.0]))
 rotation = data.create_rotational_symmetry(n_sectors, closes=True)
 
-cylinder_symmetry = data.combine_symmetry(vertical_array, rotation)
+cylinder_symmetry = data.nest_symmetries([vertical_array, rotation])
 
 data.add_symmetry({"cylinder": cylinder_symmetry}, copy_attrs=["force"])
 data.view_symmetries()

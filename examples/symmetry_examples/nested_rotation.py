@@ -13,7 +13,7 @@ s = 5
 
 rotational_symmetry_n = data.create_rotational_symmetry(n)
 rotational_symmetry_s = data.create_rotational_symmetry(s, origin = torch.tensor([5.0, 0.0, 0.0]))
-nested_rotational_symmetry = data.combine_symmetry(rotational_symmetry_n, rotational_symmetry_s)
+nested_rotational_symmetry = data.nest_symmetries([rotational_symmetry_n, rotational_symmetry_s])
 
 data.add_symmetry({"rotational_symmetry": nested_rotational_symmetry})
 data.add_symmetry({"rotational_symmetry_s": rotational_symmetry_s})

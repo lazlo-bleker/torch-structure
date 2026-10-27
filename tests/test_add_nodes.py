@@ -76,7 +76,7 @@ def test_add_nodes_with_combined_symmetry():
 
     mirror = data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.]))
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"d4": data.combine_symmetry(mirror, rotation)})
+    data.add_symmetry({"d4": data.nest_symmetries([mirror, rotation])})
 
     data.add_nodes_symmetrical(symmetry="d4", coords=torch.tensor([[2., 1., 0.], [3., 1., 5.]]))
 

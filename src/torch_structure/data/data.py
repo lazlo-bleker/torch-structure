@@ -1696,7 +1696,7 @@ class StructData(TSMixin, pyg.data.Data):
                 (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
                 (all ``True`` except the last entry, which is ``closes``). Pass this dict to
                 ``add_symmetry`` directly, or nest it inside another symmetry via
-                ``combine_symmetry``.
+                ``nest_symmetries``.
 
         Raises:
             ValueError: if ``n`` is less than 1.
@@ -1759,7 +1759,7 @@ class StructData(TSMixin, pyg.data.Data):
                 (all zeros, since this is a single, unnested level), and ``closes`` of shape [n]
                 (all ``True`` except the last entry, which is ``closes``). Pass this dict to
                 ``add_symmetry`` directly, or nest it inside another symmetry via
-                ``combine_symmetry``.
+                ``nest_symmetries``.
 
         Raises:
             ValueError: if ``n`` is less than 1.
@@ -1816,7 +1816,7 @@ class StructData(TSMixin, pyg.data.Data):
                 zeros, since this is a single, unnested level), and ``closes`` of shape [2] (all
                 ``True``: a mirror has only two positions, so closing it and leaving it open give
                 the same single edge between them). Pass this dict to ``add_symmetry`` directly,
-                or nest it inside another symmetry via ``combine_symmetry``.
+                or nest it inside another symmetry via ``nest_symmetries``.
 
         Raises:
             ValueError: if ``origin`` or ``normal`` is not a tensor of shape [3] with the
@@ -1841,25 +1841,37 @@ class StructData(TSMixin, pyg.data.Data):
         }
 
 
-    def combine_symmetry(self, symmetry_a, symmetry_b) -> dict[str, torch.Tensor]:
+    def nest_symmetries(self, symmetries: list) -> dict[str, torch.Tensor]:
         """
-        Nests ``symmetry_a`` inside ``symmetry_b``, producing every combination of the
-        two.
+        Nests symmetries inside each other, innermost first, producing every combination of
+        them.
 
         Args:
-            symmetry_a (dict): the inner symmetry, as returned by
-                ``create_rotational_symmetry``, ``create_mirror_symmetry``, or a previous
-                ``combine_symmetry`` call.
-            symmetry_b (dict): the outer symmetry to nest around ``symmetry_a``, in the
-                same dict form.
+            symmetries (list[dict]): the symmetries to nest, innermost first, each as returned
+                by ``create_rotational_symmetry``, ``create_translation``,
+                ``create_mirror_symmetry``, or a previous ``nest_symmetries`` call.
 
         Returns:
             ``{"matrices": torch.Tensor, "symmetry_level": torch.Tensor, "closes": torch.Tensor}``
-                -- the combined affine matrices, shape ``[size_a * size_b, 4, 4]``, and the
-                combined ``symmetry_level`` and ``closes``, shape ``[size_a * size_b]`` each.
-                Every level keeps its own closing behaviour, so nesting an open symmetry inside
-                another open one stays open in both directions.
+                -- the nested affine matrices, shape ``[size, 4, 4]`` with ``size`` the product
+                of the symmetries' sizes, and the nested ``symmetry_level`` and ``closes``, shape
+                ``[size]`` each. Every level keeps its own closing behaviour, so nesting an open
+                symmetry inside another open one stays open in both directions.
+
+        Raises:
+            ValueError: if ``symmetries`` is empty.
         """
+        if len(symmetries) == 0:
+            raise ValueError("nest_symmetries() needs at least one symmetry.")
+
+        nested = symmetries[0]
+        for outer in symmetries[1:]:
+            nested = self._nest_symmetry_pair(nested, outer)
+        return nested
+
+
+    def _nest_symmetry_pair(self, symmetry_a, symmetry_b):
+        # nests the inner symmetry_a inside the outer symmetry_b
 
         affine = symmetry_b["matrices"].unsqueeze(1) @ symmetry_a["matrices"].unsqueeze(0)
 
@@ -2476,7 +2488,7 @@ class StructData(TSMixin, pyg.data.Data):
         Args:
             symmetries (dict[str, dict]): mapping of symmetry name to a symmetry dict, as
                 returned by ``create_rotational_symmetry``, ``create_translation``,
-                ``create_mirror_symmetry``, or ``combine_symmetry``. Each name must not already be
+                ``create_mirror_symmetry``, or ``nest_symmetries``. Each name must not already be
                 registered. A dict without a ``closes`` entry is taken to close on every level.
             transform_attrs (list[str], optional): node attributes that should be
                 geometrically transformed (rotated/mirrored, via the full affine matrix)

@@ -21,7 +21,7 @@ n_levels = 3
 open_rotation = data.create_rotational_symmetry(n_corners, closes=False)
 vertical_array = data.create_translation(n_levels, direction=torch.tensor([0.0, 0.0, 1.5]))
 
-stacked = data.combine_symmetry(open_rotation, vertical_array)
+stacked = data.nest_symmetries([open_rotation, vertical_array])
 
 data.add_symmetry({"stacked": stacked}, copy_attrs=["force"])
 data.view_symmetries()

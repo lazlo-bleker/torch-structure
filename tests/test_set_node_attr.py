@@ -142,7 +142,7 @@ def build_nested_structure():
     # level 0: 3 rings stacked along z, level 1: 4 sectors around the z axis
     stacked = data.create_translation(3, torch.tensor([0., 0., 1.]))
     rotation = data.create_rotational_symmetry(4)
-    data.add_symmetry({"cylinder": data.combine_symmetry(stacked, rotation)}, copy_attrs=["load"])
+    data.add_symmetry({"cylinder": data.nest_symmetries([stacked, rotation])}, copy_attrs=["load"])
 
     # one orbit of 12 nodes: orbit position p is ring p % 3 of sector p // 3
     data.add_nodes_symmetrical(symmetry="cylinder", coords=torch.tensor([[1., 0., 0.]]), load=torch.zeros((1, 1)))

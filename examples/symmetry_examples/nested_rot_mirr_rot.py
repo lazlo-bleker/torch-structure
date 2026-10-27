@@ -18,10 +18,11 @@ inner_rotation = data.create_rotational_symmetry(n_corners)
 mirror = data.create_mirror_symmetry(normal=torch.tensor([0.0, 0.0, 1.0]))
 outer_rotation = data.create_rotational_symmetry(n_sectors, origin=torch.tensor([5.0, 0.0, 0.0]))
 
-nested_symmetry = data.combine_symmetry(
-    data.combine_symmetry(inner_rotation, mirror),
+nested_symmetry = data.nest_symmetries([
+    inner_rotation,
+    mirror,
     outer_rotation,
-)
+])
 
 data.add_symmetry({"nested": nested_symmetry}, copy_attrs=["force"])
 data.view_symmetries()

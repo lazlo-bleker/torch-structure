@@ -103,10 +103,10 @@ def test_open_rotation_with_two_orbits():
 def nested(inner_closes, outer_closes):
     """A 4-fold rotation (level 0) nested inside a 3-fold rotation (level 1)."""
     data = StructData()
-    return data.combine_symmetry(
+    return data.nest_symmetries([
         data.create_rotational_symmetry(4, closes=inner_closes),
         data.create_rotational_symmetry(3, origin=torch.tensor([10., 0., 0.]), closes=outer_closes),
-    )
+    ])
 
 
 # node index = outer_digit * 4 + inner_digit
@@ -203,7 +203,7 @@ def test_triple_nesting_keeps_one_flag_per_level():
     middle = data.create_rotational_symmetry(3, origin=torch.tensor([10., 0., 0.]))
     outer = data.create_rotational_symmetry(2, origin=torch.tensor([20., 0., 0.]), closes=False)
 
-    symmetry = data.combine_symmetry(data.combine_symmetry(inner, middle), outer)
+    symmetry = data.nest_symmetries([inner, middle, outer])
     graph = build(symmetry)
 
     level_sizes, level_closes = graph._infer_level_sizes(0)
@@ -283,10 +283,10 @@ def test_translation_can_close():
 def open_grid():
     """3 positions along x (level 0) nested inside 2 positions along y (level 1), both open."""
     data = StructData()
-    return data.combine_symmetry(
+    return data.nest_symmetries([
         data.create_translation(3, torch.tensor([1., 0., 0.])),
         data.create_translation(2, torch.tensor([0., 1., 0.])),
-    )
+    ])
 
 
 def test_doubly_nested_translation_is_open_in_both_directions():
@@ -411,10 +411,10 @@ def test_scaled_translation_builds_an_unevenly_spaced_chain():
 def test_scaling_can_be_nested():
 
     data = StructData()
-    symmetry = data.combine_symmetry(
+    symmetry = data.nest_symmetries([
         data.create_translation(3, torch.tensor([1., 0., 0.]), scaling=torch.tensor([1., 3.])),
         data.create_translation(2, torch.tensor([0., 1., 0.]), scaling=torch.tensor([5.])),
-    )
+    ])
 
     graph = build(symmetry)
 
@@ -494,10 +494,10 @@ def test_mirror_always_closes_and_adds_one_edge():
 def test_open_level_inside_a_mirror():
 
     data = StructData()
-    symmetry = data.combine_symmetry(
+    symmetry = data.nest_symmetries([
         data.create_translation(3, torch.tensor([1., 0., 0.])),
         data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.])),
-    )
+    ])
 
     graph = build(symmetry)
     add_family(graph, 0, 1)
@@ -511,13 +511,11 @@ def test_open_level_inside_a_mirror():
 def rot_mirror_rot():
     """A 4-fold rotation (level 0) inside a mirror (level 1) inside a 3-fold rotation (level 2)."""
     data = StructData()
-    return data.combine_symmetry(
-        data.combine_symmetry(
-            data.create_rotational_symmetry(4),
-            data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.])),
-        ),
+    return data.nest_symmetries([
+        data.create_rotational_symmetry(4),
+        data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.])),
         data.create_rotational_symmetry(3, origin=torch.tensor([5., 0., 0.])),
-    )
+    ])
 
 
 def seed_with(levels):
@@ -577,10 +575,10 @@ def test_replicate_levels_keeps_a_frozen_level_on_the_seed_position():
 def test_replicate_levels_still_respects_the_closing_flag():
 
     data = StructData()
-    symmetry = data.combine_symmetry(
+    symmetry = data.nest_symmetries([
         data.create_translation(4, direction=torch.tensor([1., 0., 0.])),
         data.create_rotational_symmetry(3),
-    )
+    ])
     graph = build(symmetry)
     graph.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[0],
@@ -619,10 +617,10 @@ def test_replicate_levels_still_deduplicates():
 
     # a mirror inside a rotation, replicated on the rotation only: 4 copies, not 8
     data = StructData()
-    symmetry = data.combine_symmetry(
+    symmetry = data.nest_symmetries([
         data.create_mirror_symmetry(normal=torch.tensor([0., 1., 0.])),
         data.create_rotational_symmetry(4),
-    )
+    ])
     graph = build(symmetry)
     graph.add_edges_by_orbit_symmetrical(
         src_orbit_ids=[0], dest_orbit_ids=[0],
@@ -658,14 +656,14 @@ def test_replicate_levels_rejects_edges_of_several_symmetries():
     )
 
     # two symmetries with two levels each, so the same replicate_levels list fits both of them
-    rotated_box = data.combine_symmetry(
+    rotated_box = data.nest_symmetries([
         data.create_rotational_symmetry(4),
         data.create_mirror_symmetry(normal=torch.tensor([0., 0., 1.])),
-    )
-    grid = data.combine_symmetry(
+    ])
+    grid = data.nest_symmetries([
         data.create_translation(3, torch.tensor([1., 0., 0.])),
         data.create_translation(2, torch.tensor([0., 1., 0.])),
-    )
+    ])
     data.add_symmetry({"rotated_box": rotated_box, "grid": grid}, copy_attrs=["force"])
 
     # nodes 0-7: the rotated box, nodes 8-13: the grid

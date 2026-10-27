@@ -55,7 +55,7 @@ def test_add_symmetry_several_symmetries_with_existing_nodes():
     rotation = data.create_rotational_symmetry(4)
     mirror = data.create_mirror_symmetry()
     data.add_symmetry({"rot4": rotation, "mirror": mirror}, copy_attrs=["load"])
-    data.add_symmetry({"d4": data.combine_symmetry(mirror, rotation)}, transform_attrs=[])
+    data.add_symmetry({"d4": data.nest_symmetries([mirror, rotation])}, transform_attrs=[])
 
     name_to_symmetry_expected = {"rot4": 0, "mirror": 1, "d4": 2}
     symmetry_matrix_id_expected = torch.tensor([0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2])
