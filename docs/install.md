@@ -6,13 +6,10 @@ Welcome to the installation guide for `torch_structure`. To ensure a smooth inst
 
 ## Prerequisites
 
-`torch_structure` requires the following dependencies:
-
-- **PyTorch**
-- **PyTorch Geometric**
+`torch_structure` requires **PyTorch**.
 
 !!! warning Important Note on Dependencies
-    Both PyTorch and PyTorch Geometric require specific configurations depending on your system (e.g., CUDA version if you have a GPU). As a result, these cannot be automatically installed as part of the package dependencies and must be installed manually.
+    PyTorch requires a specific build depending on your system (e.g., CUDA version if you have a GPU). As a result, it cannot be automatically installed as part of the package dependencies and must be installed manually. All other dependencies, including PyTorch Geometric, are installed automatically.
 
 ---
 
@@ -35,7 +32,7 @@ uv venv --python 3.12
 
 ### 2. Install PyTorch
 
-Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/previous-versions/#v251) to find the correct command for your system. We recommend installing the latest stable version.
+Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/locally/) to find the correct command for your system. We recommend installing the latest stable version.
 
 For example, if using CUDA 12.8:
 
@@ -43,18 +40,7 @@ For example, if using CUDA 12.8:
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 ```
 
-### 3. Install PyTorch Geometric
-
-Visit the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) and install PyTorch Geometric and its optional dependencies using the correct command for your system and installed PyTorch version.
-
-For example, if using PyTorch 2.8.0 and CUDA 12.8:
-
-```bash
-pip install torch_geometric
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.8.0+cu128.html 
-```
-
-### 4. Install `torch_structure`
+### 3. Install `torch_structure`
 
 Install the `torch_structure` package via pip:
 
@@ -75,7 +61,10 @@ pip install torch_structure
     pip install -e .  
     ```
 
-### 5. Verify the Installation
+!!! tip "Optional: PyTorch Geometric extensions"
+    `torch_structure` does not require the compiled PyTorch Geometric extensions (`torch_scatter`, `pyg_lib`, ...). If they are installed, PyTorch Geometric uses them automatically where they are faster. See the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for how to install them.
+
+### 4. Verify the Installation
 
 To verify the installation, open Python and run the following:
 

@@ -1,7 +1,7 @@
 import torch
 import math
 import numpy as np
-from torch_scatter import scatter
+from torch_geometric.utils import scatter
 from functools import partial
 
 from torch_structure.data import StructData

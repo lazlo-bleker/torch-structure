@@ -11,7 +11,7 @@ from torch_structure.data.utils import requires_metadata
 from torch_structure.loss import ResidualForceLoss
 from torch_structure.geometry import graph_edge_lengths
 from torch_structure.mixins import TSMixin
-from torch_scatter import scatter
+from torch_geometric.utils import scatter
 
 class StructData(TSMixin, pyg.data.Data):
     """A `torch_geometric.data.Data` subclass representing a directed, reciprocal-edge structural graph.
