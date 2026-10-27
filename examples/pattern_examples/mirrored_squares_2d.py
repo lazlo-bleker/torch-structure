@@ -12,26 +12,26 @@ data = ts.data.StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 n_corners = 4
 
 #the rotation makes the square, the mirror makes the second one below the z = 0 plane
-rotation = data.create_rotational_symmetry(n_corners)
-mirror = data.create_mirror_symmetry(origin= torch.tensor([0.0,2.0,0.0]) ,normal=torch.tensor([0.0, 1.0, 0.0]))
+rotation = data.create_rotational_pattern(n_corners)
+mirror = data.create_mirror_pattern(origin= torch.tensor([0.0,2.0,0.0]) ,normal=torch.tensor([0.0, 1.0, 0.0]))
 
-mirrored_square = data.combine_symmetry(rotation, mirror)
+mirrored_square = data.nest_patterns([rotation, mirror])
 
-data.add_symmetry({"mirrored_square": mirrored_square}, copy_attrs=["force"])
-data.view_symmetries()
+data.add_patterns({"mirrored_square": mirrored_square})
+data.view_patterns()
 
 #one seed node, copied to the 4 corners of each of the 2 squares
-data.add_nodes_symmetrical(symmetry="mirrored_square", coords=torch.tensor([[1.0, 0.0, 0.0]]))
+data.add_nodes_by_pattern(pattern="mirrored_square", coords=torch.tensor([[1.0, 0.0, 0.0]]))
 
 #the sides of the squares: 4 per square
-data.add_edges_by_orbit_symmetrical(
-    src_orbit_ids=[0], dest_orbit_ids=[0],
-    src_orbit_positions=[0], dest_orbit_positions=[1],
+data.add_edges_per_expansion_by_pattern(
+    src_expansion_ids=[0], dest_expansion_ids=[0],
+    src_expansion_positions=[0], dest_expansion_positions=[1],
     force=torch.full((1, 1), 1.0),
 )
-data.add_edges_by_orbit_symmetrical(
-    src_orbit_ids=[0], dest_orbit_ids=[0],
-    src_orbit_positions=[1], dest_orbit_positions=[4],
+data.add_edges_per_expansion_by_pattern(
+    src_expansion_ids=[0], dest_expansion_ids=[0],
+    src_expansion_positions=[1], dest_expansion_positions=[4],
     force=torch.full((1, 1), 1.0),
 )
 
