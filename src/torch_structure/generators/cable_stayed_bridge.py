@@ -145,7 +145,7 @@ class CableStayedBridge(BaseGenerator):
                     if j == n_cables
                     else torch.tensor([False, False, False])
                 )
-                length = tower_height * 0.8 if j == n_cables else tower_trail_length
+                length = tower_height * 1.0 if j == n_cables else tower_trail_length
                 graph.add_node(
                     f"tt{i}n{j}",
                     is_origin_node=torch.tensor(False),
