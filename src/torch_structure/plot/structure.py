@@ -383,7 +383,7 @@ def plot_structure(
         edge_mask (torch.Tensor | bool, optional): which edges to draw: a boolean mask or edge
             indices, for all edges or for the undirected ones. ``False`` draws none.
         node_color (str | torch.Tensor, optional): node colors, see above. Nodes are only drawn
-            when ``node_color`` or ``node_size`` is given.
+            when ``node_color`` or ``node_size`` is given, or with ``pattern``.
         node_size (str | torch.Tensor | float, optional): marker sizes: a constant, or values
             whose magnitude sets the size. Default is 12 when nodes are drawn.
         node_labels (str | torch.Tensor | list[str], optional): text at each node: ``"index"``,
@@ -559,7 +559,8 @@ def plot_structure(
         value = value.reshape(num_nodes, -1)
         return (value[:, 0] if value.shape[1] == 1 else value)[node_ids]
 
-    if (node_color is not None or node_size is not None) and len(node_ids):
+    # the nodes are what a pattern places, so they are drawn with its elements
+    if (node_color is not None or node_size is not None or pattern) and len(node_ids):
         constant, values, name = _color_values(data, node_color, node_values, _NODE_COLOR)
         if constant is not None:
             colors = constant

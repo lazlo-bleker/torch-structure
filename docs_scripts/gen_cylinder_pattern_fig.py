@@ -72,10 +72,10 @@ def save_figure(name, num_old=0, before=None, seed_node=None, seed_edge=None):
     ax = fig.add_subplot(111, projection="3d")
     ax.view_init(elev=ELEV, azim=AZIM)
 
-    data.plot_pattern(ax=ax, color=ACCENT_HEX, node_size=40, lw_scale=0.7, legend=False, show_labels=False)
+    data.plot(ax=ax, edge_width=1.0, node_size=40, lw_scale=0.7, legend=False, pattern={"color": ACCENT_HEX, "show_labels": False})
 
-    # plot_pattern() draws the edges at z-order 2 and the nodes at 3, both in
-    # hardcoded greys, the rotation axis at 4 and the steps of the pattern at 5.
+    # plot() draws the edges at z-order 2 and the nodes at 3, both in
+    # its default greys, the rotation axis at 4 and the steps of the pattern at 5.
     # The edges come in the order they were added, one per pair of nodes. The
     # edges the last edge added, after the first num_old, are drawn darker and
     # the ones before them lighter. After a move from the coordinates before,
@@ -107,7 +107,7 @@ def save_figure(name, num_old=0, before=None, seed_node=None, seed_edge=None):
         ax.patch.set_alpha(0.0)
         ax.set_facecolor((1, 1, 1, 0))
 
-    # plot_pattern() draws the translation's steps along the first column and
+    # plot() draws the translation's steps along the first column and
     # the rotation's arcs between the centres of the columns, both on top of the
     # cylinder, so move the steps to its left and the arcs below it, and let the
     # rotation axis reach down through the arcs
@@ -125,7 +125,7 @@ def save_figure(name, num_old=0, before=None, seed_node=None, seed_edge=None):
             bottom = np.array([*bottom[:2], BELOW - 0.3])
             collection.set_segments([[bottom, top]])
 
-    # plot_pattern() fits the limits to what it drew, so widen them to the moved
+    # plot() fits the limits to what it drew, so widen them to the moved
     # steps and the lengthened axis, with one scale on all axes
     limits = np.array([ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()])
     low = np.minimum.reduce([limits[:, 0], side, bottom])
@@ -136,7 +136,7 @@ def save_figure(name, num_old=0, before=None, seed_node=None, seed_edge=None):
     # a tuple, since set_box_aspect normalizes an array in place
     ax.set_box_aspect(tuple(high - low))
 
-    # plot_pattern() also trims each step by a share of its length, which leaves
+    # plot() also trims each step by a share of its length, which leaves
     # short steps touching their nodes, so cut both ends of every step back to
     # GAP points clear of the spots the step runs between, on the screen, and
     # move each arrowhead along. The figure is drawn first, for the final layout

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import pytest
 import torch
 from matplotlib.patches import FancyArrowPatch
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d.art3d import Path3DCollection, Poly3DCollection
 
 from torch_structure.data.data import StructData
 from torch_structure.plot import classify_affine, pattern_levels
@@ -242,6 +242,24 @@ def test_plot_pattern_shows_a_glide_as_translation():
     assert pattern_levels(data, "warren")[0]["kind"] == "glide"
     assert [text.get_text() for text in ax.get_legend().get_texts()] == ["T0 translation: 5 positions, step (1, 0, 0)"]
     assert not any(isinstance(collection, Poly3DCollection) for collection in ax.collections)
+
+    plt.close("all")
+
+
+def test_plot_pattern_draws_the_nodes():
+
+    data = _structure()
+    data.add_patterns({"ring": data.create_rotational_pattern(6)})
+    data.add_nodes_by_pattern(pattern="ring", coords=torch.tensor([[1.0, 0.0, 0.0]]))
+
+    ax = data.plot(pattern=True)
+
+    # the nodes the pattern places, without asking for them, unlike in a plot without the pattern
+    nodes = [c for c in ax.collections if isinstance(c, Path3DCollection) and len(c.get_offsets()) == 6]
+    assert len(nodes) == 1
+    plt.close("all")
+    ax = data.plot()
+    assert not [c for c in ax.collections if isinstance(c, Path3DCollection)]
 
     plt.close("all")
 

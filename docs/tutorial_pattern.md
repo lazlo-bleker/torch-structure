@@ -28,10 +28,10 @@ data.add_patterns({"rotation": rotation})
 data.add_nodes_by_pattern(pattern="rotation", coords=torch.tensor([[1.0, 0.0, 0.0]]))
 ```
 
-Visualize the result. `plot_pattern` draws the nodes together with the pattern.
+Visualize the result. With `pattern=True`, `plot` draws the nodes together with the pattern.
 
 ```python
-data.plot_pattern()
+data.plot(pattern=True)
 plt.show()
 ```
 
@@ -91,10 +91,10 @@ data.add_nodes_by_pattern(pattern="translation", coords=torch.tensor([[0.0, 0.0,
 data.add_edges_by_pattern(edge_indices=torch.tensor([[0], [1]]))
 ```
 
-Visualize the result. `plot_pattern` draws the nodes and edges together with the pattern, each translation step as an arrow.
+Visualize the result. With `pattern=True`, `plot` draws the nodes and edges together with the pattern, each translation step as an arrow.
 
 ```python
-data.plot_pattern()
+data.plot(pattern=True)
 plt.show()
 ```
 
@@ -143,7 +143,7 @@ data.add_edges_by_pattern_level(
 Visualize the result.
 
 ```python
-data.plot_pattern()
+data.plot(pattern=True)
 plt.show()
 ```
 
@@ -225,7 +225,7 @@ data.add_edges_by_pattern_level(
 Visualize the result.
 
 ```python
-data.plot_pattern()
+data.plot(pattern=True)
 plt.show()
 ```
 

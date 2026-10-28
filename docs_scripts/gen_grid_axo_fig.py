@@ -2,63 +2,30 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 from PIL import Image, ImageChops
 from torch_structure.data.data import StructData
 
 DARK = os.environ.get("TS_DARK") == "1"
 BG = "none" if DARK else "white"
 
-# data.plot() draws edges in a hardcoded red (plot_data() in
-# torch_structure/plot/plot.py has no color-override parameter, and that
-# function is shared well beyond these doc figures, so it's left untouched).
-# Both figures here are 100% positive-force (all-tension) edges, so the
-# whole structure renders in this one red -- recolored below, after
-# data.plot() has already drawn it, to the site's orange brand accent.
-RED_HEX = "#E40714"
+# the edges in the site's orange accent
 ACCENT_HEX = "#F05F42" if DARK else "#E7461E"
 
-def recolor_rgba(img, target_hex):
-    # Alpha already IS the anti-aliasing blend fraction against the
-    # transparent canvas -- just swap the constant foreground color and
-    # leave alpha exactly as rendered.
-    target = np.array(mcolors.to_rgb(target_hex)) * 255
-    arr = np.array(img).astype(np.float64)
-    arr[..., 0] = target[0]
-    arr[..., 1] = target[1]
-    arr[..., 2] = target[2]
-    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), mode="RGBA")
-
-def recolor_rgb_on_white(img, orig_hex, target_hex):
-    # No alpha channel here -- anti-aliasing is baked in as a linear
-    # blend with the opaque white background. Recover the per-pixel blend
-    # fraction against the known original color, then re-blend the target
-    # color at that same fraction (using the G/B channels for the fraction
-    # estimate since R has poor contrast between red and white).
-    orig = np.array(mcolors.to_rgb(orig_hex)) * 255
-    white = np.array([255.0, 255.0, 255.0])
-    target = np.array(mcolors.to_rgb(target_hex)) * 255
-    arr = np.array(img).astype(np.float64)
-    a_est = (white - arr) / (white - orig)
-    a = np.clip((a_est[..., 1] + a_est[..., 2]) / 2, 0, 1)
-    new_rgb = a[..., None] * target + (1 - a[..., None]) * white
-    return Image.fromarray(np.clip(new_rgb, 0, 255).astype(np.uint8), mode="RGB")
-
 node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
-edge_attrs = {"force": torch.empty((0, 1), dtype=torch.long)}
+edge_attrs = {"material_id": torch.empty((0, 1), dtype=torch.long)}
 data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 num_rows, num_cols = 10, 10
 num_edges = num_rows * (num_cols - 1) + num_cols * (num_rows - 1)
 
-force = 10 * torch.ones(num_edges, 1, dtype=torch.long)
+material_id = torch.ones(num_edges, 1, dtype=torch.long)
 
 def f(x_unit_coord, y_unit_coord):
     height = 1.2 * x_unit_coord * (1 - x_unit_coord)
     return torch.hstack([x_unit_coord, y_unit_coord, height])
 
 node_attrs = {"coords": f}
-edge_attrs = {"force": force}
+edge_attrs = {"material_id": material_id}
 
 data.add_grid(num_rows, num_cols, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
@@ -66,7 +33,7 @@ fig = plt.figure(figsize=(10, 8), facecolor=BG)
 ax = fig.add_subplot(111, projection="3d")
 ax.view_init(elev=35.264, azim=45)  # isometric / axonometric view
 
-data.plot(ax=ax, equal_axes=False, legend=False, lw_scale=0.5)
+data.plot(ax=ax, equal_axes=False, legend=False, edge_color=ACCENT_HEX, edge_width=1.7)
 
 if DARK:
     # mplot3d draws opaque background "wall" panes behind the plot even
@@ -140,7 +107,6 @@ if DARK:
     shift = int(-0.02 * W2)
     final = Image.new("RGBA", (W2 + 2 * margin_x, H2 + margin_top + margin_bottom), (0, 0, 0, 0))
     final.paste(new_img, (margin_x + shift, margin_top))
-    final = recolor_rgba(final, ACCENT_HEX)
     final.save(path)
 else:
     # matplotlib's bbox_inches="tight" doesn't crop 3D axes well (the viewport
@@ -183,7 +149,6 @@ else:
     shift = int(-0.02 * W2)
     final = Image.new("RGB", (W2 + 2 * margin_x, H2 + margin_top + margin_bottom), (255, 255, 255))
     final.paste(new_img, (margin_x + shift, margin_top))
-    final = recolor_rgb_on_white(final, RED_HEX, ACCENT_HEX)
     final.save(path)
 
 print(f"Saved {path}")
