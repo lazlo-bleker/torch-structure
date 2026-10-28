@@ -69,8 +69,9 @@ target_coords = struct_data.laplacian_surface_edit(
 # Plot initial structure and target graph together.
 ax_init = struct_data.plot(
     title="Initial Structure and Target",
-    show_supports=True,
-    target_coords=target_coords,
+    supports=True,
+    ghost=target_coords,
+    ghost_label="Target",
 )
 
 # Start model
@@ -95,8 +96,9 @@ struct_data.force_density[~struct_data.directed_mask.squeeze(1)] = params.detach
 struct_data.fdm(inplace=True)
 struct_data.plot(
     title="Best-Fit Structure and Target",
-    show_supports=True,
-    target_coords=target_coords,
+    supports=True,
+    ghost=target_coords,
+    ghost_label="Target",
 )
 plt.show()
 print("f")

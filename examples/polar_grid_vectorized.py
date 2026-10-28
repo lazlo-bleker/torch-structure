@@ -48,6 +48,6 @@ edge_attrs = {
 
 data.add_polar_grid(5, 3, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-data.plot(load=True)
+data.plot()
 
 plt.show()

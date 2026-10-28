@@ -33,6 +33,6 @@ edge_attrs = {
 
 data.add_cylinder(N_SECTORS, N_RINGS, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-data.plot(load=True)
+data.plot()
 
 plt.show()

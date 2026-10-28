@@ -1,3 +1,5 @@
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -37,6 +39,8 @@ def plot_data(
     """
     Plot a structure in 3D.
 
+    Deprecated: use [plot_structure][torch_structure.plot.structure.plot_structure] instead.
+
     Args:
         coords (torch.Tensor): Tensor of shape (num_nodes, 3) with the 3D coordinates of each node.
         edge_index (torch.Tensor): Tensor of shape (2, num_edges) defining edge connections by node indices.
@@ -60,6 +64,11 @@ def plot_data(
         show (bool, optional): If True, the plot will be displayed with plt.show(). Default is False.
 
     """
+    warnings.warn(
+        "plot_data is deprecated and will be removed; use plot_structure or StructData.plot instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
     force = force.view(-1) if force is not None else force
     is_support = is_support.view(-1) if is_support is not None else is_support
 
@@ -308,6 +317,9 @@ def plot_data_xz(
     """
     Plot a structure's xz-projection (elevation view) in 2D.
 
+    Deprecated: use [plot_structure][torch_structure.plot.structure.plot_structure] with
+    ``view="xz"`` instead.
+
     Args:
         coords (torch.Tensor): Tensor of shape (num_nodes, 3) with the 3D coordinates of each node; only x and z are plotted.
         edge_index (torch.Tensor): Tensor of shape (2, num_edges) defining edge connections by node indices.
@@ -331,6 +343,11 @@ def plot_data_xz(
         show (bool, optional): If True, the plot will be displayed with plt.show(). Default is False.
 
     """
+    warnings.warn(
+        "plot_data_xz is deprecated and will be removed; use plot_structure(..., view='xz') instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
     force = force.view(-1) if force is not None else force
     is_support = is_support.view(-1) if is_support is not None else is_support
 

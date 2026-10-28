@@ -96,10 +96,9 @@ print(f"brace axial forces: {(result.force[brace_rows].view(-1) / 1e3).tolist()}
 scale = 50.0
 result.plot(
     coords=result.coords + scale * result.displacement,
-    lw_scale=0.02,  # line widths scale with sqrt(|force|), here in N
-    show_supports=True,
-    show_load=True,
-    force_scale=2e-5,  # forces in kN
+    ghost=result.coords,  # the undeformed shape
+    ghost_label="Undeformed",
+    loads=True,
     title=f"Deformed shape (x{scale:.0f})",
 )
 plt.show()

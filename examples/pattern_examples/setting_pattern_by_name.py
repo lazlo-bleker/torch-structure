@@ -48,6 +48,6 @@ data.set_node_attr_by_name(attr = "is_support", names = ["node0"], value = torch
 data.set_node_attr_per_expansion(attr = "is_support", expansion_ids=[0], expansion_positions=[0], value = torch.tensor([[False]]))
 
 
-data.plot(show_supports=True)
+data.plot(supports=True)
 
 plt.show()

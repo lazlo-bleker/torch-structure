@@ -50,6 +50,6 @@ edge_attrs = {"force": g}
 
 data.add_grid(7, 7, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
-data.plot(load=True)
+data.plot(loads=True)
 
 plt.show()

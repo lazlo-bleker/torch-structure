@@ -1,6 +1,8 @@
 import torch
 import scipy.linalg
 
+from torch_structure.message_passing import ResidualForce
+
 
 def create_branch_node_matrix(edge_index, dtype=None):
     """
@@ -85,3 +87,29 @@ def create_xy_equilibrium_matrix(coords, is_support, edge_index):
     A = torch.vstack((torch.mm(C_free_transposed, U), torch.mm(C_free_transposed, V)))
 
     return A
+
+
+def reaction_force_at_supports(coords, force, edge_index, load, is_support):
+    """
+    Computes the support reactions at each support.
+
+    Args:
+        coords (torch.Tensor): node coordinates of shape (num_nodes, 3).
+        force (torch.Tensor): axial force of each member, tension positive, of shape (num_edges,).
+        edge_index (torch.Tensor): the members, once each, of shape (2, num_edges).
+        load (torch.Tensor): nodal loads of shape (num_nodes, 3).
+        is_support (torch.Tensor): boolean support mask of shape (num_nodes,).
+
+    Returns:
+        torch.Tensor: the reactions of shape (num_nodes, 3), NaN at nodes that are not supports.
+    """
+    # count every member at both of its nodes
+    edge_index = torch.cat([edge_index, edge_index.flip(0)], dim=1)
+    force = torch.cat([force.view(-1), force.view(-1)])
+    valid_nodes = ~torch.isnan(coords).any(dim=1)
+    valid_edges = ~torch.isnan(force) & valid_nodes[edge_index[0]] & valid_nodes[edge_index[1]]
+    residual_force = ResidualForce()(coords, force[valid_edges], edge_index[:, valid_edges], load)
+    reaction_force = torch.full((coords.shape[0], 3), float("nan"), dtype=coords.dtype, device=coords.device)
+    is_support = is_support.view(-1)
+    reaction_force[is_support] = -residual_force[is_support]
+    return reaction_force

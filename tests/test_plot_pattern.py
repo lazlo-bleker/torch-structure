@@ -11,7 +11,7 @@ from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from torch_structure.data.data import StructData
-from torch_structure.plot import classify_affine, plot_pattern, pattern_levels
+from torch_structure.plot import classify_affine, pattern_levels
 
 
 def _rotation(axis, angle):
@@ -197,10 +197,11 @@ def test_plot_pattern_draws_each_level():
         force=torch.full((1, 1), 1.0),
     )
 
-    ax = plot_pattern(data)
+    ax = data.plot(pattern=True)
 
     labels = [text.get_text() for text in ax.get_legend().get_texts()]
     assert labels == [
+        "Tension",
         "T0 translation: 4 positions, step (2, 0, 0)",
         "T1 mirror: plane x = 0",
         "T2 mirror: plane z = 1",
@@ -213,7 +214,7 @@ def test_plot_pattern_draws_each_level():
 
     # with copies, the array is drawn in all 4 copies the mirrors make of it, while every copy the outer mirror
     # makes of the plane x = 0 is the same plane, so it is still drawn once
-    ax = plot_pattern(data, copies=True)
+    ax = data.plot(pattern={"copies": True})
 
     planes, = [collection for collection in ax.collections if isinstance(collection, Poly3DCollection)]
     assert len(planes.get_facecolor()) == 2
@@ -235,7 +236,7 @@ def test_plot_pattern_shows_a_glide_as_translation():
     data.add_patterns({"warren": glide})
     data.add_nodes_by_pattern(pattern="warren", coords=torch.tensor([[0.0, 0.0, 0.0]]))
 
-    ax = plot_pattern(data)
+    ax = data.plot(pattern=True)
 
     # the inference still reads a glide, the plot shows the translation it slides by, without its plane
     assert pattern_levels(data, "warren")[0]["kind"] == "glide"
@@ -250,7 +251,7 @@ def test_plot_pattern_without_nodes():
     data = _structure()
     data.add_patterns({"ring": data.create_rotational_pattern(5, origin=torch.tensor([1.0, 0.0, 0.0]))})
 
-    ax = plot_pattern(data, show_seeds=True)
+    ax = data.plot(pattern={"show_seeds": True})
 
     assert [text.get_text() for text in ax.get_legend().get_texts()] == [
         "T0 rotation: 5 positions, 72° about z through (1, 0, 0)",
@@ -265,4 +266,7 @@ def test_plot_pattern_unknown_pattern():
     data.add_patterns({"ring": data.create_rotational_pattern(5)})
 
     with pytest.raises(ValueError, match="not registered"):
-        plot_pattern(data, patterns="missing")
+        data.plot(pattern="missing")
+    with pytest.raises(ValueError, match="not registered"):
+        data.plot(pattern={"patterns": ["ring", "missing"]})
+
