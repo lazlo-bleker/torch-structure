@@ -1,5 +1,7 @@
 import math
 
+import matplotlib
+import matplotlib.pyplot as plt
 import pytest
 import torch
 
@@ -40,7 +42,7 @@ def test_axial_bar():
 
     assert result.displacement[1, 0].item() == pytest.approx(P * L / (E * A))
     assert result.force.item() == pytest.approx(P)
-    assert result.reaction[0, 0].item() == pytest.approx(-P)
+    assert result.reaction_force[0, 0].item() == pytest.approx(-P)
 
 
 def test_cantilever_bending_both_planes():
@@ -55,8 +57,8 @@ def test_cantilever_bending_both_planes():
     assert result.displacement[1, 1].item() == pytest.approx(P * L**3 / (3 * E * Iz))
     assert result.displacement[1, 2].item() == pytest.approx(-P * L**3 / (3 * E * Iy))
     assert result.rotation[1, 2].item() == pytest.approx(P * L**2 / (2 * E * Iz))
-    assert result.reaction[0, 4].item() == pytest.approx(-P * L)  # fixed-end moment about Y
-    assert result.reaction[0, 5].item() == pytest.approx(-P * L)
+    assert result.reaction_moment[0, 1].item() == pytest.approx(-P * L)  # fixed-end moment about Y
+    assert result.reaction_moment[0, 2].item() == pytest.approx(-P * L)
 
 
 def test_torsion():
@@ -84,7 +86,7 @@ def test_simply_supported_beam():
     result = frame_analysis(coords, edge_index, load, support, **SECTION)
 
     assert result.displacement[1, 2].item() == pytest.approx(-P * L**3 / (48 * E * Iy))
-    assert result.reaction[0, 2].item() == pytest.approx(P / 2)
+    assert result.reaction_force[0, 2].item() == pytest.approx(P / 2)
 
 
 @pytest.mark.parametrize("end_release", [False, True])
@@ -104,9 +106,9 @@ def test_propped_cantilever(end_release):
     result = frame_analysis(coords, edge_index, load, support, release=release, **SECTION)
 
     assert result.displacement[1, 2].item() == pytest.approx(-7 * P * L**3 / (768 * E * Iy))
-    assert result.reaction[2, 2].item() == pytest.approx(5 * P / 16)
+    assert result.reaction_force[2, 2].item() == pytest.approx(5 * P / 16)
     assert result.end_forces[1, 10].item() == pytest.approx(0.0, abs=1e-6)
-    assert result.reaction[0, 4].item() == pytest.approx(-3 * P * L / 16)
+    assert result.reaction_moment[0, 1].item() == pytest.approx(-3 * P * L / 16)
 
 
 def tripod():
@@ -165,11 +167,11 @@ def test_mixed_frame_equilibrium():
     result = frame_analysis(coords, edge_index, load, support, release=release, moment=moment, **SECTION)
 
     # reactions balance the applied forces and moments about the origin
-    reaction_force = result.reaction[:, :3]
+    reaction_force = result.reaction_force
     total_force = load.sum(0) + reaction_force.sum(0)
     total_moment = (
         moment.sum(0)
-        + result.reaction[:, 3:].sum(0)
+        + result.reaction_moment.sum(0)
         + torch.linalg.cross(coords, load + reaction_force).sum(0)
     )
     assert torch.allclose(total_force, torch.zeros(3, dtype=torch.float64), atol=1e-6)
@@ -288,6 +290,23 @@ def test_fem_mixin():
     # both directions of an edge carry the canonical edge's results
     assert torch.equal(result.end_forces, result.end_forces[data.reciprocal_edge.view(-1)])
     assert not hasattr(data, "displacement")
+
+
+def test_fem_reactions_are_split_into_forces_and_moments():
+    data = build_frame_data()
+
+    result = data.fem()
+
+    # the same names and shape as the reactions of form finding, so they plot as they are
+    assert result.reaction_force.shape == (data.num_nodes, 3)
+    assert result.reaction_moment.shape == (data.num_nodes, 3)
+    assert result.reaction_force[:, 2].sum().item() == pytest.approx(1e4, rel=1e-5)
+    assert result.reaction_moment[2].abs().sum().item() == 0.0  # node 2 is a pin
+
+    matplotlib.use("Agg")
+    ax = result.plot(view="xz", reactions=True)
+    assert "Reaction" in [text.get_text() for text in ax.get_legend().get_texts()]
+    plt.close("all")
 
 
 def test_support_dofs_must_have_six_columns():

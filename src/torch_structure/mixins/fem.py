@@ -24,11 +24,12 @@ class FEMMixin(OverrideResolveMixin):
         rotation_out=None,
         force_out=None,
         end_forces_out=None,
-        reaction_out=None,
+        reaction_force_out=None,
+        reaction_moment_out=None,
     ):
         """
         Applies a linear-elastic frame analysis to this structure and stores `displacement`,
-        `rotation`, `force`, `end_forces` and `reaction`.
+        `rotation`, `force`, `end_forces`, `reaction_force` and `reaction_moment`.
 
         Supports are read from `support_dofs`: translations from `support_xyz`, or from
         `is_support` as pins, and rotations from `support_rxyz`, free by default.
@@ -64,7 +65,8 @@ class FEMMixin(OverrideResolveMixin):
         rotation_key = "rotation" if rotation_out is None else rotation_out
         force_key = "force" if force_out is None else force_out
         end_forces_key = "end_forces" if end_forces_out is None else end_forces_out
-        reaction_key = "reaction" if reaction_out is None else reaction_out
+        reaction_force_key = "reaction_force" if reaction_force_out is None else reaction_force_out
+        reaction_moment_key = "reaction_moment" if reaction_moment_out is None else reaction_moment_out
 
         # FEM computation
         result = frame_analysis(
@@ -90,7 +92,8 @@ class FEMMixin(OverrideResolveMixin):
         new_data[rotation_key] = result.rotation
         new_data[force_key] = self.edge_attr_to_undirected(result.force, edge_mask)
         new_data[end_forces_key] = self.edge_attr_to_undirected(result.end_forces, edge_mask)
-        new_data[reaction_key] = result.reaction
+        new_data[reaction_force_key] = result.reaction_force
+        new_data[reaction_moment_key] = result.reaction_moment
 
         if not inplace:
             return new_data

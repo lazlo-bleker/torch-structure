@@ -100,4 +100,4 @@ def test_fem_reads_support_dofs(fixed_rotations):
         data.coords, data.directed_edge_index, data.load, expected_support, **section
     )
     assert torch.allclose(result.displacement, expected.displacement)
-    assert (result.reaction[0, 4].abs() > 0).item() == fixed_rotations
+    assert (result.reaction_moment[0, 1].abs() > 0).item() == fixed_rotations

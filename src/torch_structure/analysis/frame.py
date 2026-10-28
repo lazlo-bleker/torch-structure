@@ -20,15 +20,17 @@ class FrameResult(NamedTuple):
         end_forces (torch.Tensor [E, 12]): member end forces in local member axes, ordered
             ``[N, Vy, Vz, T, My, Mz]`` at node i followed by node j, as exerted by the nodes on
             the member.
-        reaction (torch.Tensor [N, 6]): support reactions ``[Fx, Fy, Fz, Mx, My, Mz]``, zero at
-            free DOFs.
+        reaction_force (torch.Tensor [N, 3]): support reaction forces, zero at free DOFs.
+        reaction_moment (torch.Tensor [N, 3]): support reaction moments about the global axes,
+            zero at free DOFs.
     """
 
     displacement: torch.Tensor
     rotation: torch.Tensor
     force: torch.Tensor
     end_forces: torch.Tensor
-    reaction: torch.Tensor
+    reaction_force: torch.Tensor
+    reaction_moment: torch.Tensor
 
 
 def frame_analysis(
@@ -93,8 +95,8 @@ def frame_analysis(
             unrestrained by any member. Default is 1e-9.
 
     Returns:
-        FrameResult: A named tuple of ``displacement``, ``rotation``, ``force``, ``end_forces``
-        and ``reaction``; see [FrameResult][torch_structure.analysis.frame.FrameResult].
+        FrameResult: A named tuple of ``displacement``, ``rotation``, ``force``, ``end_forces``,
+        ``reaction_force`` and ``reaction_moment``; see [FrameResult][torch_structure.analysis.frame.FrameResult].
     """
     out_dtype = coords.dtype
     device = coords.device
@@ -194,5 +196,6 @@ def frame_analysis(
         rotation=u_nodes[:, 3:].to(out_dtype),
         force=force.to(out_dtype),
         end_forces=end_forces.to(out_dtype),
-        reaction=reaction.to(out_dtype),
+        reaction_force=reaction[:, :3].to(out_dtype),
+        reaction_moment=reaction[:, 3:].to(out_dtype),
     )

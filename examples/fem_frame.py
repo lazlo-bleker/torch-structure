@@ -86,7 +86,7 @@ data.load = load
 result = data.fem()
 
 print(f"max displacement: {result.displacement.norm(dim=1).max() * 1e3:.2f} mm")
-print(f"sum of vertical reactions: {result.reaction[:, 2].sum() / 1e3:.1f} kN")
+print(f"sum of vertical reactions: {result.reaction_force[:, 2].sum() / 1e3:.1f} kN")
 brace_rows = data.directed_mask.view(-1).nonzero().view(-1)[-n:]
 print(f"brace axial forces: {(result.force[brace_rows].view(-1) / 1e3).tolist()} kN")
 
@@ -99,6 +99,7 @@ result.plot(
     ghost=result.coords,  # the undeformed shape
     ghost_label="Undeformed",
     loads=True,
+    reactions=True,
     title=f"Deformed shape (x{scale:.0f})",
 )
 plt.show()
