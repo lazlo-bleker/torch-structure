@@ -18,6 +18,10 @@ def scipy_jacobian(func):
         ``scipy.optimize.minimize(jac=True)``. The returned function tracks
         the best loss seen so far in its ``best_loss`` attribute.
     """
+    # TODO: drop best_loss once Python 3.9/3.10 (Rhino 8) support is dropped and scipy>=1.17 can be
+    # required; from 1.17 SLSQP passes callbacks the iterate itself (callback(intermediate_result) with
+    # .x and .fun). best_loss is the lowest loss of any evaluation, including trial points, so it can
+    # differ from the current iterate's loss.
     func_grad_and_value = torch.func.grad_and_value(func)
 
     def func_scipy(x_np, *args):
