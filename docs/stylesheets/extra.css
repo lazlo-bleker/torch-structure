@@ -117,3 +117,9 @@ body[data-md-color-scheme="default"] .ts-fig--light {
 body[data-md-color-scheme="slate"] .ts-fig--dark {
   display: block !important;
 }
+
+/* Center a tutorial figure in the content column */
+.ts-fig--center {
+  margin-left: auto;
+  margin-right: auto;
+}
