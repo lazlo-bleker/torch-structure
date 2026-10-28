@@ -340,7 +340,7 @@ class TrussBridgeGenerator(BaseGenerator):
             load = data.load
 
             coords = torch.clone(data.coords)  # check if this is necessary
-            C = create_branch_node_matrix(data.directed_edge_index)
+            C = create_branch_node_matrix(data.directed_edge_index, dtype=coords.dtype)
 
             CxT = C[:, ~support[:, 0]].T   # (n_free_x, E)
             CyT = C[:, ~support[:, 1]].T   # (n_free_y, E)
