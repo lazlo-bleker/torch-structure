@@ -4,15 +4,6 @@ Welcome to the installation guide for `torch_structure`. To ensure a smooth inst
 
 ---
 
-## Prerequisites
-
-`torch_structure` requires **PyTorch**.
-
-!!! warning Important Note on Dependencies
-    PyTorch requires a specific build depending on your system (e.g., CUDA version if you have a GPU). As a result, it cannot be automatically installed as part of the package dependencies and must be installed manually. All other dependencies, including PyTorch Geometric, are installed automatically.
-
----
-
 ## Installation Steps
 
 ### 1. (Optional, Recommended) Create a Virtual Environment
@@ -39,6 +30,10 @@ For example, if using CUDA 12.8:
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 ```
+
+!!! warning Important Note on Dependencies
+    PyTorch requires a specific build depending on your system (e.g., CUDA version if you have a GPU). As a result, it cannot be automatically installed as part of the package dependencies and must be installed manually. All other dependencies, including PyTorch Geometric, are installed automatically.
+
 
 ### 3. Install `torch_structure`
 

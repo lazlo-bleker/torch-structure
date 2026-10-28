@@ -1,6 +1,6 @@
-# Tutorial: Topology Creation 
+# Creating topologies
 
-Welcome to the topology creation tutorial for `torch_structure`. If you have not installed `torch_structure` yet or had problems with the installation process, please refer to the [installation guide](install.md).
+Welcome to the topology creation tutorial for `torch_structure`. If you have not installed `torch_structure` yet or had problems with the installation process, please refer to the [installation guide](../install.md).
 
 
 TorchStructure's topology functions all follow the same template. First, we will start with a simple chain. 
@@ -44,8 +44,8 @@ data.plot()
 plt.show()
 ```
 
-![Chain in axonometric view](assets/chain_axonometric.png){: .ts-fig--light }
-![Chain in axonometric view](assets/chain_axonometric_dark.png){: .ts-fig--dark }
+![Chain in axonometric view](../assets/chain_axonometric.png){: .ts-fig--light }
+![Chain in axonometric view](../assets/chain_axonometric_dark.png){: .ts-fig--dark }
 
 ---
 
@@ -87,8 +87,8 @@ data.plot()
 plt.show()
 ```
 
-![Grid in axonometric view](assets/grid_axonometric.png){: .ts-fig--light }
-![Grid in axonometric view](assets/grid_axonometric_dark.png){: .ts-fig--dark }
+![Grid in axonometric view](../assets/grid_axonometric.png){: .ts-fig--light }
+![Grid in axonometric view](../assets/grid_axonometric_dark.png){: .ts-fig--dark }
 
 
 
@@ -139,20 +139,20 @@ The callable's return value is subject to the same dimension requirements as a d
 
 ### Add chain
 
-![Default attributes for add_chain](assets/add_chain_defaults.png){: .ts-fig--light }
-![Default attributes for add_chain](assets/add_chain_defaults_dark.png){: .ts-fig--dark }
+![Default attributes for add_chain](../assets/add_chain_defaults.png){: .ts-fig--light }
+![Default attributes for add_chain](../assets/add_chain_defaults_dark.png){: .ts-fig--dark }
 
 ### Add grid
 
-![Default attributes for add_grid](assets/add_grid_defaults.png){: .ts-fig--light }
-![Default attributes for add_grid](assets/add_grid_defaults_dark.png){: .ts-fig--dark }
+![Default attributes for add_grid](../assets/add_grid_defaults.png){: .ts-fig--light }
+![Default attributes for add_grid](../assets/add_grid_defaults_dark.png){: .ts-fig--dark }
 
 ### Add triangular grid
 
-![Default attributes for add_triangular_grid](assets/add_tri_defaults.png){: .ts-fig--light }
-![Default attributes for add_triangular_grid](assets/add_tri_defaults_dark.png){: .ts-fig--dark }
+![Default attributes for add_triangular_grid](../assets/add_tri_defaults.png){: .ts-fig--light }
+![Default attributes for add_triangular_grid](../assets/add_tri_defaults_dark.png){: .ts-fig--dark }
 
 ### Add polar grid
 
-![Default attributes for add_polar_grid](assets/add_polar_defaults_normal.png){: .ts-fig--light }
-![Default attributes for add_polar_grid](assets/add_polar_defaults_normal_dark.png){: .ts-fig--dark }
+![Default attributes for add_polar_grid](../assets/add_polar_defaults_normal.png){: .ts-fig--light }
+![Default attributes for add_polar_grid](../assets/add_polar_defaults_normal_dark.png){: .ts-fig--dark }

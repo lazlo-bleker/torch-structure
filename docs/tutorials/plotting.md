@@ -1,4 +1,4 @@
-# Plotting
+# Plotting structures
 
 Every `StructData` object can draw itself with `data.plot()`. The same function is available as
 [`plot_structure`][torch_structure.plot.structure.plot_structure] in `torch_structure.plot`, so
@@ -15,7 +15,7 @@ any of their attributes.
 data.plot(show=True)
 ```
 
-![Default plot of a cable net](assets/plotting_default.png)
+![Default plot of a cable net](../assets/plotting_default.png)
 
 Without any arguments, `plot` draws what the structure in a way you might be used to seeing it:
 
@@ -40,7 +40,7 @@ path: `data.plot(path="cable_net")` writes `cable_net.png`.
 data.plot(loads=True, vector_scale=1.5, edge_width=0.8)
 ```
 
-![Cable net with its loads](assets/plotting_loads.png)
+![Cable net with its loads](../assets/plotting_loads.png)
 
 `reactions=True` draws the `reaction_force` attribute as orange arrows.
 
@@ -48,7 +48,7 @@ data.plot(loads=True, vector_scale=1.5, edge_width=0.8)
 data.plot(reactions=True, vector_scale=0.0025, edge_width=0.8)
 ```
 
-![Cable net with its support reactions](assets/plotting_reactions.png)
+![Cable net with its support reactions](../assets/plotting_reactions.png)
 
 Both also take another attribute name or a tensor of shape `[num_nodes, 3]`. Any other node
 vectors are drawn with `vectors`, a dictionary from legend label to attribute name or tensor:
@@ -75,7 +75,7 @@ values:
 data.plot(edge_color="force")
 ```
 
-![Edges colored by force](assets/plotting_colormap.png)
+![Edges colored by force](../assets/plotting_colormap.png)
 
 When the values have both signs, the colormap is diverging and centred on zero. Use `cmap` to choose another colormap and `clim=(low, high)` to fix its range.
 
@@ -86,7 +86,7 @@ legend entry. This suits ids such as a `material_id`:
 data.plot(edge_color="material_id")
 ```
 
-![Edges colored by material id](assets/plotting_categories.png)
+![Edges colored by material id](../assets/plotting_categories.png)
 
 **Booleans** highlight the `True` entries, e.g. `edge_color="is_boundary_edge"`.
 
@@ -146,7 +146,7 @@ data.height = data.coords[:, 2:]
 data.plot(view="xy", edge_color="black", edge_width=0.8, node_color="height")
 ```
 
-![Plan view with nodes colored by height](assets/plotting_plan_nodes.png)
+![Plan view with nodes colored by height](../assets/plotting_plan_nodes.png)
 
 `node_size` takes a constant marker size, or an attribute whose magnitude sets the size.
 
@@ -166,7 +166,7 @@ data.plot(view="xy", edge_color="black", edge_width=0.8, node_color="height")
 data.plot(view="xy", edge_color="grey", edge_width=0.8, node_labels="index")
 ```
 
-![Cable net with its node indices](assets/plotting_labels.png)
+![Cable net with its node indices](../assets/plotting_labels.png)
 
 ---
 
@@ -180,7 +180,7 @@ for the same structure, such as the geometry before form finding or a target sha
 data.plot(ghost=initial_coords, ghost_label="Initial geometry", edge_color="black", edge_width=0.8)
 ```
 
-![Cable net over its flat starting geometry](assets/plotting_ghost.png)
+![Cable net over its flat starting geometry](../assets/plotting_ghost.png)
 
 To plot the structure itself at other coordinates, pass them as `coords`, e.g.
 `data.plot(coords=result.coords, ghost=data.coords, ghost_label="Undeformed")`.

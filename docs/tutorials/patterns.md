@@ -1,6 +1,6 @@
-# Tutorial: Modeling with patterns
+# Modeling with patterns
 
-Welcome to the tutorial on modeling with patterns in `torch_structure`. If you have not installed `torch_structure` yet or had problems with the installation process, please refer to the [installation guide](install.md).
+Welcome to the tutorial on modeling with patterns in `torch_structure`. If you have not installed `torch_structure` yet or had problems with the installation process, please refer to the [installation guide](../install.md).
 
 TorchStructure's patterns all work in similar ways. First, we will start with a rotational pattern.
 
@@ -35,8 +35,8 @@ data.plot(pattern=True)
 plt.show()
 ```
 
-![Rotational pattern with its nodes in plan view](assets/rotational_pattern_nodes.png){: .ts-fig--light .ts-fig--center }
-![Rotational pattern with its nodes in plan view](assets/rotational_pattern_nodes_dark.png){: .ts-fig--dark .ts-fig--center }
+![Rotational pattern with its nodes in plan view](../assets/rotational_pattern_nodes.png){: .ts-fig--light .ts-fig--center }
+![Rotational pattern with its nodes in plan view](../assets/rotational_pattern_nodes_dark.png){: .ts-fig--dark .ts-fig--center }
 
 Edges work the same way. Adding an edge from the first node to the second with `add_edges_by_pattern` also adds its five rotated copies, which connect the six nodes into a hexagon.
 
@@ -44,8 +44,8 @@ Edges work the same way. Adding an edge from the first node to the second with `
 data.add_edges_by_pattern(edge_indices=torch.tensor([[0], [1]]))
 ```
 
-![Rotational pattern with its edges in plan view](assets/rotational_pattern_edges.png){: .ts-fig--light .ts-fig--center }
-![Rotational pattern with its edges in plan view](assets/rotational_pattern_edges_dark.png){: .ts-fig--dark .ts-fig--center }
+![Rotational pattern with its edges in plan view](../assets/rotational_pattern_edges.png){: .ts-fig--light .ts-fig--center }
+![Rotational pattern with its edges in plan view](../assets/rotational_pattern_edges_dark.png){: .ts-fig--dark .ts-fig--center }
 
 The six nodes stay linked through the pattern: if we move one of them, the other five adjust, and the edges follow. Here, we move the first node outwards from (1, 0, 0) to (2, 0, 0) with `set_node_attr_by_pattern`, where `mask` selects the node to move. Edge attributes can be set in a similar manner with `set_edge_attr_by_pattern`, which gives all rotated copies of the selected edge the same value.
 
@@ -54,8 +54,8 @@ mask = torch.tensor([True, False, False, False, False, False])
 data.set_node_attr_by_pattern("coords", mask=mask, value=torch.tensor([[2.0, 0.0, 0.0]]))
 ```
 
-![Rotational pattern with its first node moved outwards in plan view](assets/rotational_pattern.png){: .ts-fig--light .ts-fig--center }
-![Rotational pattern with its first node moved outwards in plan view](assets/rotational_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
+![Rotational pattern with its first node moved outwards in plan view](../assets/rotational_pattern.png){: .ts-fig--light .ts-fig--center }
+![Rotational pattern with its first node moved outwards in plan view](../assets/rotational_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
 
 To move a single node without its copies, use `set_node_attr` instead of `set_node_attr_by_pattern`. Here, we move the first node slightly inwards, while the other five nodes stay where they are.
 
@@ -63,8 +63,8 @@ To move a single node without its copies, use `set_node_attr` instead of `set_no
 data.set_node_attr("coords", mask=mask, value=torch.tensor([[1.6, 0.0, 0.0]]))
 ```
 
-![Rotational pattern with its first node moved inwards on its own in plan view](assets/rotational_pattern_single_node.png){: .ts-fig--light .ts-fig--center }
-![Rotational pattern with its first node moved inwards on its own in plan view](assets/rotational_pattern_single_node_dark.png){: .ts-fig--dark .ts-fig--center }
+![Rotational pattern with its first node moved inwards on its own in plan view](../assets/rotational_pattern_single_node.png){: .ts-fig--light .ts-fig--center }
+![Rotational pattern with its first node moved inwards on its own in plan view](../assets/rotational_pattern_single_node_dark.png){: .ts-fig--dark .ts-fig--center }
 
 ---
 
@@ -98,8 +98,8 @@ data.plot(pattern=True)
 plt.show()
 ```
 
-![Translational pattern with its edges in plan view](assets/translational_pattern_edges.png){: .ts-fig--light .ts-fig--center }
-![Translational pattern with its edges in plan view](assets/translational_pattern_edges_dark.png){: .ts-fig--dark .ts-fig--center }
+![Translational pattern with its edges in plan view](../assets/translational_pattern_edges.png){: .ts-fig--light .ts-fig--center }
+![Translational pattern with its edges in plan view](../assets/translational_pattern_edges_dark.png){: .ts-fig--dark .ts-fig--center }
 
 The nodes stay linked through the pattern. Changing one node changes the others accordingly.
 
@@ -108,8 +108,8 @@ mask = torch.tensor([True, False, False, False])
 data.set_node_attr_by_pattern("coords", mask=mask, value=torch.tensor([[0.0, 1.0, 0.0]]))
 ```
 
-![Translational pattern with its first node moved sideways in plan view](assets/translational_pattern.png){: .ts-fig--light .ts-fig--center }
-![Translational pattern with its first node moved sideways in plan view](assets/translational_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
+![Translational pattern with its first node moved sideways in plan view](../assets/translational_pattern.png){: .ts-fig--light .ts-fig--center }
+![Translational pattern with its first node moved sideways in plan view](../assets/translational_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
 
 ---
 
@@ -147,8 +147,8 @@ data.plot(pattern=True)
 plt.show()
 ```
 
-![Polar net pattern with translational edges in plan view](assets/polar_net_pattern.png){: .ts-fig--light .ts-fig--center }
-![Polar net pattern with translational edges in plan view](assets/polar_net_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
+![Polar net pattern with translational edges in plan view](../assets/polar_net_pattern.png){: .ts-fig--light .ts-fig--center }
+![Polar net pattern with translational edges in plan view](../assets/polar_net_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
 
 We could equally give the edge by the indices of its two nodes, with `add_edges_by_pattern` as in the sections above, or by their positions in the expansion, with `add_edges_per_expansion_by_pattern`. Here, both count the nodes translation by translation, from the inside out, so the level positions `[t, r]` are node and expansion position `t + 4 * r`. In place of the call above, either of these would add the same edges:
 
@@ -172,8 +172,8 @@ data.add_edges_by_pattern_level(
 )
 ```
 
-![Polar net pattern with rotational edges in plan view](assets/polar_net_pattern_rotational_edge.png){: .ts-fig--light .ts-fig--center }
-![Polar net pattern with rotational edges in plan view](assets/polar_net_pattern_rotational_edge_dark.png){: .ts-fig--dark .ts-fig--center }
+![Polar net pattern with rotational edges in plan view](../assets/polar_net_pattern_rotational_edge.png){: .ts-fig--light .ts-fig--center }
+![Polar net pattern with rotational edges in plan view](../assets/polar_net_pattern_rotational_edge_dark.png){: .ts-fig--dark .ts-fig--center }
 
 Finally, we add an edge in the diagonal direction, from `[0, 0]` to `[1, 1]`.
 
@@ -184,8 +184,8 @@ data.add_edges_by_pattern_level(
 )
 ```
 
-![Polar net pattern with diagonal edges in plan view](assets/polar_net_pattern_diagonal_edge.png){: .ts-fig--light .ts-fig--center }
-![Polar net pattern with diagonal edges in plan view](assets/polar_net_pattern_diagonal_edge_dark.png){: .ts-fig--dark .ts-fig--center }
+![Polar net pattern with diagonal edges in plan view](../assets/polar_net_pattern_diagonal_edge.png){: .ts-fig--light .ts-fig--center }
+![Polar net pattern with diagonal edges in plan view](../assets/polar_net_pattern_diagonal_edge_dark.png){: .ts-fig--dark .ts-fig--center }
 
 Nested patterns stay linked as well. Here, we move the outermost ring outwards, from a radius of 4 to 5, with `set_node_attr_by_pattern_level`, which selects a node by its level positions just like `add_edges_by_pattern_level`: `[3, 0]` is the last node of the first array. `replicate_levels` takes one entry per level of the pattern, innermost first: `[False, True]` freezes the inner pattern (the translation), so the move is copied around the ring but not along the translations. `replicate_levels=[True, True]` would move every ring outwards, and `replicate_levels=[True, False]` would only move one array.
 
@@ -196,8 +196,8 @@ data.set_node_attr_by_pattern_level(
 )
 ```
 
-![Polar net pattern with its outermost ring moved outwards in plan view](assets/polar_net_pattern_moved_ring.png){: .ts-fig--light .ts-fig--center }
-![Polar net pattern with its outermost ring moved outwards in plan view](assets/polar_net_pattern_moved_ring_dark.png){: .ts-fig--dark .ts-fig--center }
+![Polar net pattern with its outermost ring moved outwards in plan view](../assets/polar_net_pattern_moved_ring.png){: .ts-fig--light .ts-fig--center }
+![Polar net pattern with its outermost ring moved outwards in plan view](../assets/polar_net_pattern_moved_ring_dark.png){: .ts-fig--dark .ts-fig--center }
 
 ### A cylinder
 
@@ -229,8 +229,8 @@ data.plot(pattern=True)
 plt.show()
 ```
 
-![Cylinder pattern with rotational edges in axonometric view](assets/cylinder_pattern.png){: .ts-fig--light .ts-fig--center }
-![Cylinder pattern with rotational edges in axonometric view](assets/cylinder_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
+![Cylinder pattern with rotational edges in axonometric view](../assets/cylinder_pattern.png){: .ts-fig--light .ts-fig--center }
+![Cylinder pattern with rotational edges in axonometric view](../assets/cylinder_pattern_dark.png){: .ts-fig--dark .ts-fig--center }
 
 Again, we could equally give this edge by node index or by expansion position. Both now count the nodes column by column, from the bottom up, so `[0, 1]` is node and expansion position 4. In place of the call above, either of these would add the same 24 edges:
 
@@ -254,8 +254,8 @@ data.add_edges_by_pattern_level(
 )
 ```
 
-![Cylinder pattern with translational edges in axonometric view](assets/cylinder_pattern_translational_edge.png){: .ts-fig--light .ts-fig--center }
-![Cylinder pattern with translational edges in axonometric view](assets/cylinder_pattern_translational_edge_dark.png){: .ts-fig--dark .ts-fig--center }
+![Cylinder pattern with translational edges in axonometric view](../assets/cylinder_pattern_translational_edge.png){: .ts-fig--light .ts-fig--center }
+![Cylinder pattern with translational edges in axonometric view](../assets/cylinder_pattern_translational_edge_dark.png){: .ts-fig--dark .ts-fig--center }
 
 Finally, we add an edge in the diagonal direction, from `[0, 0]` to `[1, 1]`.
 
@@ -266,8 +266,8 @@ data.add_edges_by_pattern_level(
 )
 ```
 
-![Cylinder pattern with diagonal edges in axonometric view](assets/cylinder_pattern_diagonal_edge.png){: .ts-fig--light .ts-fig--center }
-![Cylinder pattern with diagonal edges in axonometric view](assets/cylinder_pattern_diagonal_edge_dark.png){: .ts-fig--dark .ts-fig--center }
+![Cylinder pattern with diagonal edges in axonometric view](../assets/cylinder_pattern_diagonal_edge.png){: .ts-fig--light .ts-fig--center }
+![Cylinder pattern with diagonal edges in axonometric view](../assets/cylinder_pattern_diagonal_edge_dark.png){: .ts-fig--dark .ts-fig--center }
 
 `set_node_attr_by_pattern_level` with `replicate_levels=[False, True]` again replicates the changed value of a node around the ring, but not up the columns.
 
@@ -278,5 +278,5 @@ data.set_node_attr_by_pattern_level(
 )
 ```
 
-![Cylinder pattern with its second ring moved outwards in axonometric view](assets/cylinder_pattern_moved_ring.png){: .ts-fig--light .ts-fig--center }
-![Cylinder pattern with its second ring moved outwards in axonometric view](assets/cylinder_pattern_moved_ring_dark.png){: .ts-fig--dark .ts-fig--center }
+![Cylinder pattern with its second ring moved outwards in axonometric view](../assets/cylinder_pattern_moved_ring.png){: .ts-fig--light .ts-fig--center }
+![Cylinder pattern with its second ring moved outwards in axonometric view](../assets/cylinder_pattern_moved_ring_dark.png){: .ts-fig--dark .ts-fig--center }
