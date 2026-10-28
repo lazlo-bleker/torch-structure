@@ -6,7 +6,6 @@ matrices.
 
 import math
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.colors import to_rgba
@@ -20,7 +19,6 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
 PATTERN_COLOR = "#E7461E"
 
 _NODE_COLOR = "#3d3c39"
-_EDGE_COLOR = "#a3a29c"
 _LABEL_COLOR = "#52514e"
 
 _PLANE_KINDS = ("mirror", "rotoreflection")
@@ -487,37 +485,30 @@ def _legend_handle(kind, color):
     return Line2D([], [], color=color, lw=1.8, marker=">", markersize=5)
 
 
-def plot_pattern(
+def draw_pattern_elements(
+    ax,
     data,
-    coords=None,
+    coords,
+    scale,
     patterns=None,
     levels=None,
     copies=False,
-    show_nodes=True,
-    show_edges=True,
-    show_seeds=False,
     show_labels=True,
-    legend=True,
+    show_seeds=False,
     color=PATTERN_COLOR,
-    node_size=10,
-    lw_scale=1.0,
     plane_alpha=0.12,
-    show_axes=False,
-    equal_axes=True,
-    title=None,
-    ax=None,
-    path=None,
-    show=False,
+    lw_scale=1.0,
+    node_size=10,
     atol=1e-5,
 ):
     """
-    Plots a structure in 3D together with the pattern elements of its registered patterns,
-    level by level: mirror planes as translucent planes, rotation axes as dotted lines with
-    arcs that follow one step of the rotation, and translations as arrows from each copy to the
-    next. All elements are drawn in one color, ``PATTERN_COLOR``; a hybrid level, e.g. a screw
-    (rotation + translation) or a rotoreflection (rotation + mirror), combines the elements of
-    its parts. A glide (mirror + translation) is drawn as the translation it slides by: arrows
-    only, without its plane.
+    Draws the pattern elements of registered patterns on an existing 3D axis, level by level:
+    mirror planes as translucent planes, rotation axes as dotted lines with arcs that follow one
+    step of the rotation, and translations as arrows from each copy to the next. All elements
+    are drawn in one color, ``PATTERN_COLOR``; a hybrid level, e.g. a screw (rotation +
+    translation) or a rotoreflection (rotation + mirror), combines the elements of its parts. A
+    glide (mirror + translation) is drawn as the translation it slides by: arrows only, without
+    its plane.
 
     The kind of each level is inferred from the pattern matrices with ``pattern_levels``,
     which reads only the level's own matrices. Each level is drawn once, in the first copy of
@@ -526,11 +517,15 @@ def plot_pattern(
     sized to the nodes it acts on, and an arrow or arc runs between the centroids of the
     copies it maps onto each other.
 
+    Usually called through [plot_structure][torch_structure.plot.structure.plot_structure]
+    with its ``pattern`` argument, e.g. ``data.plot(pattern=True)``.
+
     Args:
+        ax (mpl_toolkits.mplot3d.Axes3D): the axis to draw on.
         data (StructData): the structure, with its patterns registered via ``add_patterns``.
-        coords (torch.Tensor | str, optional): node coordinates of shape [num_nodes, 3] to plot
-            instead of ``data.coords``, or the name of the node attribute holding them, e.g. a
-            form-found geometry. Defaults to ``data.coords``.
+        coords (numpy.ndarray): node coordinates of shape [num_nodes, 3].
+        scale (float): the size of the structure, which the size of elements around nodes
+            that all lie on one axis or plane falls back to.
         patterns (str | list[str], optional): the patterns to draw. Defaults to all
             registered ones.
         levels (list[int] | dict[str, list[int]], optional): the levels to draw, the same for
@@ -538,30 +533,20 @@ def plot_pattern(
             of its levels. Defaults to all levels.
         copies (bool): if True, draws the elements of a level in every copy that the levels
             around it make of it; if False, only in the first one. Default is False.
-        show_nodes (bool): if True, plots the nodes. Default is True.
-        show_edges (bool): if True, plots the edges. Default is True.
-        show_seeds (bool): if True, rings the nodes at expansion position 0, i.e. the nodes every
-            other node of their expansion is a copy of. Default is False.
         show_labels (bool): if True, labels the first copy of each level's element with the
             level, e.g. ``T1``. Default is True.
-        legend (bool): if True, lists every drawn level with its kind. Default is True.
+        show_seeds (bool): if True, rings the nodes at expansion position 0, i.e. the nodes every
+            other node of their expansion is a copy of. Default is False.
         color (str): color of all pattern elements. Default is ``PATTERN_COLOR``, the
             package's orange.
-        node_size (float): marker size of the nodes. Default is 10.
-        lw_scale (float): scale factor for all line widths. Default is 1.0.
         plane_alpha (float): opacity of the mirror planes. Default is 0.12.
-        show_axes (bool): if True, axis lines and labels are shown. Default is False.
-        equal_axes (bool): if True, all axes share one scale. Default is True.
-        title (str, optional): title for the plot.
-        ax (mpl_toolkits.mplot3d.Axes3D, optional): an existing 3D axis to plot on. If None, a
-            new one is created.
-        path (str, optional): if provided, saves the figure as a PNG to this file path
-            (without extension).
-        show (bool): if True, the plot is displayed with ``plt.show()``. Default is False.
+        lw_scale (float): scale factor for all line widths. Default is 1.0.
+        node_size (float): marker size the seed rings are sized from. Default is 10.
         atol (float): see ``classify_affine``.
 
     Returns:
-        mpl_toolkits.mplot3d.Axes3D: the axis plotted on.
+        tuple[list, list[str], list[numpy.ndarray]]: the legend handles and labels, and the
+        points drawn, for the axis limits.
 
     Raises:
         ValueError: if a name in ``patterns`` is not a registered pattern.
@@ -576,34 +561,8 @@ def plot_pattern(
         if name not in registered:
             raise ValueError(f"Pattern '{name}' is not registered.")
 
-    coords = getattr(data, coords) if isinstance(coords, str) else data.coords if coords is None else coords
-    coords = torch.as_tensor(coords).detach().cpu().to(torch.float64).numpy()
-    if len(coords):
-        scale = float(np.linalg.norm(coords.max(axis=0) - coords.min(axis=0))) or 1.0
-    else:
-        scale = 1.0
-
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection="3d")
-    # the pattern elements are drawn on top of the structure, and the translucent planes below it
-    ax.computed_zorder = False
-
-    drawn_points = [coords]
-
-    if show_edges and data.edge_index.numel() > 0:
-        edge_index = data.edge_index
-        directed = getattr(data, "directed_mask", None)
-        if directed is not None and directed.numel() == edge_index.shape[1]:
-            edge_index = edge_index[:, directed.view(-1)]
-        edge_index = edge_index.cpu().numpy()
-        segments = np.stack([coords[edge_index[0]], coords[edge_index[1]]], axis=1)
-        edges = Line3DCollection(segments, colors=_EDGE_COLOR, linewidths=1.0 * lw_scale, zorder=2)
-        ax.add_collection3d(edges, autolim=False)
-
-    if show_nodes and len(coords):
-        ax.scatter(*coords.T, s=node_size, color=_NODE_COLOR, depthshade=False, zorder=3)
-
+    coords = np.asarray(coords, dtype=np.float64)
+    drawn_points = []
     handles, labels = [], []
 
     seeds = coords[(data.expansion_position.view(-1) == 0).cpu().numpy()] if hasattr(data, "expansion_position") else []
@@ -701,37 +660,4 @@ def plot_pattern(
                 bbox={"facecolor": "white", "alpha": 0.7, "edgecolor": "none", "pad": 0.6},
             )
 
-    if not show_axes:
-        ax.set_axis_off()
-
-    # the limits hold everything drawn; the collections were added without autoscaling, since their paths differ in length
-    points = np.concatenate([np.asarray(p, dtype=float).reshape(-1, 3) for p in drawn_points], axis=0)
-    points = points[np.isfinite(points).all(axis=1)]
-    if len(points):
-        low, high = points.min(axis=0), points.max(axis=0)
-        mid, half = (low + high) / 2, np.maximum((high - low) / 2, 1e-9)
-        if equal_axes:
-            # one scale on all axes, with a flat structure still shown with some depth
-            half = np.maximum(half, 0.15 * half.max())
-            # a tuple, since set_box_aspect normalizes an array in place
-            ax.set_box_aspect(tuple(half))
-        ax.set_xlim3d(mid[0] - half[0], mid[0] + half[0])
-        ax.set_ylim3d(mid[1] - half[1], mid[1] + half[1])
-        ax.set_zlim3d(mid[2] - half[2], mid[2] + half[2])
-
-    if equal_axes:
-        ax.set_proj_type("ortho")
-
-    if legend and handles:
-        ax.legend(handles, labels, frameon=False, loc="upper left", fontsize=9)
-
-    if title is not None:
-        ax.set_title(title)
-
-    if path is not None:
-        plt.savefig(f"{path}.png", bbox_inches="tight")
-
-    if show:
-        plt.show()
-
-    return ax
+    return handles, labels, drawn_points

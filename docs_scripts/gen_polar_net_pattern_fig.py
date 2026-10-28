@@ -69,10 +69,10 @@ def save_figure(name, num_old=0, before=None, seed_node=None, seed_edge=None):
     ax = fig.add_subplot(111, projection="3d")
     ax.view_init(elev=90, azim=-90)  # plan / top view, x to the right and y up
 
-    data.plot_pattern(ax=ax, color=ACCENT_HEX, node_size=40, lw_scale=0.7, legend=False, show_labels=False)
+    data.plot(ax=ax, edge_width=1.0, node_size=40, lw_scale=0.7, legend=False, pattern={"color": ACCENT_HEX, "show_labels": False})
 
-    # plot_pattern() draws the edges at z-order 2 and the nodes at 3, both in
-    # hardcoded greys, and the steps of the pattern at 5. The edges come in the
+    # plot() draws the edges at z-order 2 and the nodes at 3, both in
+    # its default greys, and the steps of the pattern at 5. The edges come in the
     # order they were added, one per pair of nodes. The edges the last edge
     # added, after the first num_old, are drawn darker and the ones before them
     # lighter. After a move from the coordinates before, all edges are drawn in
@@ -104,7 +104,7 @@ def save_figure(name, num_old=0, before=None, seed_node=None, seed_edge=None):
         ax.patch.set_alpha(0.0)
         ax.set_facecolor((1, 1, 1, 0))
 
-    # plot_pattern() draws the rotation's arcs between the centres of the rows,
+    # plot() draws the rotation's arcs between the centres of the rows,
     # across the net, so move them out onto a circle around it. It also trims
     # each step by a share of its length, which leaves short steps touching
     # their nodes, so cut both ends of every step back to GAP points clear of

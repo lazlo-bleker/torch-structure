@@ -6,6 +6,7 @@ from .utils import (
     create_branch_node_matrix,
     create_xy_equilibrium_space,
     create_xy_equilibrium_matrix,
+    reaction_force_at_supports,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "create_branch_node_matrix",
     "create_xy_equilibrium_space",
     "create_xy_equilibrium_matrix",
+    "reaction_force_at_supports",
 ]

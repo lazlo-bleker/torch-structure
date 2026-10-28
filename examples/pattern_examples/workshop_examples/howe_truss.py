@@ -62,6 +62,6 @@ data.add_edges_by_pattern_level(
 
 data.plot()
 
-data.plot_pattern()
+data.plot(pattern=True)
 
 plt.show()

@@ -1,7 +1,9 @@
 import torch
 from torch_geometric.utils import scatter
 from torch_structure.message_passing import ResidualForce
+from torch_structure.formfinding.utils import reaction_force_at_supports
 from torch_structure.geometry import line_plane_intersect, point_normal_to_plane, graph_edge_lengths, line_direction
+
 
 ALLOWED_UPDATE_KEYS = {
     "coords", 
@@ -168,8 +170,7 @@ def mpcem_algorithm(
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((state["coords"].shape[0], 3), float("nan"), dtype=state["coords"].dtype, device=state["coords"].device)
-    reaction_force[is_support] = -residual_force[is_support]
+    reaction_force = reaction_force_at_supports(state["coords"], state["force"], cem_edge_index, state["load"], is_support)
 
     if verbose:
         print(f"MP-CEM finished in {n_steps} steps. Converged: {converged}.")
@@ -405,8 +406,7 @@ def cem_algorithm(
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((coords.shape[0], 3), float("nan"), dtype=coords.dtype, device=coords.device)
-    reaction_force[is_support] = -residual_force[is_support]
+    reaction_force = reaction_force_at_supports(coords, force, edge_index, load, is_support)
 
     if verbose:
         print(f"CEM finished in {n_steps} steps. Converged: {converged}.")
@@ -546,8 +546,7 @@ def seq_cem_algorithm(
             break
 
     # Calculate reaction force
-    reaction_force = torch.full((coords.shape[0], 3), float("nan"), dtype=coords.dtype, device=coords.device)
-    reaction_force[is_support] = -residual_force[is_support]
+    reaction_force = reaction_force_at_supports(coords, force, edge_index, load, is_support)
 
     if verbose:
         print(f"CEM (sequential) finished in {n_steps} steps. Converged: {converged}.")

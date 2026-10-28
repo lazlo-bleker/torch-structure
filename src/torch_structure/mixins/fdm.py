@@ -1,4 +1,4 @@
-from torch_structure.formfinding import fdm
+from torch_structure.formfinding import fdm, reaction_force_at_supports
 from torch_structure.mixins.utils import OverrideResolveMixin
 
 class FDMMixin(OverrideResolveMixin):
@@ -20,7 +20,7 @@ class FDMMixin(OverrideResolveMixin):
     ):
         """
         Applies the Force Density Method (FDM) to this structure and updates `coords`
-        and `force`.
+        and `force`, and `reaction_force`.
 
         See [`torch_structure.formfinding.fdm`](../formfinding/fdm.md).
         """
@@ -59,6 +59,9 @@ class FDMMixin(OverrideResolveMixin):
         new_data = self if inplace else self.clone()
         new_data[coords_key] = new_coords
         new_data[force_key] = new_force
+        new_data.reaction_force = reaction_force_at_supports(
+            new_coords, new_directed_force, edge_index, load, is_support
+        )
 
         if not inplace:
             return new_data

@@ -43,7 +43,7 @@ edge_attrs = {
 data.add_triangular_grid(10, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
 
-data.plot(load=True)
+data.plot()
 
 
 plt.show()

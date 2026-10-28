@@ -73,23 +73,24 @@ def save_figure(name, show_edges=True, moved=False, limits=None, previous=None, 
 
     # the nodes and their pattern before the move, and if moved, these in
     # faded colors and the ones after the move in solid colors, with
-    # plot_pattern() drawing on the same axes twice. A move without the pattern
+    # plot() drawing on the same axes twice. A move without the pattern
     # leaves the pattern as it was, so its steps are drawn only once, as before
-    # the move and in solid colors: after it, plot_pattern() would start a step
+    # the move and in solid colors: after it, plot() would start a step
     # at the moved node
-    data.plot_pattern(
-        ax=ax, coords=previous, show_edges=show_edges, color=faded(ACCENT_HEX) if moved and by_pattern else ACCENT_HEX,
-        node_size=40, lw_scale=0.7, legend=False, show_labels=False,
+    data.plot(
+        ax=ax, coords=previous, edge_mask=None if show_edges else False, edge_width=1.0, node_size=40,
+        lw_scale=0.7, legend=False,
+        pattern={"color": faded(ACCENT_HEX) if moved and by_pattern else ACCENT_HEX, "show_labels": False},
     )
     num_before = len(ax.collections) if moved else 0
     if moved:
-        data.plot_pattern(
-            ax=ax, patterns=None if by_pattern else [], color=ACCENT_HEX,
-            node_size=40, lw_scale=0.7, legend=False, show_labels=False,
+        data.plot(
+            ax=ax, edge_width=1.0, node_size=40, lw_scale=0.7, legend=False,
+            pattern={"color": ACCENT_HEX, "show_labels": False} if by_pattern else None,
         )
 
     if limits is not None:
-        # plot_pattern() fits the limits to what it drew, so take over the
+        # plot() fits the limits to what it drew, so take over the
         # given ones of another figure instead, with the box it fits to them,
         # for one scale in both
         ax.set_xlim3d(*limits[0])
@@ -97,8 +98,8 @@ def save_figure(name, show_edges=True, moved=False, limits=None, previous=None, 
         ax.set_zlim3d(*limits[2])
         ax.set_box_aspect(tuple(high - low for low, high in limits))
 
-    # plot_pattern() draws the edges at z-order 2 and the nodes at 3, both in
-    # hardcoded greys, and the steps of the pattern at 5. After the move, the
+    # plot() draws the edges at z-order 2 and the nodes at 3, both in
+    # its default greys, and the steps of the pattern at 5. After the move, the
     # seed edge and node, if given, are drawn darker and larger
     edges = data.edge_index[:, data.directed_mask.view(-1)]
     for i, collection in enumerate(ax.collections):
@@ -118,7 +119,7 @@ def save_figure(name, show_edges=True, moved=False, limits=None, previous=None, 
         ax.patch.set_alpha(0.0)
         ax.set_facecolor((1, 1, 1, 0))
 
-    # plot_pattern() trims each step by a share of its length, which leaves short
+    # plot() trims each step by a share of its length, which leaves short
     # steps touching their nodes, so cut every step back to GAP points clear of
     # the nodes it runs between, on the screen, and move its arrowhead along. The
     # figure is drawn first, for the final layout of the axes; the view is

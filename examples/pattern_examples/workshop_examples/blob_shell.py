@@ -81,8 +81,8 @@ data.set_edge_attr_by_pattern_level(
 
 data.fdm(inplace=True)
 
-data.plot(show_supports=True, lw_scale=0.3)
+data.plot(supports=True, lw_scale=0.3)
 
-data.plot_pattern()
+data.plot(pattern=True)
 
 plt.show()
