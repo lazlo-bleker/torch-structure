@@ -2,12 +2,14 @@ import torch
 import scipy.linalg
 
 
-def create_branch_node_matrix(edge_index):
+def create_branch_node_matrix(edge_index, dtype=None):
     """
     Creates the branch-node matrix for a given set of edges.
 
     Args:
         edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge.
+        dtype (torch.dtype, optional): floating point dtype of the matrix, e.g. that of the coordinates it is
+            multiplied with. Defaults to ``torch.get_default_dtype()``.
 
     Returns:
         torch.Tensor: A dense tensor of shape (num_edges, num_nodes) representing the branch-node incidence matrix.
@@ -15,16 +17,17 @@ def create_branch_node_matrix(edge_index):
     """
     device = edge_index.device
     num_edges = edge_index.size(1)
+    # TODO: pass num_nodes in from the caller; this drops trailing nodes without edges, so C has fewer
+    # columns than the structure has nodes and masks like C[:, ~is_support] fail
     num_nodes = torch.max(edge_index) + 1
     row_indices = torch.arange(num_edges, device=device).repeat(2)
     col_indices = edge_index.view(-1)
-    indices = torch.stack([row_indices, col_indices])
     values = torch.cat(
-        [torch.ones(num_edges, device=device), -torch.ones(num_edges, device=device)]
+        [torch.ones(num_edges, dtype=dtype, device=device), -torch.ones(num_edges, dtype=dtype, device=device)]
     )
-    branch_node_matrix = torch.sparse_coo_tensor(
-        indices, values, size=(num_edges, num_nodes)
-    ).to_dense()
+    # build the dense matrix directly; accumulate sums +1 and -1 to 0 for a self-loop
+    branch_node_matrix = torch.zeros((num_edges, num_nodes), dtype=values.dtype, device=device)
+    branch_node_matrix.index_put_((row_indices, col_indices), values, accumulate=True)
     return branch_node_matrix
 
 
@@ -71,7 +74,7 @@ def create_xy_equilibrium_matrix(coords, is_support, edge_index):
 
     coords = torch.clone(coords)  # check if this is necessary
 
-    C = create_branch_node_matrix(edge_index)
+    C = create_branch_node_matrix(edge_index, dtype=coords.dtype)
     C_free = C[:, ~is_support]
     C_free_transposed = torch.transpose(C_free, 0, 1)
 

@@ -1815,6 +1815,25 @@ class StructData(TSMixin, pyg.data.Data):
         self.edge_index = old_to_new[self.edge_index]
         self.num_nodes = int(keep.sum().item())
 
+    def to_dtype(self, dtype: torch.dtype):
+        """Return a copy with every floating point attribute, and default value, converted to ``dtype``.
+
+        Solvers compute in the dtype of their inputs, so this sets the precision of everything
+        computed from the structure, e.g. ``data.to_dtype(torch.float64)`` for 64-bit form-finding
+        and optimization. Integer and boolean attributes are left unchanged.
+
+        Args:
+            dtype (torch.dtype): floating point dtype, e.g. ``torch.float64``.
+
+        Returns:
+            StructData: the converted copy; the original is left unchanged.
+        """
+        if not dtype.is_floating_point:
+            raise ValueError(f"dtype must be a floating point dtype, got {dtype}.")
+
+        # apply also converts the tensors in metadata, i.e. the default values
+        return self.clone().apply(lambda value: value.to(dtype) if value.is_floating_point() else value)
+
     def __repr__(self):
         attrs = {k: v for k, v in self._store.items() if k != "metadata"}
         attr_str = ", ".join(f"{k}={v.shape if isinstance(v, torch.Tensor) else v}" for k, v in attrs.items())
@@ -2702,10 +2721,15 @@ class StructData(TSMixin, pyg.data.Data):
         if value.shape[0] != edge_index.shape[0]:
             raise ValueError(f"edge_index and value must have the same length, got {edge_index.shape[0]} and {value.shape[0]}.")
 
-        current = getattr(self, attr)
-        current[edge_index] = value
-        current[self.reciprocal_edge[edge_index].view(-1)] = value
-        setattr(self, attr, current)
+        # write into a copy instead of the stored tensor, so gradients can flow through value,
+        # also under torch.func, which forbids in-place writes into tensors from outside
+        new = getattr(self, attr).clone()
+        # cast before moving, so the backward pass moves the gradient back before casting it, e.g. for
+        # float64 values from scipy on the CPU and a float32 structure on a GPU without float64 (MPS)
+        value = value.to(new.dtype).to(new.device)
+        new[edge_index] = value
+        new[self.reciprocal_edge[edge_index].view(-1)] = value
+        setattr(self, attr, new)
 
 
     def _forward_edges(self, edges):
@@ -2753,7 +2777,9 @@ class StructData(TSMixin, pyg.data.Data):
             mask (torch.Tensor): boolean tensor of shape ``[num_edges]``. Selects the edges
                 to set; for each undirected edge, its forward or reciprocal may be selected
                 interchangeably, but not both.
-            value (torch.Tensor): one row per ``True`` entry in ``mask``.
+            value (torch.Tensor): one row per ``True`` entry in ``mask``. Cast to the dtype and
+                device of the attribute, e.g. float64 CPU values from scipy are stored as float32 on
+                the GPU for a float32 structure there; gradients flow through the cast.
 
         Raises:
             ValueError: if ``attr`` is not a registered edge attribute.

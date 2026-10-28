@@ -34,13 +34,6 @@ trail = trail_generator()
 trail_element_mask = (trail.is_trail_edge & trail.directed_mask).clone()
 trail_lengths = trail.length[trail_element_mask]
 
-# Compute mask for forces in reciprocal edges
-reciprocal_idx = trail.reciprocal_edge[trail_element_mask]
-trail_element_mask_reciprocal = torch.zeros(
-    trail.num_edges, dtype=torch.bool
-).unsqueeze(1)
-trail_element_mask_reciprocal[reciprocal_idx] = True
-
 # Compute mask for support node
 target_mask = trail.is_support
 
@@ -50,15 +43,8 @@ target_mask = trail.is_support
 # -------------------------------
 @ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
 def obj_func(trail_lengths, struc_data: StructData):
-    trail_lengths = (
-        trail_lengths.float()
-    )  # Cast to 32-bit float (ToDo: add easy 64-bit support)
-
-    # Update the force vector with optimization variables
-    full_trail_lengths = struc_data.length.clone()
-    full_trail_lengths[trail_element_mask] = trail_lengths
-    full_trail_lengths[trail_element_mask_reciprocal] = trail_lengths
-    struc_data.length = full_trail_lengths
+    # Update the trail lengths with the optimization variables, in both directions of each edge
+    struc_data.set_edge_attr("length", trail_element_mask, trail_lengths.unsqueeze(1))
 
     # Form-find new structure with MPCEM
     struc_data = struc_data.mpcem(max_iter=1000, damping_factor=0.5)
@@ -106,10 +92,9 @@ result = minimize(
 # ---------------------------------------
 # 6. Apply optimized forces and visualize
 # ---------------------------------------
-# Update forces with optimized values
-optimized_lengths = torch.tensor(result.x, dtype=torch.float32)
-trail.force[trail_element_mask] = optimized_lengths
-trail.force[trail_element_mask_reciprocal] = optimized_lengths
+# Update trail lengths with optimized values
+optimized_lengths = torch.tensor(result.x)
+trail.set_edge_attr("length", trail_element_mask, optimized_lengths.unsqueeze(1))
 
 
 # Final run to compute the equilibrium structure with optimized forces

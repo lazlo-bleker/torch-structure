@@ -222,3 +222,54 @@ def test_set_edge_attr_by_pattern_without_pattern():
     data.set_edge_attr("force", mask, torch.tensor([[1.]]))
 
     assert torch.equal(data.force, torch.ones((2, 1)))
+
+
+def build_chain_structure():
+
+    node_attrs = {"coords": torch.empty((0, 3), dtype=torch.float)}
+    edge_attrs = {"force": torch.empty((0, 1), dtype=torch.float)}
+
+    data = StructData(node_attrs=node_attrs, edge_attrs=edge_attrs)
+    data.add_nodes(names=["a", "b", "c"], coords=torch.zeros((3, 3)))
+    data.add_edges(torch.tensor([[0, 1], [1, 2]]))
+
+    return data
+
+
+def test_set_edge_attr_is_differentiable_with_torch_func():
+
+    data = build_chain_structure()
+    mask = data.directed_mask.view(-1)
+
+    def loss(forces):
+        data.set_edge_attr("force", mask, forces)
+        return (data.force ** 2).sum()
+
+    # each force is stored on both directions, so the loss is 2 * sum(f^2) and its gradient 4 * f
+    grad = torch.func.grad(loss)(torch.tensor([[1.], [2.]]))
+
+    assert torch.equal(grad, torch.tensor([[4.], [8.]]))
+
+
+def test_set_edge_attr_is_differentiable_with_autograd():
+
+    data = build_chain_structure()
+    mask = data.directed_mask.view(-1)
+
+    forces = torch.tensor([[1.], [2.]], requires_grad=True)
+    data.set_edge_attr("force", mask, forces)
+    (data.force ** 2).sum().backward()
+
+    assert torch.equal(forces.grad, torch.tensor([[4.], [8.]]))
+
+
+def test_set_edge_attr_does_not_modify_the_previous_tensor():
+
+    data = build_chain_structure()
+    mask = data.directed_mask.view(-1)
+
+    previous = data.force
+    data.set_edge_attr("force", mask, torch.tensor([[1.], [2.]]))
+
+    assert torch.equal(previous, torch.zeros((4, 1)))
+    assert torch.equal(data.force, torch.tensor([[1.], [2.], [1.], [2.]]))

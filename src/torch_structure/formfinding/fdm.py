@@ -50,7 +50,7 @@ def fdm(
         force_density = 0.5 * force_density
 
     if C is None:
-        C = create_branch_node_matrix(edge_index)
+        C = create_branch_node_matrix(edge_index, dtype=coords.dtype)
     C_free = C[:, ~is_support]
     C_fixed = C[:, is_support]
     C_free_transposed = torch.transpose(C_free, 0, 1)
@@ -75,9 +75,9 @@ def fdm(
         node_counts = torch.bincount(batch)
         max_size = node_counts.max().item()
 
-        identity = torch.eye(max_size, device=device)
+        identity = torch.eye(max_size, dtype=coords.dtype, device=device)
         A_batched = identity.unsqueeze(0).repeat(n_graphs, 1, 1)
-        b_batched = torch.zeros(n_graphs, max_size, 3, device=device)
+        b_batched = torch.zeros(n_graphs, max_size, 3, dtype=coords.dtype, device=device)
         pad_mask = torch.zeros(n_graphs * max_size, dtype=torch.bool, device=device)
         ff_coords = []
         for i in range(n_graphs):

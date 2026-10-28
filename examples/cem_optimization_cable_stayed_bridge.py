@@ -44,11 +44,6 @@ src, dst = data.nodes.index("dt0n0"), data.nodes.index("dt1n0")
 edge_to_exclude = (data.edge_index[0] == src) & (data.edge_index[1] == dst)
 force_mask[edge_to_exclude] = False
 
-# Compute mask for forces in reciprocal edges
-reciprocal_force_idx = data.reciprocal_edge[force_mask]
-reciprocal_force_mask = torch.zeros(data.num_edges, dtype=torch.bool).unsqueeze(1)
-reciprocal_force_mask[reciprocal_force_idx] = True
-
 # Create a mask for all deck nodes (used to check flatness)
 deck_node_indices = [data.nodes.index(name) for name in data.nodes if name.startswith("dt")]
 deck_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
@@ -59,16 +54,9 @@ deck_mask[deck_node_indices] = True
 # 3. Define optimization function
 # -------------------------------
 @ts.utils.scipy_jacobian  # Decorator to make torch function compatible with scipy
-def deck_flatness(optim_forces, data, force_mask, reciprocal_force_mask, deck_mask):
-    optim_forces = (
-        optim_forces.float()
-    )  # Cast to 32-bit float (ToDo: add easy 64-bit support)
-
-    # Update the force vector with optimization variables
-    full_force = data.force.clone()
-    full_force[force_mask] = optim_forces
-    full_force[reciprocal_force_mask] = optim_forces
-    data.force = full_force
+def deck_flatness(optim_forces, data, force_mask, deck_mask):
+    # Update the forces with the optimization variables, in both directions of each edge
+    data.set_edge_attr("force", force_mask, optim_forces.unsqueeze(1))
 
     # Form-find new structure with MPCEM
     data = data.mpcem(max_iter=1000, damping_factor=0.5)
@@ -99,7 +87,7 @@ initial_force_values = torch.ones(torch.sum(force_mask), dtype=torch.float64)
 # Run optimization using scipy
 result = minimize(
     fun=deck_flatness,
-    args=(data, force_mask, reciprocal_force_mask, deck_mask),
+    args=(data, force_mask, deck_mask),
     x0=initial_force_values.detach().numpy(),
     method="SLSQP",
     jac=True,
@@ -111,9 +99,8 @@ result = minimize(
 # 6. Apply optimized forces and visualize
 # ---------------------------------------
 # Update forces with optimized values
-optimized_forces = torch.tensor(result.x, dtype=torch.float32)
-data.force[force_mask] = optimized_forces
-data.force[reciprocal_force_mask] = optimized_forces
+optimized_forces = torch.tensor(result.x)
+data.set_edge_attr("force", force_mask, optimized_forces.unsqueeze(1))
 
 # Final run to compute the equilibrium structure with optimized forces
 data = data.mpcem(max_iter=1000, verbose=True)
