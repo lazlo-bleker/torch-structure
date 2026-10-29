@@ -26,13 +26,17 @@ def fdm(
         is_support (torch.Tensor): A boolean tensor of shape (num_nodes, 1) indicating which nodes are fixed (True) or free (False).
         edge_index (torch.Tensor): A tensor of shape (2, num_edges) containing the indices of the nodes that form each edge.
         force_density (torch.Tensor): A tensor of shape (num_edges, 1) containing the force density for each edge.
-        batch (torch.Tensor, optional): A tensor of shape (num_nodes, 1) indicating the batch assignment for each node. If not supplied
-            a single linear system containing all nodes and edges of the entire batch is solved. Default is None.
-        use_batching (bool, optional): If True, batching is used for solving the linear system. Default is True.
+        batch (torch.Tensor, optional): A tensor of shape (num_nodes,) assigning each node to a graph of the batch,
+            sorted as in a PyTorch Geometric batch. If supplied, the linear system of every graph is assembled as a
+            separate block, padded to the size of the largest graph. If not supplied, a single linear system
+            containing all nodes and edges is solved. Default is None.
+        use_batching (bool, optional): If True, the blocks of all graphs are solved at once with one batched solve,
+            otherwise one after another. Only used with ``batch``. Default is True.
         directed (bool, optional): If True, edges are assumed to be directed. If False, the force densities are halved to account for
             undirected edges. Default is False.
         solve_only_z (bool, optional): If True, only the z-coordinate of the free nodes is solved. Default is False.
-        C (torch.Tensor, optional): A precomputed branch-node matrix. If None, it is created using the edge_index. Default is None.
+        C (torch.Tensor, optional): A precomputed branch-node matrix. If None, it is created using the edge_index. Not
+            used with ``batch``. Default is None.
 
     Returns:
         A tuple containing:
@@ -42,75 +46,42 @@ def fdm(
     is_support = is_support.view(-1)
     force_density = force_density.view(-1)
 
-    device = coords.device
     coords = torch.clone(coords)  # check if this is necessary
 
     # halve force densities to account for undirected graph
     if not directed:
         force_density = 0.5 * force_density
 
-    if C is None:
-        C = create_branch_node_matrix(edge_index, dtype=coords.dtype)
-    C_free = C[:, ~is_support]
-    C_fixed = C[:, is_support]
-    C_free_transposed = torch.transpose(C_free, 0, 1)
-
-    Q = torch.diag(force_density)
-    A = torch.mm(torch.mm(C_free_transposed, Q), C_free)  # >1/3 of computation time
-
-    D_f = torch.mm(torch.mm(C_free_transposed, Q), C_fixed)
-    if solve_only_z:
-        b_1 = load[~is_support, 2]
-        b_2 = torch.mv(D_f, coords[is_support, 2])
+    if batch is not None:
+        coords = _fdm_batched(coords, load, is_support, edge_index, force_density, batch, use_batching, solve_only_z)
+        src, dst = edge_index
+        lengths = torch.norm(coords[src] - coords[dst], dim=1)
     else:
-        b_1 = load[~is_support]
-        b_2 = torch.mm(D_f, coords[is_support])
-    b = b_1 - b_2
+        if C is None:
+            C = create_branch_node_matrix(edge_index, dtype=coords.dtype)
+        C_free = C[:, ~is_support]
+        C_fixed = C[:, is_support]
+        C_free_transposed = torch.transpose(C_free, 0, 1)
 
-    if batch is None:
-        form_found_coords = torch.linalg.solve(A, b)
-    else:
-        batch_free = batch[~is_support]
-        n_graphs = batch.max().item() + 1
-        node_counts = torch.bincount(batch)
-        max_size = node_counts.max().item()
+        Q = torch.diag(force_density)
+        A = torch.mm(torch.mm(C_free_transposed, Q), C_free)  # >1/3 of computation time
 
-        identity = torch.eye(max_size, dtype=coords.dtype, device=device)
-        A_batched = identity.unsqueeze(0).repeat(n_graphs, 1, 1)
-        b_batched = torch.zeros(n_graphs, max_size, 3, dtype=coords.dtype, device=device)
-        pad_mask = torch.zeros(n_graphs * max_size, dtype=torch.bool, device=device)
-        ff_coords = []
-        for i in range(n_graphs):
-            mask = batch_free == i
-
-            indices = torch.nonzero(mask).squeeze()
-            submatrix = A[indices][:, indices]
-            A_batched[i, : submatrix.size(0), : submatrix.size(1)] = submatrix
-
-            subvector = b[mask]
-            graph_size = subvector.size(0)
-            b_batched[i, :graph_size] = subvector
-
-            pad_mask[i * max_size : i * max_size + graph_size] = 1
-
-            if not use_batching:
-                ff_coords.append(torch.linalg.solve(submatrix, subvector))
-                # ff_coords.append(torch.linalg.solve(A_batched[i], b_batched[i]))
-
-        if use_batching:
-            form_found_coords = torch.linalg.solve(A_batched, b_batched)
-            form_found_coords = form_found_coords.reshape(n_graphs * max_size, 3)
-            form_found_coords = form_found_coords[pad_mask]
+        D_f = torch.mm(torch.mm(C_free_transposed, Q), C_fixed)
+        if solve_only_z:
+            b_1 = load[~is_support, 2]
+            b_2 = torch.mv(D_f, coords[is_support, 2])
         else:
-            form_found_coords = torch.cat(ff_coords, dim=0)
-            # form_found_coords = form_found_coords.reshape(n_graphs*max_size, 3)[pad_mask]
+            b_1 = load[~is_support]
+            b_2 = torch.mm(D_f, coords[is_support])
+        b = b_1 - b_2
 
-    if solve_only_z:
-        coords[~is_support, 2] = form_found_coords
-    else:
-        coords[~is_support, :] = form_found_coords
+        form_found_coords = torch.linalg.solve(A, b)
 
-    lengths = torch.norm(torch.mm(C, coords), dim=1)
+        if solve_only_z:
+            coords[~is_support, 2] = form_found_coords
+        else:
+            coords[~is_support, :] = form_found_coords
+        lengths = torch.norm(torch.mm(C, coords), dim=1)
     force = force_density * lengths
 
     # double force to account for undirected graph
@@ -118,3 +89,67 @@ def fdm(
         force = 2 * force
 
     return coords, force.unsqueeze(1)
+
+
+def _fdm_batched(coords, load, is_support, edge_index, force_density, batch, use_batching, solve_only_z):
+    """
+    Solves the FDM for every graph of a batch, assembling each graph's linear system as its own block.
+
+    Every block has one row and column per node of its graph, padded to the size of the largest graph. Rows of
+    supported and padding nodes are identity rows whose solution is the node's own coordinates (zero for padding),
+    so the free nodes of every block solve ``A_free x_free = load_free - D_fixed x_fixed``, as without a batch.
+
+    Args:
+        coords (torch.Tensor [N, 3]): node coordinates; only those of supported nodes are used.
+        load (torch.Tensor [N, 3]): node loads.
+        is_support (torch.Tensor [N], bool): supported nodes.
+        edge_index (torch.Tensor [2, E]): edges, which never connect two graphs.
+        force_density (torch.Tensor [E]): force density of every edge, already halved for undirected edges.
+        batch (torch.Tensor [N]): graph of every node, sorted.
+        use_batching (bool): solve all blocks at once instead of one after another.
+        solve_only_z (bool): solve only the z-coordinates of the free nodes.
+
+    Returns:
+        torch.Tensor [N, 3]: form-found coordinates.
+    """
+    batch = batch.view(-1)
+    dtype, device = coords.dtype, coords.device
+    num_graphs = int(batch.max()) + 1
+    node_counts = torch.bincount(batch, minlength=num_graphs)
+    ptr = torch.cat([node_counts.new_zeros(1), torch.cumsum(node_counts, dim=0)])
+    size = int(node_counts.max())
+    local = torch.arange(batch.size(0), device=device) - ptr[batch]  # index of every node in its own graph
+    dims = [2] if solve_only_z else [0, 1, 2]
+
+    # the force density matrix C^T Q C of every graph, summed edge by edge without building C
+    src, dst = edge_index
+    graph = batch[src]
+    L = torch.zeros((num_graphs, size, size), dtype=dtype, device=device)
+    q = force_density.to(dtype)
+    L = L.index_put((graph, local[src], local[src]), q, accumulate=True)
+    L = L.index_put((graph, local[dst], local[dst]), q, accumulate=True)
+    L = L.index_put((graph, local[src], local[dst]), -q, accumulate=True)
+    L = L.index_put((graph, local[dst], local[src]), -q, accumulate=True)
+
+    # padding nodes count as supported, at the origin
+    fixed = torch.ones((num_graphs, size), dtype=torch.bool, device=device)
+    fixed[batch, local] = is_support
+    padded_coords = torch.zeros((num_graphs, size, len(dims)), dtype=dtype, device=device)
+    padded_coords = padded_coords.index_put((batch, local), coords[:, dims])
+    padded_load = torch.zeros((num_graphs, size, len(dims)), dtype=dtype, device=device)
+    padded_load = padded_load.index_put((batch, local), load[:, dims].to(dtype))
+
+    free = ~fixed
+    free_rows, free_cols = free.unsqueeze(2), free.unsqueeze(1)
+    A = L * (free_rows & free_cols) + torch.diag_embed(fixed.to(dtype))
+    D_fixed = L * (free_rows & ~free_cols)
+    b = torch.where(free_rows, padded_load - torch.bmm(D_fixed, padded_coords), padded_coords)
+
+    if use_batching:
+        solution = torch.linalg.solve(A, b)
+    else:
+        solution = torch.stack([torch.linalg.solve(A[i], b[i]) for i in range(num_graphs)])
+
+    coords = torch.clone(coords)
+    coords[:, dims] = solution[batch, local]
+    return coords
