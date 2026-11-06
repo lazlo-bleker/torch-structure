@@ -1,6 +1,6 @@
 # Installation Guide
 
-Welcome to the installation guide for `torch_structure`. To ensure a smooth installation process, please follow the steps below.
+Welcome to the installation guide for `torch-structure`. To ensure a smooth installation process, please follow the steps below.
 
 ---
 
@@ -35,16 +35,16 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
     PyTorch requires a specific build depending on your system (e.g., CUDA version if you have a GPU). As a result, it cannot be automatically installed as part of the package dependencies and must be installed manually. All other dependencies, including PyTorch Geometric, are installed automatically.
 
 
-### 3. Install `torch_structure`
+### 3. Install `torch-structure`
 
-Install the `torch_structure` package via pip:
+Install the `torch-structure` package via pip:
 
 ```bash
-pip install torch_structure
+pip install torch-structure
 ```
 
 !!! info "Alternative: Install directly from GitHub"
-    To install the very latest version of `torch_structure`, clone the [GitHub repository](https://github.com/lazlo-bleker/torch-structure):
+    To install the very latest version of `torch-structure`, clone the [GitHub repository](https://github.com/lazlo-bleker/torch-structure):
 
     ```bash
     git clone https://github.com/lazlo-bleker/torch-structure.git
@@ -57,7 +57,7 @@ pip install torch_structure
     ```
 
 !!! tip "Optional: PyTorch Geometric extensions"
-    `torch_structure` does not require the compiled PyTorch Geometric extensions (`torch_scatter`, `pyg_lib`, ...). If they are installed, PyTorch Geometric uses them automatically where they are faster. See the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for how to install them.
+    `torch-structure` does not require the compiled PyTorch Geometric extensions (`torch_scatter`, `pyg_lib`, ...). If they are installed, PyTorch Geometric uses them automatically where they are faster. See the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for how to install them.
 
 ### 4. Verify the Installation
 
@@ -67,4 +67,4 @@ To verify the installation, open Python and run the following:
 import torch_structure as ts
 ```
 
-If no errors occur you have succesfully installed `torch_structure`.
+If no errors occur you have succesfully installed `torch-structure`.
