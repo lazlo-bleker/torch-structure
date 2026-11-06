@@ -18,7 +18,7 @@ conda install pip
 
 or, with [uv](https://docs.astral.sh/uv/):
 ```bash
-uv venv --python 3.12  
+uv sync
 ```
 
 ### 2. Install PyTorch
