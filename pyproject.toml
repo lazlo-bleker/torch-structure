@@ -1,5 +1,5 @@
 [project]
-name = "torch_structure"
+name = "torch-structure"
 version = "0.2.0"
 description = "A Python package for graph-based autodifferentiable structural design and engineering."
 authors = [

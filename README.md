@@ -18,7 +18,7 @@ A Python package for graph-based autodifferentiable structural design and engine
 You can install TorchStructure with pip:
 
 ```bash
-pip install torch_structure
+pip install torch-structure
 ```
 
 For a more detailed installation guide, check out the dedicated [documentation page](https://lazlo-bleker.github.io/torch-structure/install/).

@@ -1,6 +1,6 @@
 # Modeling with patterns
 
-Welcome to the tutorial on modeling with patterns in `torch_structure`. If you have not installed `torch_structure` yet or had problems with the installation process, please refer to the [installation guide](../install.md).
+Welcome to the tutorial on modeling with patterns in `torch-structure`. If you have not installed `torch-structure` yet or had problems with the installation process, please refer to the [installation guide](../install.md).
 
 TorchStructure's patterns all work in similar ways. First, we will start with a rotational pattern.
 

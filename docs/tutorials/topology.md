@@ -1,6 +1,6 @@
 # Creating topologies
 
-Welcome to the topology creation tutorial for `torch_structure`. If you have not installed `torch_structure` yet or had problems with the installation process, please refer to the [installation guide](../install.md).
+Welcome to the topology creation tutorial for `torch-structure`. If you have not installed `torch-structure` yet or had problems with the installation process, please refer to the [installation guide](../install.md).
 
 
 TorchStructure's topology functions all follow the same template. First, we will start with a simple chain. 
@@ -106,7 +106,7 @@ The dictionary values are either a tensor or a callable that returns a tensor. I
 
 ### How callables work
 
-When a dictionary value is a callable, `torch_structure` resolves its inputs by name. It inspects the callable's parameter names and passes the matching tensors as arguments. Two sources are available:
+When a dictionary value is a callable, `torch-structure` resolves its inputs by name. It inspects the callable's parameter names and passes the matching tensors as arguments. Two sources are available:
 
 - **Default attributes**: each topology function pre-computes a set of suitable attributes (node indices, unit coordinates, boundary flags, etc.) that can be used directly as callable inputs. See the API reference for the full list per function.
 - **Previously defined attributes**: any attribute already set earlier in the *same* dictionary is also available as a callable input. This allows attributes to be built up step by step — for example, registering `height` first and then passing it into the callable that computes `coords`:
