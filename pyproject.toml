@@ -19,7 +19,6 @@ classifiers = [
 dependencies = [
     "matplotlib>=3.9.0",
     "numpy",
-    "packaging",
     "scipy>=1.13",
     "torch>=2.9.0",
     "torch-geometric>=2.6.1",
