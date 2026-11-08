@@ -28,7 +28,7 @@ Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/locally/)
 For example, if using CUDA 12.8:
 
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+pip install torch --index-url https://download.pytorch.org/whl/cu128
 ```
 
 !!! warning Important Note on Dependencies
