@@ -21,18 +21,17 @@ or, with [uv](https://docs.astral.sh/uv/):
 uv sync
 ```
 
-### 2. Install PyTorch
+### 2. (Optional) Install a specific PyTorch build
 
-Visit the [PyTorch Installation Guide](https://pytorch.org/get-started/locally/) to find the correct command for your system. We recommend installing the latest stable version.
+PyTorch is installed automatically as a dependency of `torch-structure`, using the default build from PyPI: CPU-only on Windows and macOS, CUDA-enabled on Linux.
 
-For example, if using CUDA 12.8:
+If you need a different build (e.g. CUDA on Windows, or a specific CUDA version), install PyTorch first using the command for your system from the [PyTorch Installation Guide](https://pytorch.org/get-started/locally/). For example, for CUDA 12.8:
 
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+pip install torch --index-url https://download.pytorch.org/whl/cu128
 ```
 
-!!! warning Important Note on Dependencies
-    PyTorch requires a specific build depending on your system (e.g., CUDA version if you have a GPU). As a result, it cannot be automatically installed as part of the package dependencies and must be installed manually. All other dependencies, including PyTorch Geometric, are installed automatically.
+`torch-structure` will then use the already-installed PyTorch.
 
 
 ### 3. Install `torch-structure`
