@@ -146,9 +146,21 @@ def test_scipy_gradient_without_cast(dtype):
     assert np.all(np.isfinite(grad)) and np.any(grad != 0)
 
 
+def mps_works():
+
+    # is_available() says True on Intel Macs even when newer torch refuses to put anything on MPS
+    if not torch.backends.mps.is_available():
+        return False
+    try:
+        torch.zeros(1, device="mps")
+    except RuntimeError:
+        return False
+    return True
+
+
 ACCELERATORS = [
     pytest.param("cuda", marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")),
-    pytest.param("mps", marks=pytest.mark.skipif(not torch.backends.mps.is_available(), reason="MPS not available")),
+    pytest.param("mps", marks=pytest.mark.skipif(not mps_works(), reason="MPS not available")),
 ]
 
 
