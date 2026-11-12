@@ -2050,16 +2050,9 @@ class StructData(TSMixin, pyg.data.Data):
         return torch.linalg.solve(matrices, values_h)[..., :3]
 
 
-    def _get_edge_unit_coords(self, x, y, edge_indices):
-
-        x_src = x[edge_indices[0]]
-        y_src= y[edge_indices[0]]
-        x_dest = x[edge_indices[1]]
-        y_dest = y[edge_indices[1]]
-        x_edge = (x_src + x_dest) / 2
-        y_edge = (y_src + y_dest) / 2
-
-        return x_edge, y_edge
+    @staticmethod
+    def _get_edge_unit_coord(node_unit_coord, edge_indices):
+        return (node_unit_coord[edge_indices[0]] + node_unit_coord[edge_indices[1]]) / 2
 
 
     @staticmethod
@@ -3024,17 +3017,13 @@ class StructData(TSMixin, pyg.data.Data):
 
         Node defaults:
             - ``u_ind`` (torch.Tensor [N, 1]): index of each node (``0`` to ``n-1``).
-            - ``v_ind`` (torch.Tensor [N, 1]): zero (chain has no second axis).
             - ``x_unit_coord`` (torch.Tensor [N, 1]): ``x`` coordinate in unit interval.
-            - ``y_unit_coord`` (torch.Tensor [N, 1]): zero.
             - ``is_boundary`` (torch.Tensor [N, 1], bool): ``True`` for the first and last node.
 
         Edge defaults:
             - ``u_ind`` (torch.Tensor [E, 1]): index of the source node.
-            - ``v_ind`` (torch.Tensor [E, 1]): zero.
             - ``x_unit_coord`` (torch.Tensor [E, 1]): mean unit ``x`` coordinate of source and
               destination node.
-            - ``y_unit_coord`` (torch.Tensor [E, 1]): zero.
 
         Args:
             n (int): number of nodes.
@@ -3052,13 +3041,11 @@ class StructData(TSMixin, pyg.data.Data):
 
         #create default node attributes
         u_node_ind = torch.arange(n).unsqueeze(1)
-        v_node_ind = torch.zeros(n).unsqueeze(1)
 
         x_node_unit_coord = u_node_ind / (n-1)
-        y_node_unit_coord = v_node_ind
 
         is_boundary_node = (u_node_ind == 0) | (u_node_ind == n-1)
-        default_node_attrs = {"u_ind": u_node_ind, "v_ind": v_node_ind, "x_unit_coord": x_node_unit_coord, "y_unit_coord": y_node_unit_coord, "is_boundary": is_boundary_node}
+        default_node_attrs = {"u_ind": u_node_ind, "x_unit_coord": x_node_unit_coord, "is_boundary": is_boundary_node}
 
         #create edge indices
         row = torch.arange(n-1)
@@ -3066,13 +3053,11 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([row, col], dim=0)
 
         #create default edge attributes
-        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
-
+        x_edge_unit_coord = self._get_edge_unit_coord(x_node_unit_coord, edge_indices)
 
         u_edge_ind = u_node_ind[edge_indices[0]]
-        v_edge_ind = v_node_ind[edge_indices[0]]
 
-        default_edge_attrs = {"u_ind": u_edge_ind, "v_ind": v_edge_ind, "x_unit_coord": x_edge_unit_coord, "y_unit_coord": y_edge_unit_coord}
+        default_edge_attrs = {"u_ind": u_edge_ind, "x_unit_coord": x_edge_unit_coord}
 
         self._create_topology(num_nodes = n, num_edges = n-1, edge_indices=edge_indices, node_attrs=node_attrs, edge_attrs=edge_attrs, default_node_attrs=default_node_attrs, default_edge_attrs=default_edge_attrs)
 
@@ -3178,7 +3163,8 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([row, col], dim=0)
 
         #create default edge attributes
-        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
+        x_edge_unit_coord = self._get_edge_unit_coord(x_node_unit_coord, edge_indices)
+        y_edge_unit_coord = self._get_edge_unit_coord(y_node_unit_coord, edge_indices)
          
         u_edge_ind = u_node_ind[edge_indices[0]]
         v_edge_ind = v_node_ind[edge_indices[0]]
@@ -3294,7 +3280,8 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([row, col], dim=0)
 
         #create default edge attributes
-        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
+        x_edge_unit_coord = self._get_edge_unit_coord(x_node_unit_coord, edge_indices)
+        y_edge_unit_coord = self._get_edge_unit_coord(y_node_unit_coord, edge_indices)
 
         r_edge_ind = r_node_ind[edge_indices[0]]
         # a_ind is the source node's angular index, except for radial edges
@@ -3394,7 +3381,8 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([row, col], dim=0)
 
         #create default edge attributes
-        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
+        x_edge_unit_coord = self._get_edge_unit_coord(x_node_unit_coord, edge_indices)
+        y_edge_unit_coord = self._get_edge_unit_coord(y_node_unit_coord, edge_indices)
 
         u_edge_ind = u_node_ind[edge_indices[0]]
         v_edge_ind = v_node_ind[edge_indices[0]]
@@ -3514,8 +3502,9 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([row, col], dim=0)
 
         # default edge attributes
-        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
-        z_edge_unit_coord = (z_node_unit_coord[edge_indices[0]] + z_node_unit_coord[edge_indices[1]]) / 2
+        x_edge_unit_coord = self._get_edge_unit_coord(x_node_unit_coord, edge_indices)
+        y_edge_unit_coord = self._get_edge_unit_coord(y_node_unit_coord, edge_indices)
+        z_edge_unit_coord = self._get_edge_unit_coord(z_node_unit_coord, edge_indices)
 
         a_edge_ind = a_node_ind[edge_indices[0]]
         r_edge_ind = r_node_ind[edge_indices[0]]
@@ -3627,8 +3616,9 @@ class StructData(TSMixin, pyg.data.Data):
         edge_indices = torch.stack([row, col], dim=0)
 
         # default edge attributes
-        x_edge_unit_coord, y_edge_unit_coord = self._get_edge_unit_coords(x_node_unit_coord, y_node_unit_coord, edge_indices)
-        z_edge_unit_coord = (z_node_unit_coord[edge_indices[0]] + z_node_unit_coord[edge_indices[1]]) / 2
+        x_edge_unit_coord = self._get_edge_unit_coord(x_node_unit_coord, edge_indices)
+        y_edge_unit_coord = self._get_edge_unit_coord(y_node_unit_coord, edge_indices)
+        z_edge_unit_coord = self._get_edge_unit_coord(z_node_unit_coord, edge_indices)
 
         a_edge_ind = a_node_ind[edge_indices[0]]
         r_edge_ind = r_node_ind[edge_indices[0]]
