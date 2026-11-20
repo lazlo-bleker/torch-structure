@@ -29,6 +29,7 @@ dependencies = [
 [project.urls]
 Documentation = "https://lazlo-bleker.github.io/torch-structure/"
 Repository = "https://github.com/lazlo-bleker/torch-structure"
+Changelog = "https://github.com/lazlo-bleker/torch-structure/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
