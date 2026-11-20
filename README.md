@@ -1,3 +1,4 @@
+[![PyPI Version](https://img.shields.io/pypi/v/torch-structure)](https://pypi.org/project/torch-structure/)
 ![Tests](https://github.com/lazlo-bleker/torch-structure/actions/workflows/tests.yml/badge.svg)
 [![Docs](https://img.shields.io/badge/docs-work%20in%20progress-blue.svg)](https://lazlo-bleker.github.io/torch-structure/)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
