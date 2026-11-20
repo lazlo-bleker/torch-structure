@@ -17,6 +17,8 @@ Breaking changes are marked **BREAKING**.
 
 ### Removed
 
+- **BREAKING:** `add_chain` no longer provides the `v_ind` and `y_unit_coord` default attributes.
+
 ### Fixed
 
 ## [0.2.0] - 2026-10-29
