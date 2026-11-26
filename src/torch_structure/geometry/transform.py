@@ -129,6 +129,15 @@ def skew(coords, x_per_y=0, x_per_z=0, y_per_x=0, y_per_z=0, z_per_x=0, z_per_y=
     if not coords.is_floating_point():
         coords = coords.to(torch.get_default_dtype())
 
+    factors = []
+    for name, factor in [("x_per_y", x_per_y), ("x_per_z", x_per_z), ("y_per_x", y_per_x),
+                         ("y_per_z", y_per_z), ("z_per_x", z_per_x), ("z_per_y", z_per_y)]:
+        factor = torch.as_tensor(factor, dtype=coords.dtype, device=coords.device)
+        if factor.ndim != 0:
+            raise ValueError(f"{name} must be a single number, got shape {list(factor.shape)}.")
+        factors.append(factor)
+    x_per_y, x_per_z, y_per_x, y_per_z, z_per_x, z_per_y = factors
+
     x, y, z = coords.unbind(dim=1)
 
     return torch.stack([
