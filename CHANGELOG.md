@@ -8,6 +8,8 @@ Breaking changes are marked **BREAKING**.
 
 ### Added
 
+- `rotate`, `translate`, `scale`, `skew` and `mirror` in `torch_structure.geometry` for transforming coordinates of shape `[N, 3]`, such as `data.coords`.
+
 ### Changed
 
 - The package name is normalized to `torch-structure` (PEP 503). Installing and importing work as before (`pip install torch-structure`, `import torch_structure`).
